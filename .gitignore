@@ -1,0 +1,16 @@
+# Sub-repos (each has its own git history)
+Reigh-App/
+Reigh-Worker/
+Reigh-Worker-Orchestrator/
+
+# Secrets (safety net)
+.env
+.env.*
+*.key
+*.pem
+*.secret
+credentials*
+
+# OS
+.DS_Store
+Thumbs.db
