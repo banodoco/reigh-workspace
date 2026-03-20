@@ -1,13 +1,13 @@
 # Edge Function Debugging
 
-Edge functions live in `./Reigh-App/supabase/functions/`. They handle the task lifecycle and run on Supabase.
+Edge functions live in `./reigh-app/supabase/functions/`. They handle the task lifecycle and run on Supabase.
 
 ---
 
 ## Deploying
 
 ```bash
-cd Reigh-App
+cd reigh-app
 npx supabase functions deploy <function_name> --project-ref wczysqzxlwdndgxitrvc
 ```
 
@@ -48,4 +48,4 @@ Add `--no-verify-jwt` if the function needs to accept PAT auth directly (most do
 | Orchestrators | `orchestrator_gpu` / `orchestrator_api` | Cycle tracking, segment coordination |
 | Browser | `browser` | ALL console output (only when `VITE_PERSIST_LOGS=true`) |
 
-Query logs: `cd Reigh-App && python scripts/debug.py logs --source edge_function --hours 1`
+Query logs: `cd reigh-app && python scripts/debug.py logs --source edge_function --hours 1`

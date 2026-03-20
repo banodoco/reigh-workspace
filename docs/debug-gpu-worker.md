@@ -1,17 +1,17 @@
 # GPU Worker Debugging
 
-Workers run on RunPod pods. Code lives in `./Reigh-Worker/`.
+Workers run on RunPod pods. Code lives in `./reigh-worker/`.
 
 ---
 
 ## Finding Pods
 
 ```bash
-# From Reigh-App/
+# From reigh-app/
 python scripts/debug.py pod list           # All pods with SSH commands
 python scripts/debug.py pod ssh <pod_id>   # SSH command for a specific pod
 
-# From Reigh-Worker-Orchestrator/
+# From reigh-worker-orchestrator/
 python scripts/ssh_to_worker.py            # Interactive SSH into a worker
 ```
 
@@ -45,7 +45,7 @@ ssh root@<HOST> -p <PORT>
 kill -9 $(pgrep -f 'python.*worker') 2>/dev/null
 
 # Pull latest and start
-cd /workspace/Reigh-Worker
+cd /workspace/reigh-worker
 git pull
 source venv/bin/activate
 nohup python -u worker.py \
@@ -57,18 +57,18 @@ nohup python -u worker.py \
 ps aux | grep 'python.*worker' | grep -v grep
 ```
 
-Or use `debug.py pod worker <pod_id>` (from Reigh-App/) to print the full setup commands.
+Or use `debug.py pod worker <pod_id>` (from reigh-app/) to print the full setup commands.
 
 ---
 
 ## First-Time Pod Setup
 
-If `/workspace/Reigh-Worker` doesn't exist:
+If `/workspace/reigh-worker` doesn't exist:
 
 ```bash
 cd /workspace
-git clone https://github.com/banodoco/Reigh-Worker.git
-cd Reigh-Worker
+git clone https://github.com/banodoco/reigh-worker.git
+cd reigh-worker
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -97,9 +97,9 @@ Pods are provisioned by **Arnold** (`../Arnold/`) via RunPod API. The **Orchestr
 | GPU status | `nvidia-smi` |
 | Worker process | `ps aux \| grep python` |
 | Disk space | `df -h /workspace` |
-| Git state | `git -C /workspace/Reigh-Worker log --oneline -3` |
+| Git state | `git -C /workspace/reigh-worker log --oneline -3` |
 | Guardian heartbeat | `tail -20 /tmp/guardian_*.log` |
-| Full GPU diagnostics | `bash /workspace/Reigh-Worker/scripts/gpu_diag.sh` |
+| Full GPU diagnostics | `bash /workspace/reigh-worker/scripts/gpu_diag.sh` |
 
 ---
 
@@ -122,7 +122,7 @@ SELECT gen_random_uuid(), task_type, 'Queued', project_id,
 FROM tasks WHERE id = '<source_task_id>';
 ```
 
-Or use `scripts/create_test_task.py` in either Reigh-Worker or Reigh-Worker-Orchestrator.
+Or use `scripts/create_test_task.py` in either reigh-worker or reigh-worker-orchestrator.
 
 ### Cancel interfering tasks
 
@@ -146,8 +146,8 @@ WHERE t.id = '<task_id>';
 
 ## Fix & Retry Loop
 
-1. Edit `./Reigh-Worker/` locally → `git push`
-2. SSH to pod: `cd /workspace/Reigh-Worker && git pull`
+1. Edit `./reigh-worker/` locally → `git push`
+2. SSH to pod: `cd /workspace/reigh-worker && git pull`
 3. Kill and restart worker (see above)
 4. Wait ~3-4 min for init
 5. Queue a test task

@@ -1,13 +1,13 @@
 # Frontend Debugging
 
-Frontend code lives in `./Reigh-App/src/`. Logging is opt-in — nothing prints unless you set env flags.
+Frontend code lives in `./reigh-app/src/`. Logging is opt-in — nothing prints unless you set env flags.
 
 ---
 
 ## Enabling Logs
 
 ```bash
-cd Reigh-App
+cd reigh-app
 
 # Console only
 VITE_DEBUG_LOGS=true npm run dev

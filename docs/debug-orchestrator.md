@@ -1,6 +1,6 @@
 # Orchestrator Debugging
 
-The **Reigh-Worker-Orchestrator** (`./Reigh-Worker-Orchestrator/`) scales GPU workers and dispatches API tasks. It runs on Railway.
+The **reigh-worker-orchestrator** (`./reigh-worker-orchestrator/`) scales GPU workers and dispatches API tasks. It runs on Railway.
 
 ---
 
@@ -37,7 +37,7 @@ View current config: `python scripts/debug.py config` (add `--explain` for descr
 ## Running Locally
 
 ```bash
-cd Reigh-Worker-Orchestrator
+cd reigh-worker-orchestrator
 
 # Health overview
 python -m gpu_orchestrator.main status
@@ -87,7 +87,7 @@ GROUP BY w.id ORDER BY recent_failures DESC;
 ## Deployment
 
 ```bash
-cd Reigh-Worker-Orchestrator
+cd reigh-worker-orchestrator
 ./deploy_to_railway.sh          # Both pipelines
 ./deploy_to_railway.sh --gpu    # GPU orchestrator only
 ./deploy_to_railway.sh --api    # API orchestrator only

@@ -8,9 +8,9 @@
 
 ```
 Reigh-Collection/             <-- you are here
-  Reigh-App/                  Frontend (React/Vite) + Supabase edge functions + main debug CLI
-  Reigh-Worker/               GPU worker (Python, runs on RunPod pods)
-  Reigh-Worker-Orchestrator/  Worker scaling + API task dispatch (runs on Railway)
+  reigh-app/                  Frontend (React/Vite) + Supabase edge functions + main debug CLI
+  reigh-worker/               GPU worker (Python, runs on RunPod pods)
+  reigh-worker-orchestrator/  Worker scaling + API task dispatch (runs on Railway)
 
 External:
   ../Arnold/                  RunPod pod management (provides API key for pod commands)
@@ -21,10 +21,10 @@ External:
 ## Quick Start
 
 1. **A task failed or is stuck** — find your symptom in the Decision Table below
-2. **Investigate a specific task** — `cd Reigh-App && python scripts/debug.py task <task_id>`
-3. **Check system health** — `cd Reigh-Worker && python -m debug health` or `cd Reigh-Worker-Orchestrator && python scripts/debug.py health`
+2. **Investigate a specific task** — `cd reigh-app && python scripts/debug.py task <task_id>`
+3. **Check system health** — `cd reigh-worker && python -m debug health` or `cd reigh-worker-orchestrator && python scripts/debug.py health`
 4. **Launch a test worker** — see [GPU Worker Debugging](./docs/debug-gpu-worker.md) → "Starting / Restarting a Worker"
-5. **Read logs for a task** — `cd Reigh-App && python scripts/debug.py task <task_id>` (includes system_logs timeline)
+5. **Read logs for a task** — `cd reigh-app && python scripts/debug.py task <task_id>` (includes system_logs timeline)
 6. **Deploy a fix** — find the right repo in the Repo Map, then see the component doc
 
 ---
@@ -33,14 +33,14 @@ External:
 
 ```
 User clicks Generate
-  → Frontend builds payload                          Reigh-App/src/shared/lib/tasks/
-  → Calls create-task edge function                  Reigh-App/supabase/functions/create-task/
+  → Frontend builds payload                          reigh-app/src/shared/lib/tasks/
+  → Calls create-task edge function                  reigh-app/supabase/functions/create-task/
   → Row inserted in `tasks` table (status: Queued)
-  → Worker polls claim-next-task edge function        Reigh-App/supabase/functions/claim-next-task/
-  → Worker processes task on GPU                      Reigh-Worker/worker.py
-  → Worker calls complete_task edge function           Reigh-App/supabase/functions/complete_task/
+  → Worker polls claim-next-task edge function        reigh-app/supabase/functions/claim-next-task/
+  → Worker processes task on GPU                      reigh-worker/worker.py
+  → Worker calls complete_task edge function           reigh-app/supabase/functions/complete_task/
   → DB trigger creates generation row
-  → Realtime broadcasts to UI                         Reigh-App/src/ (React Query subscription)
+  → Realtime broadcasts to UI                         reigh-app/src/ (React Query subscription)
   → Video appears in gallery
 ```
 
@@ -62,9 +62,9 @@ Every layer writes to a single `system_logs` Postgres table in Supabase. This is
 **How to query:**
 ```bash
 # Best way — the debug CLI pulls system_logs + task data together:
-cd Reigh-App && python scripts/debug.py task <task_id>          # Full timeline for a task
-cd Reigh-App && python scripts/debug.py logs --source worker --hours 1   # Filter by source
-cd Reigh-App && python scripts/debug.py logs --latest --tag MyTag        # Browser logs by tag
+cd reigh-app && python scripts/debug.py task <task_id>          # Full timeline for a task
+cd reigh-app && python scripts/debug.py logs --source worker --hours 1   # Filter by source
+cd reigh-app && python scripts/debug.py logs --latest --tag MyTag        # Browser logs by tag
 ```
 
 **Critical**: `system_logs` has **48h retention**. For older issues, query `tasks.error_message` directly.
@@ -77,26 +77,26 @@ cd Reigh-App && python scripts/debug.py logs --latest --tag MyTag        # Brows
 
 | Symptom | Repo | Confirm With | Next Step |
 |---------|------|-------------|-----------|
-| Task stuck Queued (<5 min) | Reigh-App (edge fn) | `debug.py queue` | Check worker heartbeat, `claim-next-task` fn, user's `cloud_enabled` setting |
+| Task stuck Queued (<5 min) | reigh-app (edge fn) | `debug.py queue` | Check worker heartbeat, `claim-next-task` fn, user's `cloud_enabled` setting |
 | Task stuck Queued (backlog) | Orchestrator | `debug.py workers` + `debug.py queue` | Check orchestrator logs on Railway, RunPod quotas |
-| Task In Progress then Failed | Reigh-Worker | `debug.py task <id>`, SSH logs on pod | Read error in worker logs → fix → push → pull on pod |
+| Task In Progress then Failed | reigh-worker | `debug.py task <id>`, SSH logs on pod | Read error in worker logs → fix → push → pull on pod |
 | Pipeline partially complete | Multiple | `debug.py pipeline <id>` | Find the failed child task, debug individually |
-| Cascading failure stuck | Reigh-App (edge fn) | `debug.py task <id>` → system_logs | Check `update-task-status` edge fn |
+| Cascading failure stuck | reigh-app (edge fn) | `debug.py task <id>` → system_logs | Check `update-task-status` edge fn |
 
 ### Tier 2: Task completes but output is wrong
 
 | Symptom | Repo | Confirm With | Next Step |
 |---------|------|-------------|-----------|
-| Output has artifacts/seams | Reigh-Worker | `debug.py pipeline <id>` | Check FPS/resolution metadata → [Model Reference](./docs/debug-models.md) |
-| Task Complete but no generation | Reigh-App (edge fn) | `debug.py task <id>` → system_logs | Check `complete_task` edge fn → [Edge Functions](./docs/debug-edge-functions.md) |
-| Generation exists, not in UI | Reigh-App (frontend) | React Query cache, realtime subscription | Check subscription code in `Reigh-App/src/` |
+| Output has artifacts/seams | reigh-worker | `debug.py pipeline <id>` | Check FPS/resolution metadata → [Model Reference](./docs/debug-models.md) |
+| Task Complete but no generation | reigh-app (edge fn) | `debug.py task <id>` → system_logs | Check `complete_task` edge fn → [Edge Functions](./docs/debug-edge-functions.md) |
+| Generation exists, not in UI | reigh-app (frontend) | React Query cache, realtime subscription | Check subscription code in `reigh-app/src/` |
 
 ### Tier 3: Task creation issues
 
 | Symptom | Repo | Confirm With | Next Step |
 |---------|------|-------------|-----------|
-| Task never appears in DB | Reigh-App (frontend) | Chrome Network tab, `create-task` response | Check `Reigh-App/src/shared/lib/tasks/` |
-| Task created with bad params | Reigh-App (frontend) | `debug.py task <id> --json` | Check `segmentTaskPayload.ts`, `payloadBuilder.ts` |
+| Task never appears in DB | reigh-app (frontend) | Chrome Network tab, `create-task` response | Check `reigh-app/src/shared/lib/tasks/` |
+| Task created with bad params | reigh-app (frontend) | `debug.py task <id> --json` | Check `segmentTaskPayload.ts`, `payloadBuilder.ts` |
 
 ---
 
@@ -106,9 +106,9 @@ Each repo has its own debug CLI. They share similar commands but target differen
 
 | Repo | Run From | Key Commands |
 |------|----------|-------------|
-| **Reigh-App** | `cd Reigh-App && python scripts/debug.py` | `task`, `tasks`, `pipeline`, `queue`, `workers`, `logs`, `pod list/ssh`, `sql` |
-| **Reigh-Worker** | `cd Reigh-Worker && python -m debug` | `task`, `tasks`, `worker`, `workers`, `health`, `orchestrator`, `config`, `runpod` |
-| **Orchestrator** | `cd Reigh-Worker-Orchestrator && python scripts/debug.py` | `task`, `tasks`, `worker`, `workers`, `health`, `orchestrator`, `config`, `railway`, `infra`, `runpod` |
+| **reigh-app** | `cd reigh-app && python scripts/debug.py` | `task`, `tasks`, `pipeline`, `queue`, `workers`, `logs`, `pod list/ssh`, `sql` |
+| **reigh-worker** | `cd reigh-worker && python -m debug` | `task`, `tasks`, `worker`, `workers`, `health`, `orchestrator`, `config`, `runpod` |
+| **Orchestrator** | `cd reigh-worker-orchestrator && python scripts/debug.py` | `task`, `tasks`, `worker`, `workers`, `health`, `orchestrator`, `config`, `railway`, `infra`, `runpod` |
 
 ### Standalone scripts (Orchestrator)
 

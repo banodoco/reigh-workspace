@@ -16,7 +16,7 @@ Reigh is a video generation platform. Users create tasks in the frontend, GPU wo
 ┌─────────────────────────────────────────────────────────┐
 │                    Reigh-Collection                      │
 ├──────────────────┬──────────────────┬───────────────────┤
-│     Reigh-App/       │  Reigh-Worker/   │  Reigh-Worker-    │
+│     reigh-app/       │  reigh-worker/   │  reigh-worker-    │
 │                  │                  │  Orchestrator/    │
 │  React/Vite UI   │  Python GPU      │  Python control   │
 │  Supabase edge   │  worker on       │  plane on         │
@@ -40,14 +40,14 @@ Reigh is a video generation platform. Users create tasks in the frontend, GPU wo
 
 | Layer | Technology | Repo |
 |-------|------------|------|
-| **Frontend** | React + Vite + TypeScript | Reigh-App/ |
-| **Styling** | TailwindCSS + shadcn-ui | Reigh-App/ |
-| **Backend** | Supabase (Postgres + Edge Functions + Storage + Realtime) | Reigh-App/ (edge functions + migrations) |
-| **GPU Workers** | Python + PyTorch + CUDA | Reigh-Worker/ |
-| **Video Engine** | Wan2GP (vendored) | Reigh-Worker/Wan2GP/ |
-| **Orchestration** | Python (GPU scaling + API task dispatch) | Reigh-Worker-Orchestrator/ |
+| **Frontend** | React + Vite + TypeScript | reigh-app/ |
+| **Styling** | TailwindCSS + shadcn-ui | reigh-app/ |
+| **Backend** | Supabase (Postgres + Edge Functions + Storage + Realtime) | reigh-app/ (edge functions + migrations) |
+| **GPU Workers** | Python + PyTorch + CUDA | reigh-worker/ |
+| **Video Engine** | Wan2GP (vendored) | reigh-worker/Wan2GP/ |
+| **Orchestration** | Python (GPU scaling + API task dispatch) | reigh-worker-orchestrator/ |
 | **GPU Hosting** | RunPod | Managed by Orchestrator + Arnold |
-| **Orchestrator Hosting** | Railway | Reigh-Worker-Orchestrator/ |
+| **Orchestrator Hosting** | Railway | reigh-worker-orchestrator/ |
 | **External APIs** | fal.ai, Wavespeed (image editing) | Dispatched by Orchestrator |
 
 ---
@@ -56,14 +56,14 @@ Reigh is a video generation platform. Users create tasks in the frontend, GPU wo
 
 ```
 User clicks Generate
-  → Frontend builds payload                           Reigh-App/src/shared/lib/tasks/
-  → Calls create-task edge function                   Reigh-App/supabase/functions/create-task/
+  → Frontend builds payload                           reigh-app/src/shared/lib/tasks/
+  → Calls create-task edge function                   reigh-app/supabase/functions/create-task/
   → Row inserted in tasks table (status: Queued)      Supabase Postgres
-  → Worker polls claim-next-task                      Reigh-App/supabase/functions/claim-next-task/
-  → Worker processes task on GPU                      Reigh-Worker/worker.py
-  → Worker calls complete_task edge function           Reigh-App/supabase/functions/complete_task/
+  → Worker polls claim-next-task                      reigh-app/supabase/functions/claim-next-task/
+  → Worker processes task on GPU                      reigh-worker/worker.py
+  → Worker calls complete_task edge function           reigh-app/supabase/functions/complete_task/
   → DB trigger creates generation row                 Supabase
-  → Realtime broadcasts to UI                         Reigh-App/src/ (React Query subscription)
+  → Realtime broadcasts to UI                         reigh-app/src/ (React Query subscription)
   → Video appears in gallery
 ```
 
@@ -75,7 +75,7 @@ User clicks Generate
 
 ## Repo Structure
 
-### Reigh-App/ — Frontend + Edge Functions
+### reigh-app/ — Frontend + Edge Functions
 
 The main application. React SPA + Supabase serverless backend.
 
@@ -92,9 +92,9 @@ The main application. React SPA + Supabase serverless backend.
 | `supabase/migrations/` | DB schema migrations |
 | `scripts/debug.py` | Debug CLI for tasks, pipelines, logs, pods |
 
-Full detail: [Reigh-App/README.md](./Reigh-App/README.md)
+Full detail: [reigh-app/README.md](./reigh-app/README.md)
 
-### Reigh-Worker/ — GPU Worker
+### reigh-worker/ — GPU Worker
 
 Queue-based video generation system built on Wan2GP.
 
@@ -112,9 +112,9 @@ Queue-based video generation system built on Wan2GP.
 
 Data flow: `DB → worker.py → TaskRegistry → HeadlessTaskQueue → WanOrchestrator → wgp.py → Files`
 
-Full detail: [Reigh-Worker/STRUCTURE.md](./Reigh-Worker/STRUCTURE.md)
+Full detail: [reigh-worker/STRUCTURE.md](./reigh-worker/STRUCTURE.md)
 
-### Reigh-Worker-Orchestrator/ — Control Plane
+### reigh-worker-orchestrator/ — Control Plane
 
 Manages GPU workers on RunPod and dispatches API-based tasks.
 
@@ -127,7 +127,7 @@ Manages GPU workers on RunPod and dispatches API-based tasks.
 | `scripts/spawn_gpu.py` | Manual GPU pod creation |
 | `scripts/shutdown_all_workers.py` | Emergency: kill all workers |
 
-Full detail: [Reigh-Worker-Orchestrator/README.md](./Reigh-Worker-Orchestrator/README.md)
+Full detail: [reigh-worker-orchestrator/README.md](./reigh-worker-orchestrator/README.md)
 
 ---
 
@@ -145,13 +145,13 @@ All three repos talk to the same Supabase instance. Key tables:
 | `projects` | User projects | Frontend |
 | `users` | User profiles + settings | Frontend, Auth |
 
-Schema lives in `Reigh-App/supabase/migrations/`. Deploy with `npx supabase db push --linked` (never `db reset --linked`).
+Schema lives in `reigh-app/supabase/migrations/`. Deploy with `npx supabase db push --linked` (never `db reset --linked`).
 
 ---
 
 ## Edge Functions (API Layer)
 
-All edge functions live in `Reigh-App/supabase/functions/`. They are the API boundary between all components and the database.
+All edge functions live in `reigh-app/supabase/functions/`. They are the API boundary between all components and the database.
 
 **Task pipeline functions** (called by Worker + Orchestrator):
 
@@ -179,7 +179,7 @@ Async queue for AI workloads. Client creates task → edge function inserts row 
 Priority: **shot → project → user → defaults**. See [docs/structure_detail/settings_system.md](./docs/structure_detail/settings_system.md).
 
 ### Tools (Frontend)
-Tools live in `Reigh-App/src/tools/{tool-name}/` following a consistent structure. See [docs/structure_detail/adding_new_tool.md](./docs/structure_detail/adding_new_tool.md).
+Tools live in `reigh-app/src/tools/{tool-name}/` following a consistent structure. See [docs/structure_detail/adding_new_tool.md](./docs/structure_detail/adding_new_tool.md).
 
 ### Shots & Generations
 - **Generations** = gallery items (images/videos produced by AI tasks)
@@ -205,7 +205,7 @@ Smart polling + Supabase realtime subscriptions. Connected = no polling; disconn
 | **Deployment** | [deployment_and_migration_guide.md](./docs/structure_detail/deployment_and_migration_guide.md) |
 | **Storage & Uploads** | [storage_uploads.md](./docs/structure_detail/storage_uploads.md) |
 
-### Frontend (Reigh-App/)
+### Frontend (reigh-app/)
 
 | Topic | File |
 |-------|------|
@@ -226,4 +226,4 @@ Smart polling + Supabase realtime subscriptions. Connected = no polling; disconn
 | **Payments** | [auto_topup_system.md](./docs/structure_detail/auto_topup_system.md) |
 | **Referrals** | [referral_system.md](./docs/structure_detail/referral_system.md) |
 | **Video Travel Tool** | [tool_video_travel.md](./docs/structure_detail/tool_video_travel.md) |
-| **Code Quality** | [code_quality_audit.md](./Reigh-App/docs/code_quality_audit.md) |
+| **Code Quality** | [code_quality_audit.md](./reigh-app/docs/code_quality_audit.md) |

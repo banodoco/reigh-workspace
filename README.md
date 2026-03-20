@@ -10,18 +10,18 @@ git clone https://github.com/banodoco/reigh-workspace.git
 cd reigh-workspace
 
 # 2. Clone the component repos
-git clone https://github.com/peteromallet/Reigh-App.git
-git clone https://github.com/banodoco/Reigh-Worker.git
-git clone https://github.com/peteromallet/Reigh-Worker-Orchestrator.git
+git clone https://github.com/peteromallet/reigh-app.git
+git clone https://github.com/banodoco/reigh-worker.git
+git clone https://github.com/peteromallet/reigh-worker-orchestrator.git
 ```
 
 Your workspace should look like this:
 
 ```
 reigh-workspace/
-  Reigh-App/                  Frontend (React/Vite) + Supabase edge functions
-  Reigh-Worker/               GPU worker (Python, runs on RunPod)
-  Reigh-Worker-Orchestrator/  Worker scaling + API task dispatch (runs on Railway)
+  reigh-app/                  Frontend (React/Vite) + Supabase edge functions
+  reigh-worker/               GPU worker (Python, runs on RunPod)
+  reigh-worker-orchestrator/  Worker scaling + API task dispatch (runs on Railway)
   structure.md                System-wide architecture overview
   debugging.md                Cross-repo debugging router
   docs/                       Detailed sub-documentation
@@ -31,17 +31,17 @@ reigh-workspace/
 
 Each repo has its own dependencies:
 
-**Reigh-App** (frontend):
+**reigh-app** (frontend):
 ```bash
-cd Reigh-App
+cd reigh-app
 cp .env.example .env          # Fill in Supabase credentials
 npm install
 npm run dev                   # http://localhost:2222
 ```
 
-**Reigh-Worker** (GPU worker):
+**reigh-worker** (GPU worker):
 ```bash
-cd Reigh-Worker
+cd reigh-worker
 cp .env.example .env          # Fill in Supabase + RunPod credentials
 python -m venv venv
 source venv/bin/activate
@@ -49,9 +49,9 @@ pip install -r requirements.txt
 python worker.py --debug
 ```
 
-**Reigh-Worker-Orchestrator** (control plane):
+**reigh-worker-orchestrator** (control plane):
 ```bash
-cd Reigh-Worker-Orchestrator
+cd reigh-worker-orchestrator
 cp env.example .env            # Fill in Supabase + RunPod + Railway credentials
 pip install -r gpu_orchestrator/requirements.txt
 pip install -r api_orchestrator/requirements.txt
@@ -69,15 +69,15 @@ python -m gpu_orchestrator.main status
 ## Architecture
 
 ```
-User → Reigh-App (frontend)
+User → reigh-app (frontend)
          ↓ create-task edge function
        Supabase (DB + Edge Functions + Storage + Realtime)
          ↓ claim-next-task
-       Reigh-Worker (GPU on RunPod)
+       reigh-worker (GPU on RunPod)
          ↓ complete_task
-       Supabase → Realtime → Reigh-App (video appears)
+       Supabase → Realtime → reigh-app (video appears)
 
-       Reigh-Worker-Orchestrator (Railway)
+       reigh-worker-orchestrator (Railway)
          monitors demand → scales workers up/down
          dispatches API tasks (fal.ai, Wavespeed)
 ```

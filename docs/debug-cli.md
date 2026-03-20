@@ -6,7 +6,7 @@ All require `.env` with `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 
-## Reigh-App — `python scripts/debug.py`
+## reigh-app — `python scripts/debug.py`
 
 The broadest tool. Covers tasks, pipelines, queue, workers, logs, pods, and raw SQL.
 
@@ -43,7 +43,7 @@ Pod commands read RunPod API key from `../Arnold/.env` automatically.
 
 ---
 
-## Reigh-Worker — `python -m debug`
+## reigh-worker — `python -m debug`
 
 Worker-focused. Includes diagnostics and config inspection.
 
@@ -76,7 +76,7 @@ debug.py runpod --terminate                # Terminate orphaned pods
 
 ---
 
-## Reigh-Worker-Orchestrator — `python scripts/debug.py`
+## reigh-worker-orchestrator — `python scripts/debug.py`
 
 Orchestrator-focused. Adds Railway, infra, and storage commands.
 
