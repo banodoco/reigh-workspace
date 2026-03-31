@@ -20,12 +20,22 @@ External:
 
 ## Quick Start
 
-1. **A task failed or is stuck** — find your symptom in the Decision Table below
-2. **Investigate a specific task** — `cd reigh-app && python scripts/debug.py task <task_id>`
-3. **Check system health** — `cd reigh-worker && python -m debug health` or `cd reigh-worker-orchestrator && python scripts/debug.py health`
-4. **Launch a test worker** — see [GPU Worker Debugging](./debug-gpu-worker.md) → "Starting / Restarting a Worker"
-5. **Read logs for a task** — `cd reigh-app && python scripts/debug.py task <task_id>` (includes system_logs timeline)
-6. **Deploy a fix** — find the right repo in the Repo Map, then see the component doc
+```bash
+# From the workspace root:
+./debug why <task_id>              # Why did this task fail? (error + pipeline + worker)
+./debug why <id1> <id2>            # Investigate multiple tasks at once
+./debug status                     # What's happening? (workers, queue, failures)
+./debug kill <worker_id>           # Kill a stuck/old worker
+./debug reset <task_id>            # Reset a task to Queued
+```
+
+For deeper investigation, use the per-repo tools:
+1. **Full task timeline** — `cd reigh-app && python scripts/debug.py task <task_id>`
+2. **Pipeline tree + health** — `cd reigh-app && python scripts/debug.py pipeline <task_id>`
+3. **Why was a worker killed** — `cd reigh-app && python scripts/debug.py why-killed <worker_id>`
+4. **Scaling decisions** — `cd reigh-app && python scripts/debug.py scaling-audit --hours 6`
+5. **System health** — `cd reigh-worker-orchestrator && python scripts/debug.py health`
+6. **Launch a test worker** — see [GPU Worker Debugging](./debug-gpu-worker.md)
 
 ### Cross-Cutting Diagnostics
 
@@ -37,6 +47,7 @@ These commands cross-reference orchestrator, worker, and task data to answer hig
 | Worker killed unexpectedly | `debug.py why-killed <worker_id>` | Kill reason + activity before kill. Flags if worker was productive recently |
 | Worker lifecycle unclear | `debug.py worker-timeline <worker_id>` | Full timeline: spawn→init→promote→claim→complete→kill |
 | Workers keep dying | `debug.py scaling-audit --hours 6` | Finds productive workers killed, wasted spawns, churn rate |
+| Generation/timeline relationship unclear | `debug.py context <id>` | Full relational graph for any task or generation. Shows parent/child tree, shot timeline, slot mapping, orphaned children, empty slots, position mismatches |
 
 ---
 

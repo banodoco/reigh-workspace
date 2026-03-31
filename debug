@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 """
-Workspace-level debug tool — single entry point for cross-repo task investigation.
+Debug tool — investigate tasks, check system health, manage workers.
 
 Usage:
-    ./debug triage <task_id> [task_id...]   Investigate failed/stuck tasks: shows error, pipeline health, worker state
-    ./debug status                          System overview: active workers, queue, recent failures
-    ./debug kill <worker_id>                Terminate a worker's RunPod pod and reset its tasks
-    ./debug reset <task_id>                 Reset a failed/stuck task to Queued
+    ./debug why <task_id> [task_id...]      Why did this task fail? Shows error, pipeline, worker state
+    ./debug status                          What's happening right now? Workers, queue, recent failures
+    ./debug kill <worker_id>                Kill a worker's RunPod pod and reset its tasks
+    ./debug reset <task_id>                 Reset a failed/stuck task back to Queued
 
-Delegates to reigh-app/scripts/debug.py for DB access. Adds cross-cutting
-logic that doesn't belong in any single repo.
+Examples:
+    ./debug why ba7980f3-6daa-49ea-9a98-a293d19710e6
+    ./debug why ba7980f3-6daa-49ea-9a98-a293d19710e6 6f12abc4-2a90-441d-bc87-3792178cdd03
+    ./debug status
+    ./debug kill gpu-20260331_114521-93d6ed5f
+
+For deeper investigation, use the per-repo tools:
+    cd reigh-app && python scripts/debug.py task <id>       Full task timeline
+    cd reigh-app && python scripts/debug.py pipeline <id>   Pipeline tree + health
+    cd reigh-app && python scripts/debug.py workers         Active workers
+    cd reigh-app && python scripts/debug.py scaling-audit   Why workers were spawned/killed
 """
 
 import os
@@ -36,11 +45,11 @@ def run_sql(query: str) -> str:
     return run_app_debug(["sql", query])
 
 
-def cmd_triage(task_ids: list[str]):
+def cmd_why(task_ids: list[str]):
     """Deep investigation of one or more tasks."""
     for task_id in task_ids:
         print(f"\n{'='*80}")
-        print(f"TRIAGE: {task_id}")
+        print(f"WHY FAILED: {task_id}")
         print(f"{'='*80}")
 
         # 1. Basic task info + error
@@ -199,11 +208,11 @@ def main():
 
     cmd = sys.argv[1]
 
-    if cmd == "triage":
+    if cmd == "why":
         if len(sys.argv) < 3:
-            print("Usage: ./debug triage <task_id> [task_id...]")
+            print("Usage: ./debug why <task_id> [task_id...]")
             sys.exit(1)
-        cmd_triage(sys.argv[2:])
+        cmd_why(sys.argv[2:])
     elif cmd == "status":
         cmd_status()
     elif cmd == "kill":
