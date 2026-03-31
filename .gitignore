@@ -1,7 +1,7 @@
 # Sub-repos (each has its own git history)
-Reigh-App/
-Reigh-Worker/
-Reigh-Worker-Orchestrator/
+reigh-app/
+reigh-worker/
+reigh-worker-orchestrator/
 
 # Secrets (safety net)
 .env
@@ -14,3 +14,4 @@ credentials*
 # OS
 .DS_Store
 Thumbs.db
+.megaplan/

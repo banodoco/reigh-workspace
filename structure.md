@@ -197,7 +197,8 @@ Smart polling + Supabase realtime subscriptions. Connected = no polling; disconn
 
 | Topic | File |
 |-------|------|
-| **Debugging** | [debugging.md](./debugging.md) |
+| **Debugging** | [docs/debugging.md](./docs/debugging.md) |
+| **Credentials** | [docs/credentials.md](./docs/credentials.md) |
 | **Task System** | [task_worker_lifecycle.md](./docs/structure_detail/task_worker_lifecycle.md) |
 | **Task Creation** | [unified_task_creation.md](./docs/structure_detail/unified_task_creation.md) |
 | **Edge Functions** | [edge_functions.md](./docs/structure_detail/edge_functions.md) |

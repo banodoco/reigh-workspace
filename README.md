@@ -10,9 +10,9 @@ git clone https://github.com/banodoco/reigh-workspace.git
 cd reigh-workspace
 
 # 2. Clone the component repos
-git clone https://github.com/peteromallet/reigh-app.git
+git clone https://github.com/banodoco/reigh-app.git
 git clone https://github.com/banodoco/reigh-worker.git
-git clone https://github.com/peteromallet/reigh-worker-orchestrator.git
+git clone https://github.com/banodoco/reigh-worker-orchestrator.git
 ```
 
 Your workspace should look like this:
@@ -23,8 +23,7 @@ reigh-workspace/
   reigh-worker/               GPU worker (Python, runs on RunPod)
   reigh-worker-orchestrator/  Worker scaling + API task dispatch (runs on Railway)
   structure.md                System-wide architecture overview
-  debugging.md                Cross-repo debugging router
-  docs/                       Detailed sub-documentation
+  docs/                       Debugging, credentials, and deep-dives
 ```
 
 ## Repo Setup
@@ -63,8 +62,8 @@ python -m gpu_orchestrator.main status
 | Doc | Purpose |
 |-----|---------|
 | [structure.md](structure.md) | How the three repos fit together — architecture, data flow, database schema |
-| [debugging.md](debugging.md) | When something breaks — decision table, debug tools, blast radius |
-| [docs/](docs/) | Deep-dive sub-documentation for each system layer |
+| [docs/debugging.md](docs/debugging.md) | When something breaks — decision table, debug tools, blast radius |
+| [docs/credentials.md](docs/credentials.md) | Where to get every API key — points to each repo's `.env` file |
 
 ## Architecture
 
