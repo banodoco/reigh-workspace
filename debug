@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+"""
+Workspace-level debug tool — single entry point for cross-repo task investigation.
+
+Usage:
+    ./debug triage <task_id> [task_id...]   Investigate failed/stuck tasks: shows error, pipeline health, worker state
+    ./debug status                          System overview: active workers, queue, recent failures
+    ./debug kill <worker_id>                Terminate a worker's RunPod pod and reset its tasks
+    ./debug reset <task_id>                 Reset a failed/stuck task to Queued
+
+Delegates to reigh-app/scripts/debug.py for DB access. Adds cross-cutting
+logic that doesn't belong in any single repo.
+"""
+
+import os
+import sys
+import subprocess
+import json
+
+WORKSPACE = os.path.dirname(os.path.abspath(__file__))
+APP_DIR = os.path.join(WORKSPACE, "reigh-app")
+APP_DEBUG = os.path.join(APP_DIR, "scripts", "debug.py")
+ORCH_DIR = os.path.join(WORKSPACE, "reigh-worker-orchestrator")
+
+
+def run_app_debug(args: list[str], capture=True) -> str:
+    """Run reigh-app debug.py with args, return stdout."""
+    result = subprocess.run(
+        [sys.executable, APP_DEBUG] + args,
+        capture_output=capture, text=True, cwd=APP_DIR
+    )
+    return result.stdout if capture else ""
+
+
+def run_sql(query: str) -> str:
+    return run_app_debug(["sql", query])
+
+
+def cmd_triage(task_ids: list[str]):
+    """Deep investigation of one or more tasks."""
+    for task_id in task_ids:
+        print(f"\n{'='*80}")
+        print(f"TRIAGE: {task_id}")
+        print(f"{'='*80}")
+
+        # 1. Basic task info + error
+        task_output = run_app_debug(["task", task_id])
+        # Extract just the header + error section (not full timeline)
+        lines = task_output.split('\n')
+        header_end = 0
+        for i, line in enumerate(lines):
+            if 'Event Timeline' in line:
+                header_end = i
+                break
+        if header_end:
+            print('\n'.join(lines[:header_end]))
+        else:
+            print(task_output[:2000])
+
+        # 2. Check if it's part of a pipeline
+        row = run_sql(
+            f"SELECT task_type, status, params->>'orchestrator_task_id_ref' as orch_ref "
+            f"FROM tasks WHERE id = '{task_id}'"
+        )
+
+        is_orchestrator = 'orchestrator' in row.lower() and 'orch_ref' not in row
+        has_orch_ref = 'orch_ref' in row and row.split('orch_ref:')[-1].strip().split('\n')[0].strip() != 'None'
+
+        # Find the pipeline root
+        pipeline_root = task_id
+        if has_orch_ref:
+            # This is a child — find parent
+            ref_lines = run_sql(
+                f"SELECT params->>'orchestrator_task_id_ref' FROM tasks WHERE id = '{task_id}'"
+            )
+            for line in ref_lines.split('\n'):
+                line = line.strip()
+                if line and len(line) == 36 and '-' in line:
+                    pipeline_root = line
+                    break
+
+        # Run pipeline with health check
+        print(f"\n--- Pipeline (root: {pipeline_root[:16]}...) ---")
+        run_app_debug(["pipeline", pipeline_root], capture=False)
+
+        # 3. Check worker status
+        worker_row = run_sql(
+            f"SELECT worker_id FROM tasks WHERE id = '{task_id}'"
+        )
+        worker_id = None
+        for line in worker_row.split('\n'):
+            if 'worker_id:' in line:
+                wid = line.split('worker_id:')[1].strip()
+                if wid and wid != 'None':
+                    worker_id = wid
+                    break
+
+        if worker_id:
+            worker_status = run_sql(
+                f"SELECT id, status, last_heartbeat, NOW() - last_heartbeat as age "
+                f"FROM workers WHERE id = '{worker_id}'"
+            )
+            status_line = ''
+            for line in worker_status.split('\n'):
+                if 'status:' in line:
+                    status_line = line.strip()
+                    break
+            if 'terminated' in status_line or 'error' in status_line:
+                print(f"\n⚠️  Worker {worker_id} is {status_line}")
+                print(f"   Task may have been orphaned when worker died.")
+
+        print()
+
+
+def cmd_status():
+    """System overview."""
+    print("--- Active Workers ---")
+    run_app_debug(["workers"], capture=False)
+    print("\n--- Queue ---")
+    run_app_debug(["queue"], capture=False)
+
+    # Recent failures
+    failures = run_sql(
+        "SELECT id, task_type, error_message, updated_at "
+        "FROM tasks WHERE status = 'Failed' "
+        "AND updated_at > NOW() - interval '1 hour' "
+        "ORDER BY updated_at DESC LIMIT 5"
+    )
+    if failures.strip() and 'no rows' not in failures.lower():
+        print("--- Recent Failures (last hour) ---")
+        print(failures)
+    else:
+        print("--- No failures in the last hour ---\n")
+
+
+def cmd_kill(worker_id: str):
+    """Terminate a worker's RunPod pod."""
+    # Get RunPod pod ID
+    result = run_sql(
+        f"SELECT metadata->>'runpod_id' as pod, status FROM workers WHERE id = '{worker_id}'"
+    )
+    pod_id = None
+    for line in result.split('\n'):
+        if 'pod:' in line:
+            pod_id = line.split('pod:')[1].strip()
+            break
+
+    if not pod_id or pod_id == 'None':
+        print(f"No RunPod pod ID found for worker {worker_id}")
+        return
+
+    print(f"Terminating RunPod pod {pod_id} for worker {worker_id}...")
+
+    # Try to use runpod Python API
+    try:
+        import runpod
+        # Load API key from orchestrator .env
+        env_path = os.path.join(ORCH_DIR, ".env")
+        if os.path.exists(env_path):
+            with open(env_path) as f:
+                for line in f:
+                    if line.startswith("RUNPOD_API_KEY="):
+                        runpod.api_key = line.strip().split("=", 1)[1]
+                        break
+        runpod.terminate_pod(pod_id)
+        print(f"✅ Pod {pod_id} terminated")
+    except Exception as e:
+        print(f"❌ Failed to terminate pod: {e}")
+        print(f"   Manual: runpod.terminate_pod('{pod_id}')")
+        return
+
+    # Reset orphaned tasks
+    reset = run_sql(
+        f"UPDATE tasks SET status = 'Queued', worker_id = NULL, "
+        f"generation_started_at = NULL "
+        f"WHERE worker_id = '{worker_id}' AND status = 'In Progress'"
+    )
+    print(f"Reset orphaned tasks: {reset.strip()}")
+
+    # Mark worker terminated
+    run_sql(f"UPDATE workers SET status = 'terminated' WHERE id = '{worker_id}'")
+    print(f"Worker marked terminated.")
+
+
+def cmd_reset(task_id: str):
+    """Reset a task to Queued."""
+    result = run_sql(
+        f"UPDATE tasks SET status = 'Queued', worker_id = NULL, "
+        f"generation_started_at = NULL, error_message = NULL "
+        f"WHERE id = '{task_id}'"
+    )
+    print(f"Reset {task_id}: {result.strip()}")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == "triage":
+        if len(sys.argv) < 3:
+            print("Usage: ./debug triage <task_id> [task_id...]")
+            sys.exit(1)
+        cmd_triage(sys.argv[2:])
+    elif cmd == "status":
+        cmd_status()
+    elif cmd == "kill":
+        if len(sys.argv) < 3:
+            print("Usage: ./debug kill <worker_id>")
+            sys.exit(1)
+        cmd_kill(sys.argv[2])
+    elif cmd == "reset":
+        if len(sys.argv) < 3:
+            print("Usage: ./debug reset <task_id>")
+            sys.exit(1)
+        cmd_reset(sys.argv[2])
+    else:
+        print(f"Unknown command: {cmd}")
+        print(__doc__)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
