@@ -1,0 +1,34 @@
+FIX: ModuleNotFoundError: No module named 'requests'
+======================================================
+
+VERY IMPORTANT - follow these steps in order:
+
+STEP 1
+Press Ctrl+C three or four times in your Command Prompt window.
+This stops the worker that's currently looping.
+
+STEP 2
+Press Enter once. You should now see a fresh prompt that ends with ">"
+and nothing after it. Make sure there is NO text after the ">".
+
+STEP 3
+Copy the line below by triple-clicking it (it's all one line),
+then right-click in Command Prompt to paste, then press Enter ONCE.
+
+cd /d C:\Users\MC\Reigh-Worker && venv\Scripts\activate.bat && python -m pip install --no-cache-dir -r requirements.txt && python run_worker.py --reigh-access-token NkJWphvlfdJXRMo7wDRu7W8NJ31RYquX --wgp-profile 1 --idle-release-minutes 15
+
+STEP 4
+Wait. The pip install part takes 1 to 3 minutes. You'll see lots of
+lines flying by - that is normal. When it finishes installing, the
+worker will start automatically.
+
+------------------------------------------------------------------
+
+WHAT WENT WRONG LAST TIME:
+You pasted the new command onto the end of an old half-typed command
+without pressing Enter first, so they got mashed together into one
+broken line. The "15cd" you can see in the error output is the giveaway
+- it should have been "15" then a new command starting with "cd".
+
+If anything else goes wrong, send me a screenshot of the WHOLE Command
+Prompt window from the top.
