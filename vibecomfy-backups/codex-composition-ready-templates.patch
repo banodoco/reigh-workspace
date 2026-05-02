@@ -1,0 +1,27 @@
+diff --git a/docs/python_composition_dsl_plan.md b/docs/python_composition_dsl_plan.md
+index f3fe1b4..78c10e4 100644
+--- a/docs/python_composition_dsl_plan.md
++++ b/docs/python_composition_dsl_plan.md
+@@ -161,7 +161,7 @@ Backward compatibility is explicit: `str(handle)` returns the existing `f"{node_
+ 
+ This is additive because `Handles` already wraps arbitrary values at `vibecomfy/blocks/__init__.py:12`. The doc target for the block return shape is `Mapping[str, Handle]` rather than today's `Mapping[str, Any]`: every value should be a `Handle` (which still coerces to `"node.slot"` via `__str__`), so callers see a uniform handle surface rather than a mixed handle/string bag. Tightening the `Handles` class itself is an MP-2 task; this plan only commits to the surface claim.
+ 
+-Be precise about "typed." P1 handles are typed metadata for runtime validation, linting, doctor messages, and IDE discoverability on curated wrappers. They are not automatically mypy-grade static safety for arbitrary `wf.node(class_type: str, **kwargs)`. Static checking requires generated wrappers, `Literal` overloads, or a published schema-type registry that maps Comfy output strings such as `IMAGE`, `LATENT`, and custom types to Python symbols.
++Be precise about "typed." P1 delivers typed metadata and lintable handles: runtime validation, doctor messages, IDE discoverability on curated wrappers, and surface for the lint rules below. P1 does **not** deliver mypy-grade static safety; `wf.node("SaveAudio", images=image_handle)` still type-checks because every `Handle` is `Handle[Any]` until a class-discriminated mechanism lands. Full static typing requires either `@overload`-per-known-class with `Literal`-discriminated `.out(name)` returns, or codegen plus a published `SCHEMA_TYPE_REGISTRY: dict[str, type]` mapping Comfy output strings (`"IMAGE"`, `"LATENT"`, `"WANVIDEOMODEL"`, …) to Python symbols with a documented fallback for unmapped types. Neither is committed to a phase here; the plan only names the dependency so later phases can pick the mechanism honestly.
+ 
+ The string-coercion bridge is necessary but dangerous. Any implicit conversion to `"node.slot"` erases type metadata, so lint should flag coercion and raw string refs when a typed handle was available.
+ 
+@@ -196,12 +196,7 @@ Arbitrary Python does not run inside an active Comfy graph unless it is compiled
+ 
+ The executor passes typed media handles between stages. A Python stage can receive an image artifact from Graph A, write a transformed file, and pass that file handle into Graph B without pretending the transform was part of either Comfy graph.
+ 
+-`VibeFlow` cannot ship until its lifecycle semantics are settled:
+-
+-- **Cancellation:** cancelling a stage must either cancel/await the underlying HiddenSwitch prompt or clearly report that the prompt may still be running.
+-- **Concurrency:** one embedded session serializes graph stages by default; parallel graph stages require separate sessions or an explicit scheduler.
+-- **Run directories:** stage output paths must be flow-scoped and collision-free, not based only on second-resolution timestamps.
+-- **Stage identity:** every `RunResult` must record `flow_id`, `stage_id`, stage index, retry count, and artifact IDs so resume and idempotency are possible later.
++`VibeFlow` lifecycle semantics are settled in SD-013: cancellation shields `queue_prompt_api` and propagates by stopping the watchdog and recording the partial run (no mid-prompt abort against HiddenSwitch); a single `VibeFlow` runs stages serially against one embedded session (multi-session opt-in deferred); run-dirs are `out/runs/<flow-id>/stage-<n>/...` with monotonic stage index; `RunResult` carries `flow_id` and `stage_index` for resume identity.
+ 
+ ## ExternalPythonNode (Distinct from @block)
+ 

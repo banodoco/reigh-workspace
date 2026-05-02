@@ -2,6 +2,10 @@
 reigh-app/
 reigh-worker/
 reigh-worker-orchestrator/
+runpod-lifecycle/
+prompt-adapters/
+text-ip-adapter/
+vibecomfy/
 
 # Secrets (safety net)
 .env
@@ -10,6 +14,11 @@ reigh-worker-orchestrator/
 *.pem
 *.secret
 credentials*
+
+# Local agent/tool state
+.claude/
+.pytest_cache/
+RUNPOD_CODEX_COMMANDS.txt
 
 # OS
 .DS_Store

@@ -1,0 +1,8 @@
+Run this from a network-enabled shell:
+
+cd /Users/peteromalley/Documents/reigh-workspace
+PYENV_VERSION=3.11.11 PYTHONPATH=$PWD/text-ip-adapter/src:$PWD/runpod-lifecycle/src \
+  python3 text-ip-adapter/scripts/run_existing_pod_v2_minfix.py
+
+Remote training log after launch:
+/workspace/text-ip-adapter/train_v2_minfix.log

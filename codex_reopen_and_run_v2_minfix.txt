@@ -1,0 +1,49 @@
+GOAL
+Run the v2 minfix launch from a Codex session that has network access.
+
+WHY THIS IS NEEDED
+The current Codex session has network blocked and approval_policy=never, so it cannot reach api.runpod.io and cannot request escalation.
+
+OPTION A: Reopen Codex with network enabled, safer sandbox
+Run this in Terminal:
+
+cd /Users/peteromalley/Documents/reigh-workspace
+codex -a on-request -s workspace-write -c 'sandbox_workspace_write.network_access=true'
+
+Then paste this into the new Codex chat:
+
+Continue from the previous task. We prepared experiment 2026-05-text-008-v2-warmstart-minfix. Please run the v2 minfix launch now. Relevant files:
+- prompt-adapters/program/NEXT_BEST_BET_PLAN.md
+- prompt-adapters/scripts_staging/curate_v2_pairs.py
+- text-ip-adapter/configs/stage1_v2_warmstart_minfix.yaml
+- text-ip-adapter/scripts/run_existing_pod_v2_minfix.py
+- prompt-adapters/experiments/2026-05-text-008-v2-warmstart-minfix/README.md
+Run:
+PYENV_VERSION=3.11.11 PYTHONPATH=$PWD/text-ip-adapter/src:$PWD/runpod-lifecycle/src python3 text-ip-adapter/scripts/run_existing_pod_v2_minfix.py
+Then wait/sleep and monitor /workspace/text-ip-adapter/train_v2_minfix.log.
+
+OPTION B: Unsafe full bypass, only if you are comfortable
+Run this in Terminal:
+
+cd /Users/peteromalley/Documents/reigh-workspace
+codex --dangerously-bypass-approvals-and-sandbox
+
+Then paste the same continuation message above.
+
+HOW TO REOPEN WITH CHAT HISTORY
+If your Codex UI/CLI has a resume or recent sessions picker, use that first. Look for commands like:
+
+codex resume
+codex --resume
+codex --help | grep -i resume
+
+If resume is unavailable or unreliable, reopen from the same repo and paste the continuation message above. The repo now contains the persisted context and plan, so the new session can recover from files.
+
+DIRECT COMMAND TO RUN YOURSELF WITHOUT CODEX
+If you just want to launch it manually from a network-enabled Terminal:
+
+cd /Users/peteromalley/Documents/reigh-workspace
+PYENV_VERSION=3.11.11 PYTHONPATH=$PWD/text-ip-adapter/src:$PWD/runpod-lifecycle/src python3 text-ip-adapter/scripts/run_existing_pod_v2_minfix.py
+
+Expected remote log after successful launch:
+/workspace/text-ip-adapter/train_v2_minfix.log

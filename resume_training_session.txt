@@ -1,0 +1,1 @@
+cd "/Users/peteromalley/Documents/reigh-workspace" && codex resume 019dc41b-f11b-78f3-9547-24c7400ff48a --dangerously-bypass-approvals-and-sandbox

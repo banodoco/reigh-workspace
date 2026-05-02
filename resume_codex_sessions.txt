@@ -1,0 +1,21 @@
+Recent Codex sessions to resume (scanned 2026-04-27)
+=====================================================
+
+Most likely "training thing" — parent orchestrator
+(DROPPED mid-tool-call, 14642 lines, in reigh-workspace; was waiting on
+poetry pair-style audit worker sub-agents):
+
+  cd "/Users/peteromalley/Documents/reigh-workspace" && codex resume 019dc41b-f11b-78f3-9547-24c7400ff48a --dangerously-bypass-approvals-and-sandbox
+
+
+Worker shards it was waiting on
+(both DROPPED, output dir prompt-adapters/projects/poetry-clean-corpus/pair_style_audit_v2/decisions/):
+
+  cd "/Users/peteromalley/Documents/reigh-workspace" && codex resume 019dcc0b-51fc-7c81-97ca-f2b7dadd321b --dangerously-bypass-approvals-and-sandbox
+  cd "/Users/peteromalley/Documents/reigh-workspace" && codex resume 019dcc0c-44a7-7e23-b058-20dd9305620d --dangerously-bypass-approvals-and-sandbox
+
+
+Long runpod live-test session
+(COMPLETED, 21438 lines — separate thread, smoke_live.py work):
+
+  cd "/Users/peteromalley/Documents/reigh-workspace/runpod-lifecycle" && codex resume 019dc1fa-e5b4-7600-9791-e3ca32ba560e --dangerously-bypass-approvals-and-sandbox

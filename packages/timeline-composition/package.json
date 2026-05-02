@@ -1,0 +1,10 @@
+{
+  "name": "@banodoco/timeline-composition",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./typescript/src/index.ts",
+    "./theme-api": "./typescript/src/theme-api.ts",
+    "./typescript/src/*": "./typescript/src/*.ts"
+  }
+}
