@@ -6,6 +6,7 @@ runpod-lifecycle/
 prompt-adapters/
 text-ip-adapter/
 vibecomfy/
+ArtAgents/
 
 # Secrets (safety net)
 .env
@@ -24,3 +25,4 @@ RUNPOD_CODEX_COMMANDS.txt
 .DS_Store
 Thumbs.db
 .megaplan/
+.megaplan-worktrees/
