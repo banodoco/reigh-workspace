@@ -38,7 +38,7 @@ The exit criterion was explicit: the threshold YAML must be committed and smoke-
 
 Completed by execution:
 
-- `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` was created with `version: 0B-2026-05-05`, `schema_version: 1`, all 14 Section 11 metric rows, the single approved calibration status enum, and 14 route entries.
+- `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` was created with `version: 0B-2026-05-05`, `schema_version: 1`, top-level `metric_keys`, metric `defaults`, all 14 Section 11 metric rows, the single approved calibration status enum, and 14 route entries.
 - `reigh-worker/scripts/dual_run_compare/thresholds.py` and `check_thresholds.py` were added so later sprints can load and strictly validate the YAML.
 - `reigh-worker/scripts/dual_run_compare/route_keys.py` was added with canonical direct, edit-dimensional, and Cohort E dimensional route keys, including the audited `wan_2_2_i2v_lightning_baseline_2_2_2 -> wan22_i2v` mapping.
 - Route-keyed golden corpus manifests were added under `reigh-worker/scripts/dual_run_compare/golden/<route_key>/manifest.json` with seed fixture references where worker-matrix coverage is missing.
@@ -52,7 +52,7 @@ Completed by execution:
 | Check | Result |
 |---|---|
 | Strict threshold validation | Passed: `python -m scripts.dual_run_compare.check_thresholds --strict` |
-| Focused dual-run-compare tests | Passed: `pytest scripts/dual_run_compare/tests/` (24 tests) |
+| Focused dual-run-compare tests | Passed: `pytest scripts/dual_run_compare/tests/` (25 tests) |
 | Compile smoke | Passed: `python -m compileall -q scripts/dual_run_compare` |
 | WGP report/YAML sync | Passed by route-keyed Python JSON/YAML validation in T7 |
 | Docs source-of-truth grep | Passed in T8 for YAML version/path, report path, route-key module, and status references |
@@ -97,7 +97,7 @@ Impact: Publishing must include both the nested worker branch and the top-level 
 
 | Area | Status | Notes |
 |---|---|---|
-| Threshold YAML | Complete | `version: 0B-2026-05-05`; schema 1; 14 metric rows; strict validation passes. |
+| Threshold YAML | Complete | `version: 0B-2026-05-05`; schema 1; top-level `metric_keys` and `defaults`; 14 metric rows; strict validation passes. |
 | Route statuses | Deferred | All 14 routes are `deferred_pending_sprint_0c_disk`. |
 | WGP self-repeatability | Deferred with artifact | JSON and Markdown report list every route, attempted command shape, blocker, and next action. |
 | Golden corpus manifests | Complete | One manifest per YAML route, route-keyed by canonical route key. |

@@ -6,7 +6,7 @@ This document defines how to test the addition of VibeComfy as a peer execution 
 
 ## Threshold and Route Version 0B (2026-05-05)
 
-The executable threshold and route source of truth for Sprint 0B and later dual-run, dry-run, and canary consumers is `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` (`version: 0B-2026-05-05`, `schema_version: 1`). Later scripts must load this YAML through `python -m scripts.dual_run_compare.check_thresholds --strict` and the `Thresholds` API rather than copying values from this document or `migration-vibecomfy.md`.
+The executable threshold and route source of truth for Sprint 0B and later dual-run, dry-run, and canary consumers is `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` (`version: 0B-2026-05-05`, `schema_version: 1`). The YAML exposes row-granular `metric_keys`, metric `defaults`, and `routes`. Later scripts must load this YAML through `python -m scripts.dual_run_compare.check_thresholds --strict` and the `Thresholds` API rather than copying values from this document or `migration-vibecomfy.md`.
 
 Metric rows in version `0B-2026-05-05`:
 
