@@ -2,6 +2,18 @@
 
 This directory turns `docs/migration-vibecomfy.md` into an ordered Megaplan chain without starting it.
 
+Sprint performance reviews are recorded after each milestone under `performance/`. They are the source of truth for whether a sprint actually completed to spec, separate from the chain plan and PR metadata.
+
+- `performance/sprint-00a-kickoff-contract-freeze.md`
+
+Operating cadence for each milestone:
+
+1. Start or resume only one chain milestone at a time.
+2. Set a timed status check while execution is active. Default interval: 5 minutes unless the current work needs a tighter loop.
+3. At each check, inspect process state, chain state, latest `execution_batch_*.json`, `execution_audit.json`, and changed files before calling the sprint healthy or blocked.
+4. When the milestone reaches a terminal state, update the matching `performance/sprint-*.md` review with actual completion, verification evidence, issues, residual risks, and next actions.
+5. Fix or explicitly defer the issues found in the performance review before advancing the chain to the next milestone.
+
 Megaplan chain behavior, as implemented locally:
 
 - `megaplan chain start --spec <chain.yaml>` validates the spec, creates/checks out each milestone branch, initializes a plan from the milestone idea file, and drives it through `megaplan auto`.
