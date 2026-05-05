@@ -4,6 +4,42 @@
 
 This document defines how to test the addition of VibeComfy as a peer execution backend alongside Wan2GP, live and end-to-end on real RunPod GPUs. It complements `migration-vibecomfy.md`: that document owns the migration design; this document owns the validation harness, acceptance gates, and evidence package required before canary and dual-executor steady state.
 
+## Threshold and Route Version 0B (2026-05-05)
+
+The executable threshold and route source of truth for Sprint 0B and later dual-run, dry-run, and canary consumers is `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` (`version: 0B-2026-05-05`, `schema_version: 1`). Later scripts must load this YAML through `python -m scripts.dual_run_compare.check_thresholds --strict` and the `Thresholds` API rather than copying values from this document or `migration-vibecomfy.md`.
+
+Metric rows in version `0B-2026-05-05`:
+
+- `image_phash_normalized_hamming`
+- `image_ssim`
+- `image_pixel_dimensions`
+- `image_format_container`
+- `video_frame_count`
+- `video_phash_mean`
+- `video_phash_p95`
+- `video_duration_ms`
+- `video_fps`
+- `video_audio_duration_ms`
+- `latency_p95_wall_clock_ratio`
+- `vram_peak_ratio`
+- `error_oom_count`
+- `canary_output_divergence_rate`
+
+Route key canonicalization is defined in `reigh-worker/scripts/dual_run_compare/route_keys.py`. Cohort A/B direct product routes use direct route keys; Cohort B edit variants add dimensions when variant dimensions are present; Cohort E route keys are dimensional and include task type, model family, guidance kind, continuity case, and profile.
+
+Golden corpus and fixture layout:
+
+- `reigh-worker/scripts/dual_run_compare/golden/<route_key>/manifest.json`
+- `reigh-worker/scripts/dual_run_compare/fixtures/golden_seed_payloads/`
+- `reigh-worker/scripts/dual_run_compare/fixtures/non_rayworker/`
+
+WGP repeatability evidence for this version is committed at:
+
+- `reigh-worker/scripts/dual_run_compare/reports/wgp-self-repeat-0b-2026-05-05-deferral.json`
+- `reigh-worker/scripts/dual_run_compare/reports/wgp-self-repeat-0b-2026-05-05-deferral.md`
+
+Status summary: all 14 route keys in the YAML and report are currently marked `deferred_pending_sprint_0c_disk`. The report records the attempted WGP-vs-WGP command shape for every required route, but it contains no paired WGP metric observations. This is not a RunPod-access failure: the agent separately verified live RunPod lifecycle on 2026-05-05 with pod `f9s5vqk15gux9d` through launch, SSH readiness, GPU visibility, storage health, pod listing, termination, and post-terminate absence. After user correction, WGP is treated as the trusted control; paired WGP self-repeatability should run only when a later sprint needs fresh measured drift to promote route statuses.
+
 ## Execution Primitive
 
 The migration execution unit is a VibeComfy Python ready template under `vibecomfy/ready_templates/**/*.py`.
