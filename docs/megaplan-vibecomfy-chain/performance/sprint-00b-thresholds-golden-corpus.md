@@ -52,7 +52,7 @@ Completed by execution:
 | Check | Result |
 |---|---|
 | Strict threshold validation | Passed: `python -m scripts.dual_run_compare.check_thresholds --strict` |
-| Focused dual-run-compare tests | Passed: `pytest scripts/dual_run_compare/tests/` (25 tests) |
+| Focused dual-run-compare tests | Passed: `pytest scripts/dual_run_compare/tests/` (27 tests) |
 | Compile smoke | Passed: `python -m compileall -q scripts/dual_run_compare` |
 | WGP report/YAML sync | Passed by route-keyed Python JSON/YAML validation in T7 |
 | Docs source-of-truth grep | Passed in T8 for YAML version/path, report path, route-key module, and status references |
