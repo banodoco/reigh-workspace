@@ -1,8 +1,8 @@
-# Live Validation Plan: reigh-worker VibeComfy Migration
+# Live Validation Plan: reigh-worker Dual Backend VibeComfy Migration
 
 > **Draft status:** Sister plan for `migration-vibecomfy.md`, authored 2026-05-05.
 
-This document defines how to test the Wan2GP to VibeComfy migration live, end-to-end, on real RunPod GPUs. It complements `migration-vibecomfy.md`: that document owns the migration design; this document owns the validation harness, acceptance gates, and evidence package required before canary and cutover.
+This document defines how to test the addition of VibeComfy as a peer execution backend alongside Wan2GP, live and end-to-end on real RunPod GPUs. It complements `migration-vibecomfy.md`: that document owns the migration design; this document owns the validation harness, acceptance gates, and evidence package required before canary and dual-executor steady state.
 
 ## Execution Primitive
 
@@ -31,6 +31,7 @@ Each production row must report the ready-template id, Python source path, `READ
 - No new production queue schema.
 - No requirement that automated visual grading be the only approval signal. It is a promotion gate and triage aid; final canary still requires human review of sampled outputs.
 - No migration coverage for task types classified as UNUSED in `migration-vibecomfy.md` §0A.
+- No Wan2GP retirement validation. WGP remains the control backend and a supported rollback executor.
 
 ## Existing Surfaces To Reuse
 
@@ -376,6 +377,8 @@ For high-risk cohorts, run `--backend dual`:
 
 Dual-run pass means both outputs are structurally valid and semantically acceptable, and VibeComfy is not materially worse on required elements, reference preservation, or motion coherence.
 
+Live canary output-divergence checks require an isolated shadow-run path: the WGP reference run must write to isolated storage and must not trigger completion, billing, uploads to user-visible destinations, or duplicate product side effects. If that isolation is not implemented for a cohort, output divergence remains sampled/offline evidence; automatic canary rollback is limited to latency, OOM, and classified error triggers from `migration-vibecomfy.md` §11.
+
 ## Per-Cohort Gates
 
 ### Cohort A: Image Generation
@@ -458,6 +461,8 @@ A task type may enter canary only after:
 5. Semantic validation passes or has documented human approval.
 6. Telemetry includes backend, template id, memory profile, VibeComfy run id, Comfy prompt id, and failure class when applicable.
 7. Rollback has been tested by rerunning the same case with `REIGH_BACKEND=wgp`.
+8. The Sprint 6.5 selector/orchestrator readiness evidence from `migration-vibecomfy.md` is linked: route selector version, explicit allowlist behavior, WGP/no-claim default for missing production keys, backend-aware worker pool startup, image-version guard, and staged rollback exercise.
+9. If output-divergence auto-rollback is enabled for the cohort, the isolated shadow-run evidence proves no duplicate completion, billing, upload, or user-visible side effects.
 
 Canary promotion should be cohort-scoped, not all-or-nothing across every production task.
 

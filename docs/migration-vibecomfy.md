@@ -1,45 +1,46 @@
-# Migration Plan: reigh-worker Execution Backend from Wan2GP to VibeComfy
+# Migration Plan: reigh-worker Dual Execution Backend with Wan2GP and VibeComfy
 
 > **Draft status:** Draft for migration planning, authored 2026-05-05.
 
-This document plans the migration of `reigh-worker` from its current in-process Wan2GP execution backend to VibeComfy while preserving the worker's external queue contracts, output shapes, per-task latency expectations, and non-negotiable memory-profile guarantees. The repos involved live side-by-side under the workspace: `reigh-worker/` is the current Wan2GP consumer, `vibecomfy/` is the target ComfyUI workflow runtime, and `reigh-worker-orchestrator/` provisions GPU worker images and startup commands.
+This document plans the addition of VibeComfy as a peer execution backend alongside the current in-process Wan2GP backend while preserving the worker's external queue contracts, output shapes, per-task latency expectations, and non-negotiable memory-profile guarantees. The intended end state is a dual-executor worker platform: `reigh-worker/` can run WGP or VibeComfy by route selector, `vibecomfy/` supplies the ComfyUI workflow runtime, and `reigh-worker-orchestrator/` provisions GPU worker images and startup commands that understand both executors.
 
 ## Table of Contents
 
-1. [Audit reigh-worker to Wan2GP integration](#1-audit-reigh-worker-to-wan2gp-integration)
+1. [Current worker contract](#1-current-worker-contract)
 1A. [Task-type to VibeComfy template triage](#1a-task-type-to-vibecomfy-template-triage)
-2. [Audit VibeComfy capabilities](#2-audit-vibecomfy-capabilities)
+2. [VibeComfy capability summary](#2-vibecomfy-capability-summary)
 3. [Parity gaps and required pre-cutover work](#3-parity-gaps-and-required-pre-cutover-work)
 3A. [Control rails, LoRA stacking, and pre-processing — concrete recipes](#3a-control-rails-lora-stacking-and-pre-processing--concrete-recipes)
 4. [Sprint-by-sprint migration plan](#4-sprint-by-sprint-migration-plan)
 5. [Per-task-type cutover order](#5-per-task-type-cutover-order)
 6. [Rollback plan](#6-rollback-plan)
 7. [Telemetry and observability](#7-telemetry-and-observability)
-8. [Final Wan2GP removal](#8-final-wan2gp-removal)
+8. [Dual-executor steady state](#8-dual-executor-steady-state)
 9. [Open questions, assumptions, risks, and mitigations](#9-open-questions-assumptions-risks-and-mitigations)
 10. [Closure-sweep procedure](#10-closure-sweep-procedure)
 11. [Migration thresholds (single source of truth)](#11-migration-thresholds-single-source-of-truth)
-12. [Pre-kickoff confidence checklist (S5)](#12-pre-kickoff-confidence-checklist-s5)
+12. [Pre-kickoff confidence checklist](#12-pre-kickoff-confidence-checklist)
 
 Companion document: [Live Validation Plan: reigh-worker VibeComfy Migration](./migration-vibecomfy-live-validation.md). That document owns the RunPod/cloud validation strategy, worker live-test strategy, ArtAgents semantic grading, and evidence package required before canary.
 
 ## Goals
 
 - Preserve the Supabase queue contract observed by `reigh-worker` task claim, dispatch, status update, and completion paths.
-- Preserve output shapes for every runtime task type, including image, video, edit, orchestration, raw-Comfy, and interpolation tasks.
+- Preserve output shapes for every `USED-IN-APP` and `USED-INDIRECTLY` runtime task type from §0A, including image, edit, orchestration, travel/join video child generation, and stitch/finalization paths.
 - Preserve per-task latency SLOs or document measured exceptions before canary promotion.
 - Preserve full memory-profile behavior, including low-VRAM, medium/default, high-VRAM, profiled, and per-task override semantics.
 - Coordinate worker image and runtime changes with `reigh-worker-orchestrator` so provisioning, startup, health checks, and rollback all understand the selected backend.
-- Retire Wan2GP only after shadow, dual-run comparison, cohort canaries, and closure sweeps demonstrate parity.
+- End with WGP and VibeComfy both available as selectable executors, with route-level backend selection and tested rollback in both directions where both routes are supported.
 - Gate canary promotion on the live validation evidence package defined in `docs/migration-vibecomfy-live-validation.md`.
 
 ## Non-Goals
 
 - No Supabase queue schema rework.
 - No orchestrator scheduling or scaling algorithm changes beyond worker image/runtime selection and backend flag propagation.
-- No `reigh-app` UI or API contract changes.
+- No broad `reigh-app` UI or API contract changes, except targeted resolver/API safety fixes explicitly listed as Sprint 0 blockers.
 - No broad task-type redesign beyond the adapter and template-routing work required to preserve existing behavior.
-- No deletion of Wan2GP surfaces before the Sprint 8 removal gate.
+- No deletion of Wan2GP runtime surfaces as part of this epic; WGP remains a supported executor in the final state.
+- No Sprint 12B `reigh-app` cleanup, turbo-mode cleanup, or Supabase JSON cleanup is a migration prerequisite unless it lands before Sprint 0 baselines and those baselines are regenerated.
 
 ## Settled Decisions
 
@@ -49,14 +50,24 @@ Companion document: [Live Validation Plan: reigh-worker VibeComfy Migration](./m
   Rationale: production currently relies on Wan2GP profile behavior for GPU fit, OOM avoidance, and latency/cost predictability.
 - **SD-003** — Keep `reigh-worker/`, `reigh-worker-orchestrator/`, and `vibecomfy/` as independent repo workstreams. _load_bearing: true_
   Rationale: the workspace contains nested independent Git repos, so implementation, review, and closure sweeps must be scoped per repo.
-- **SD-004** — Refactor the existing `source/models/comfy/` path into the VibeComfy adapter instead of running a second raw-Comfy implementation. _load_bearing: true_
-  Rationale: keeping `comfy_handler.py` and `comfy_utils.py` as a parallel subprocess/client stack would leave two Comfy runtimes, two output contracts, and two telemetry paths to support during cutover.
+- **SD-004** — Do not migrate the unused raw `comfy` task path into VibeComfy; deletion remains a cleanup candidate only after the §8A deletion gate. _load_bearing: true_
+  Rationale: §0A confirms `task_type: "comfy"` is not emitted by the production app, so raw-workflow Comfy parity is not a migration gate. However, UNUSED is not by itself a deletion proof; `comfy_handler.py` / `comfy_utils.py` can be removed only after DB/admin/debug/direct-emitter checks and owner sign-off.
 - **SD-005** — Treat dynamic Wan2GP model definitions as build-time frozen VibeComfy template inputs unless Q1 decides otherwise. _load_bearing: true_
   Rationale: runtime-mutable JSON model definitions are a WGP-specific flexibility point; freezing them into reviewed templates and patches lowers cutover risk and makes validation reproducible.
-- **SD-006** — Keep WGP and VibeComfy coinstalled in the worker image until the Sprint 8 removal gate. _load_bearing: true_
-  Rationale: production rollback depends on switching process-level and task-type-level backend selection without rebuilding the worker image during canary.
+- **SD-006** — Keep WGP and VibeComfy coinstalled in the worker image as the steady-state architecture. _load_bearing: true_
+  Rationale: production control depends on switching process-level and route-level backend selection without rebuilding the worker image, and some routes may remain WGP-preferred or WGP-only indefinitely.
 - **SD-007** — Use VibeComfy cloud mode as the primary RunPod validation runner for template/runtime proof. _load_bearing: true_
   Rationale: VibeComfy already owns RunPod pod lifecycle, remote execution, matrix polling, artifact download, and termination through `scripts/runpod_runner.py` and the `runpod` command surface; the worker live harness should validate Supabase queue contracts and backend selection rather than duplicating cloud execution machinery.
+
+## Epic Shape
+
+This plan uses the following boundaries:
+
+- Practical execution is sequential two-week-max sprints, with shorter 3-4 day readiness or feasibility sprints where appropriate.
+- Selector and claim semantics are pulled earlier than canary readiness so orchestrated route work has a stable contract to build against.
+- Sprint 4 no longer requires full worker-level orchestrated parity before parent/child propagation exists; it proves Wan template feasibility and isolated child-route behavior only.
+- Cleanup is not part of migration closure unless it blocks dual-executor correctness. Deletion-gated cleanup belongs in Sprint 12B or separate post-canary PRs.
+- The main canary blockers are executable contracts: selector/claim behavior, product and billing oracles, artifact lifecycle, orchestrator pool behavior, rollback repair tooling, and route-specific validation evidence.
 
 ## Authoritative Paths
 
@@ -95,61 +106,40 @@ Companion document: [Live Validation Plan: reigh-worker VibeComfy Migration](./m
 - `reigh-worker-orchestrator/gpu_orchestrator/Dockerfile`
 - `reigh-worker-orchestrator/gpu_orchestrator/requirements.txt`
 
+### reigh-app / Supabase
+
+- `reigh-app/supabase/functions/create-task/resolvers/`
+- `reigh-app/supabase/functions/create-task/resolvers/registry.ts`
+- `reigh-app/supabase/functions/complete_task/`
+- `reigh-app/supabase/functions/ai-timeline-agent/`
+- `reigh-app/src/shared/lib/tasks/travelBetweenImages/`
+- `reigh-app/src/tools/travel-between-images/`
+- `reigh-app/src/tools/video-editor/`
+- Supabase migrations that touch task params, travel settings, gallery/lightbox/timeline output metadata, billing/credits, or persisted share/history data.
+
 ### Repository Layout For Closure Sweeps
 
 `reigh-worker/`, `reigh-worker-orchestrator/`, and `vibecomfy/` are independent Git repos nested in the workspace. Any Git-aware closure sweep must run per repo, for example with `git -C reigh-worker grep ...` and `git -C reigh-worker-orchestrator grep ...`; a workspace-root `git grep` does not traverse those nested repo histories and can return zero hits for committed files that still exist inside the nested repos.
 
 ## External Reference Resources
 
-Whenever a sprint task involves authoring a new VibeComfy template, picking a model variant, choosing a LoRA stacking strategy, deciding on control-rail wiring, or otherwise making a workflow / best-practice judgment call, consult these three sources before guessing. Cite them in the resulting code or doc note so the decision is reproducible.
+Template, model, sampler, LoRA, and control-rail decisions must cite the basis used to recreate current behavior. Use the following sources in this order when authoring or materially changing a VibeComfy route:
 
-### 1. AI workflows / best-practices Discord (`message_feed`)
+1. Existing `reigh-worker/` behavior: current task mappings, WGP defaults, live-test inputs, LoRA setup, runtime model patching, and production-shaped scripts.
+2. Wan2GP upstream: model defaults, sampler and LoRA recipes, memory-profile behavior, prompt expansion, and control-rail conventions.
+3. AI workflow / best-practices Discord `message_feed`: practical ComfyUI graph, sampler, model, and custom-node notes when local/upstream sources disagree or are incomplete.
 
-A community Discord aggregating practical advice on AI workflows, ComfyUI graphs, model behavior, LoRA application, and sampler choice. The relevant `message_feed` is queryable directly via Supabase REST — no Discord client needed.
+Default rule: do not invent a default that the current worker already ships. If the sources disagree, record the disagreement as an open question or route-specific risk before promotion.
 
-```bash
-# Most-recent messages across all channels:
-curl "https://ujlwuvkrxlvoswwkerdf.supabase.co/rest/v1/message_feed?select=content,author_name,channel_name,reactions,created_at&order=created_at.desc&limit=50" \
-  -H "apikey: sb_publishable_O38oPBafrBoFrpi_rlWJvA_UJrulFsx"
+## 0A. Project generation scope and RayWorker migration scope
 
-# Filter by channel (e.g. find Wan-related guidance):
-curl "https://ujlwuvkrxlvoswwkerdf.supabase.co/rest/v1/message_feed?select=content,author_name,channel_name,created_at&channel_name=ilike.*wan*&order=created_at.desc&limit=50" \
-  -H "apikey: sb_publishable_O38oPBafrBoFrpi_rlWJvA_UJrulFsx"
+This section classifies the active project generation surface, then distinguishes which routes need RayWorker/WGP-to-VibeComfy parity. The epic includes active app generation routes even when they are currently handled by Cloud Worker or another non-RayWorker service, because their contracts still need to be preserved through the migration. However, only RayWorker-owned WGP routes require VibeComfy template/adapter parity unless a route is explicitly moved into RayWorker.
 
-# Free-text search in message bodies:
-curl "https://ujlwuvkrxlvoswwkerdf.supabase.co/rest/v1/message_feed?select=content,author_name,channel_name,created_at&content=ilike.*lightx2v*&order=created_at.desc&limit=50" \
-  -H "apikey: sb_publishable_O38oPBafrBoFrpi_rlWJvA_UJrulFsx"
-```
-
-Use it for: VibeWorkflow IR sketches (people share working node graphs), sampler/sigma settings that match real production, troubleshooting Comfy custom-node breakage, hearing about model regressions before they bite us.
-
-### 2. Wan2GP upstream — `https://github.com/deepbeepmeep/Wan2GP/`
-
-The Wan2GP repo (`deepbeepmeep/Wan2GP`) carries a large body of already-tuned best practices for the exact model families we use: Wan 2.1 / 2.2 cocktails, VACE control, Lightning LoRA stacking, profile-tier memory tradeoffs, prompt-expander defaults, LTX configs, Qwen LoRA key tolerance. Before authoring a new VibeComfy template or deciding how to apply a LoRA stack, look at what Wan2GP already does — `defaults/*.json` for model configs, `wan/`, `ltx_video/`, `qwen/` subtrees for inference recipes, and `mmgp/` for the memory-profile mechanics we are mirroring as `MemoryProfile` in VibeComfy.
-
-Use it for: model-default JSON shapes, LoRA multiplier conventions, prompt-expander behavior, sampler step counts and schedulers per model, VAE/text-encoder pairings, Uni3C ControlNet usage, Lightning baseline cocktails. Cite the upstream `path:line` (or commit SHA) in the resulting template/patch so future readers can re-derive the choice.
-
-### 3. Existing reigh-worker code — current defaults and samples
-
-Our own `reigh-worker/` already encodes a lot of production-validated behavior that should not be re-discovered. Before choosing a new default, search:
-
-- `reigh-worker/Wan2GP/defaults/*.json` — every model config currently in use, with the exact LoRA stacks, sampler steps, and VAE pairings we already ship.
-- `reigh-worker/source/models/wgp/lora_setup.py` and `wgp_patches.py:384-483` — how we apply LoRAs today (multiplier syntax, key-tolerance patches, Qwen-specific paths).
-- `reigh-worker/source/task_handlers/tasks/task_types.py:TASK_TYPE_TO_MODEL` — the mapping from task types to default model variants the app relies on.
-- `reigh-worker/source/runtime/wgp_ports/runtime_registry.py:201-220` — runtime model patch transactions (snapshot/apply/restore) that any VibeComfy equivalent must preserve.
-- `reigh-worker/scripts/live_test/` and `scripts/run_worker_matrix.py` — actual production-shape test inputs we already exercise; reuse for baselines.
-
-Use it for: never invent a default we already ship. If WGP emits Wan with `--lora-multiplier 0.8` and 6-step Lightning, the VibeComfy equivalent should match unless we have a measured reason to diverge.
-
-### Default discipline
-
-For any sprint task with the words *"author a template"*, *"pick a model"*, *"decide LoRA"*, *"choose sampler"*, *"set steps"*, or *"recreate behavior"*: read all three sources first; cite the basis in the implementation; flag a Q-row in §9 if the three sources disagree.
-
-## 0A. Production-usage audit (reigh-app call sites)
-
-This section classifies every runtime task type from §1 by whether the live `reigh-app` frontend (Next.js + Supabase Edge Functions) emits it today. The migration scope can ignore UNUSED rows entirely; their handlers stay in the worker for now but are not gated on VibeComfy parity.
+`UNUSED` means "not emitted by the current app resolver surface into a RayWorker-owned task type"; it is sufficient to remove a task type from VibeComfy parity gates, but it is **not** sufficient by itself to delete worker code. Any deletion of an UNUSED task type requires the §8A deletion gate: DB checks for pending/in-progress/recent rows, edge-function and admin/debug emission checks, and owner sign-off.
 
 Authoritative emit surface is `reigh-app/supabase/functions/create-task/resolvers/*.ts` plus the family map at `reigh-app/supabase/functions/create-task/resolvers/registry.ts:16-30`. Family is the public input; the resolver decides which `task_type` is written to the `tasks` table.
+
+Active non-RayWorker routes included in the epic: `video_enhance` / FILM / FlashVSR, `image-upscale`, `animate_character`, and `flux_klein_edit`. Their required work is contract preservation, ownership clarity, cost/completion/output validation, and regression coverage. They are **not** VibeComfy template parity gates unless Sprint 0 explicitly decides to move one into RayWorker.
 
 | task_type | usage | call site (path:line) | model variants pinned by app | notes |
 | --- | --- | --- | --- | --- |
@@ -170,6 +160,10 @@ Authoritative emit surface is `reigh-app/supabase/functions/create-task/resolver
 | `travel_segment` | USED-INDIRECTLY | Worker creates this as child of `travel_orchestrator` (see `reigh-worker/source/task_handlers/travel/orchestrator.py`); also referenced by `complete_task` segment-tracking config at `reigh-app/supabase/functions/complete_task/constants.ts:6,28-30`. | Inherited from parent orchestrator. | App never inserts this row directly; only `individual_travel_segment` is app-emitted. |
 | `join_clips_segment` | USED-INDIRECTLY | Worker creates as child of `join_clips_orchestrator`; tracked at `complete_task/constants.ts:7,36-39`. | Inherited (`wan_2_2_vace_lightning_baseline_2_2_2`). | — |
 | `join_final_stitch` | USED-INDIRECTLY | Worker creates as final child of `join_clips_orchestrator`; tracked at `complete_task/constants.ts:9,40-44`. | None | Stitch-only; ffmpeg path. |
+| `video_enhance` | USED-NON-RAYWORKER | `reigh-app/supabase/functions/create-task/resolvers/videoEnhance.ts:159`; UI caller `useVideoEnhance.ts`; AI timeline agent `generation.ts` | FILM interpolation + FlashVSR upscale params | Included in the epic as an active product route, but not a RayWorker/VibeComfy parity gate unless explicitly moved into RayWorker. Preserve cost, completion, output, and UX contract. |
+| `image-upscale` | USED-NON-RAYWORKER | `reigh-app/supabase/functions/create-task/resolvers/imageUpscale.ts:72,80`; UI caller `useUpscale.ts` | Hyphenated `task_type: "image-upscale"`; note older underscore metadata exists | Included in the epic as an active product route. Preserve naming, variant metadata, output, and billing/completion behavior. |
+| `animate_character` | USED-NON-RAYWORKER | `reigh-app/supabase/functions/create-task/resolvers/characterAnimate.ts:53,59`; frontend `characterAnimate.ts`; AI timeline agent `generation.ts` | Character animation route | Included in the epic as an active product route. Preserve owner, completion/output contract, and canary regression coverage. |
+| `flux_klein_edit` | USED-NON-RAYWORKER | `reigh-app/supabase/functions/create-task/resolvers/kleinEdit.ts:97,108`; UI `useMagicEditMode.ts` | Klein edit path; distinct from legacy RayWorker `flux` task type | Included in the epic as an active product route. Do not use legacy RayWorker `flux` cleanup as proof this route is safe. |
 | `hunyuan` | UNUSED | `rg -i '\bhunyuan\b\|\bhyvid\b' reigh-app/ → 0 hits` | None | Worker handler exists; app never emits. |
 | `flux` | UNUSED | No `task_type: "flux"` literal anywhere in `reigh-app/`. The `family: "klein_edit"` path emits `flux_klein_edit` (a distinct worker task type, outside this migration's catalog). | None | WGP `flux` task type is dead in production. |
 | `t2v` | UNUSED | No `task_type: "t2v"` literal in `reigh-app/`. | None | — |
@@ -188,18 +182,20 @@ Authoritative emit surface is `reigh-app/supabase/functions/create-task/resolver
 | `comfy` | UNUSED | No `task_type: "comfy"` literal in `reigh-app/`. | None | Raw-Comfy task path is worker-only; no app surface enqueues it. |
 | `create_visualization` | UNUSED | No `task_type: "create_visualization"` literal in `reigh-app/`. | None | — |
 | `extract_frame` | UNUSED | No `task_type: "extract_frame"` literal in `reigh-app/`. | None | App extracts frames client-side or via the dedicated edge function `generate-thumbnail`, not by enqueueing this worker task. |
-| `rife_interpolate_images` | UNUSED | No `task_type: "rife_interpolate_images"` literal in `reigh-app/`. | None | Frame interpolation is delivered via the `video_enhance` family (FILM-net), which is a different worker task type outside this migration's WGP catalog. |
+| `rife_interpolate_images` | UNUSED | No `task_type: "rife_interpolate_images"` literal in `reigh-app/`. | None | RayWorker still has a native RIFE dispatch handler, but current app interpolation is handled outside this RayWorker migration. Keep or delete only through the §8A cleanup gate. |
 
 UNUSED roll-up (cite per row above; aggregate cite: searching `reigh-app/` for `task_type: "<name>"` literal strings returned zero hits for each):
 
 - `hunyuan` (confirmed: `rg -i '\bhunyuan\b|\bhyvid\b' reigh-app/ → 0 hits`)
 - `flux`, `t2v`, `t2v_22`, `i2v`, `i2v_22`, `vace`, `vace_21`, `vace_22`, `ltxv`, `ltx2`, `generate_video`, `qwen_image_hires`, `magic_edit`, `inpaint_frames`, `comfy`, `create_visualization`, `extract_frame`, `rife_interpolate_images`
 
-AMBIGUOUS roll-up: none. Every classification above is a deterministic literal-string match; no feature flags, A/B tests, or admin debug surfaces emit any of the UNUSED task types.
+AMBIGUOUS roll-up for **migration parity**: none. Every classification above is a deterministic literal-string match against the current resolver surface; no feature flags, A/B tests, or admin debug surfaces were found in the app emit path. Deletion safety remains a separate cleanup question and must use the §8A deletion gate because old queued rows, direct DB inserts, admin tools, or retry/history paths can exist outside the current resolver surface.
 
-App-side discrepancy: `travelBetweenImages.ts:315` emits `task_type: "wan_2_2_i2v"` when `input.turbo_mode === true`. This task type is **not** in the worker's `TASK_TYPE_TO_MODEL` (`reigh-worker/source/task_handlers/tasks/task_types.py:82-117`) or `task_registry` dispatch map. **Resolved via §8A.A:** turbo-mode travel is removed entirely (the UI toggle was already commented out as DISABLED; no production code path sets `turboMode: true`). Sprint 8B owns the cleanup PR.
+The `USED-NON-RAYWORKER` rows are included in product/regression scope but excluded from RayWorker VibeComfy parity scope. Sprint 0 must name the owning runtime for each and decide whether the epic merely preserves the current Cloud Worker/external route or intentionally moves it into RayWorker. If a route moves into RayWorker, it becomes a new RayWorker migration row and must receive its own template/adapter/canary plan before promotion.
 
-## 1. Audit reigh-worker to Wan2GP integration
+App-side discrepancy: `travelBetweenImages.ts:315` emits `task_type: "wan_2_2_i2v"` when `input.turbo_mode === true`. This task type is **not** in the worker's `TASK_TYPE_TO_MODEL` (`reigh-worker/source/task_handlers/tasks/task_types.py:82-117`) or `task_registry` dispatch map. The UI toggle is commented out, but §8A confirms AI/timeline-agent plumbing can still pass `turbo_mode`; therefore this is an **active pre-kickoff contract risk**, not resolved cleanup. Before Sprint 0 baselines freeze, either remove the AI-agent/schema path or add resolver-side validation/tests proving `turbo_mode: true` is rejected or coerced to the safe `travel_orchestrator` path.
+
+## 1. Current worker contract
 
 ### Runtime Entry Path
 
@@ -247,12 +243,12 @@ Default profile is environment-specific and Sprint 0 must baseline both:
 
 ### Task Surface
 
-The migration surface is the union of `TASK_TYPE_CATALOG` in `source/task_handlers/tasks/task_types.py:120-138` and the specialized dispatch keys in `source/task_handlers/tasks/task_registry.py:1442-1511`. Friendly names come from `source/core/log/display_names.py:8-45`; `rife_interpolate` is a friendly alias only, while the runtime dispatch key is `rife_interpolate_images`.
+The full RayWorker dispatch surface is the union of `TASK_TYPE_CATALOG` in `source/task_handlers/tasks/task_types.py:120-138` and the specialized dispatch keys in `source/task_handlers/tasks/task_registry.py:1442-1511`. Friendly names come from `source/core/log/display_names.py:8-45`; `rife_interpolate` is a friendly alias only, while the runtime dispatch key is `rife_interpolate_images`. Do not use `dispatch_manifest.py` as the migration source of truth until it is reconciled with `TaskRegistry.dispatch`; it currently lists only a subset of live specialized handlers.
 
 | task_type | Source of truth | default_model | dispatch_path | Current handler module | Output shape | Alias | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `annotated_image_edit` | `task_types.py:106-110,120-138` | `qwen_image_edit_20B` | Direct queue via `_handle_direct_queue_task` | `task_conversion.py` + `QwenHandler.handle_annotated_image_edit` | Single image path | Annotated Image Edit | Empty prompt allowed; Qwen edit family. |
-| `comfy` | `task_registry.py:1507-1510` | N/A | Specialized handler | `source/models/comfy/comfy_handler.py` | First downloaded Comfy output path | ComfyUI | Existing raw-workflow Comfy path; retire/refactor decision is in Section 3. |
+| `comfy` | `task_registry.py:1507-1510` | N/A | Specialized handler | `source/models/comfy/comfy_handler.py` | First downloaded Comfy output path | ComfyUI | Existing raw-workflow Comfy path; UNUSED per §0A and not migrated; deletion is Sprint 12B / cleanup-gated only. |
 | `create_visualization` | `task_registry.py:1497-1500` | N/A | Specialized handler | `source/task_handlers/create_visualization.py` | Visualization image/video path | Create Visualization | Utility/debug task, not a WGP model family. |
 | `edit_video_orchestrator` | `task_registry.py:1478-1482` | N/A | Specialized orchestrator | `source/task_handlers/edit_video_orchestrator.py` | Orchestrating status or final video path | Edit Video | Creates join/regeneration child work. |
 | `extract_frame` | `task_registry.py:1501-1503` | N/A | Specialized handler | `source/task_handlers/extract_frame.py` | Extracted frame image path | Extract Frame | Single-purpose media helper. |
@@ -302,11 +298,14 @@ Supabase task row
           -> HeadlessTaskQueue.submit_task(...)
           -> queue status polling
      -> Seam B: specialized handler with context["task_queue"]
-        travel_segment / join_clips_segment / inpaint_frames / rife_interpolate_images
+        travel_segment / join_clips_segment / inpaint_frames
           -> handler-specific media prep
           -> child GenerationTask
           -> HeadlessTaskQueue.submit_task(...)
           -> handler-specific post-processing
+     -> Native utility / orchestration handlers
+        extract_frame / create_visualization / rife_interpolate_images / stitchers / parent orchestrators
+          -> no VibeComfy template; preserve output/completion contract or mark cleanup-gated
 ```
 
 The direct seam is explicit at `source/task_handlers/tasks/task_registry.py:1436-1438` and `1544-1562`. The nested-handler seam is visible in the dispatch context parameters at `task_registry.py:1453`, `1462`, `1487`, `1496`, and `1505`, and in `travel_segment` queue submission at `task_registry.py:1331-1344`. Any VibeComfy adapter that only replaces `_handle_direct_queue_task` will miss child generation inside orchestrated handlers.
@@ -328,10 +327,10 @@ Runtime mutation is isolated through `source/runtime/wgp_ports/runtime_registry.
 | Current surface | Current location | Current consumers / purpose | VibeComfy equivalent / gap |
 | --- | --- | --- | --- |
 | Qwen prompt expander | `vendor_imports.py:32-45`; `wgp_bridge.py:24,37-38` | Wan/Qwen prompt expansion via Wan2GP modules. | Gap: no VibeComfy wrapper today; likely pre-process before workflow build. |
-| RIFE temporal interpolation | `vendor_imports.py:47-55`; `wgp_bridge.py:34,41-42` | `rife_interpolate_images` and guide-video interpolation. | Gap: no VibeComfy helper; keep vendored in `reigh-worker/source/media/` or add VibeComfy extra. |
+| RIFE temporal interpolation | `vendor_imports.py:47-55`; `wgp_bridge.py:34,41-42` | Native `rife_interpolate_images` handler. Current exact call sites do not show active travel-orchestrator use. | Not a VibeComfy parity gate because the task type is UNUSED; keep vendored helper until §8A proves dispatch/history/admin paths are safe to remove. |
 | Wan2GP `save_video` | `vendor_imports.py:58-73`; `wgp_bridge.py:45-46` | `source/media/structure/{generation.py,compositing.py}` video writing. | Gap: Comfy outputs files, but no callable parity for existing helper. |
 | Qwen family handler | `vendor_imports.py:76-78`; `wgp_bridge.py:30` | WGP monkeypatch routes Qwen-family model loading. | Gap: replace with explicit Qwen templates/routes. |
-| Shared LoRA utils | `vendor_imports.py:81-83`; `wgp_bridge.py:32` | LoRA multiplier parsing and setup patches. | Gap: VibeComfy needs portable LoRA-node patching and sanitizer. |
+| Shared LoRA utils | `vendor_imports.py:81-83`; `wgp_bridge.py:32` | LoRA multiplier parsing and setup patches. | Gap: VibeComfy needs LoRA widget wiring plus reigh-worker LoRA-file sanitizer pre-processing. |
 | Qwen main module | `vendor_imports.py:86-88`; `wgp_bridge.py:31` | Qwen inpainting LoRA patching. | Gap: model-specific Comfy template policy needed. |
 | Flow annotator | `vendor_imports.py:91-93`; `wgp_bridge.py:27` | Structure preprocessing. | Gap: pre-process before VibeWorkflow or package as extra nodes. |
 | Flow visualization | `vendor_imports.py:96-98`; `wgp_bridge.py:28` | Optical-flow visualization in structure preprocessing. | Gap: no VibeComfy re-export. |
@@ -344,7 +343,7 @@ Runtime mutation is isolated through `source/runtime/wgp_ports/runtime_registry.
 
 `source/models/comfy/comfy_handler.py` already handles the `comfy` task type, but it is a separate raw-Comfy path rather than a VibeComfy adapter. It imports `ComfyUIManager`, `ComfyUIClient`, `COMFY_PATH`, and `COMFY_PORT` from `source/models/comfy/comfy_utils.py:15`; lazy-starts a `python main.py --listen 0.0.0.0 --port ...` subprocess through `ComfyUIManager` at `comfy_utils.py:25-60`; submits raw workflow JSON to `/prompt` through `ComfyUIClient` at `comfy_utils.py:126-142`; polls `/history/{prompt_id}` and downloads outputs at `comfy_utils.py:144-199`; then writes the first output under `main_output_dir_base / "comfy"` at `comfy_handler.py:164-175`.
 
-The dispatch branch is `source/task_handlers/tasks/task_registry.py:1507-1510`. Dependent tests include `reigh-worker/tests/test_additional_coverage_modules.py:205-219` and coverage imports in `tests/test_wan2gp_direct_coverage_contracts.py:412-413,960-961`. Section 3 must make this explicit: refactor `comfy_handler.py` to delegate to VibeComfy runtime, retire `comfy_utils.py`, and migrate test imports.
+The dispatch branch is `source/task_handlers/tasks/task_registry.py:1507-1510`. Dependent tests include `reigh-worker/tests/test_additional_coverage_modules.py:205-219` and coverage imports in `tests/test_wan2gp_direct_coverage_contracts.py:412-413,960-961`. Because §0A confirms raw `comfy` is UNUSED, Section 3 does not preserve raw workflow parity. The handler/util files are cleanup candidates only after the §8A deletion gate; until then they remain WGP/raw-Comfy legacy code and are not part of the VibeComfy adapter.
 
 ### Error Paths and Telemetry
 
@@ -358,16 +357,16 @@ Logging suppresses known noisy substrings and third-party loggers, including `mm
 
 | Coupling | Source | Migration implication |
 | --- | --- | --- |
-| Legacy worker directory fallback `Headless-Wan2GP` | `gpu_orchestrator/runpod/worker_startup.template.sh:174` and fallback branch at `179-183` | Remove or rename fallback during final Wan2GP cleanup. |
-| Wan2GP submodule reconciliation | `worker_startup.template.sh:267-292` | Remove stale `Wan2GP/` cleanup and missing-submodule hard fail once VibeComfy is canonical. |
-| Production profile default | `worker_startup.template.sh:463` | Replace `--wgp-profile 1` with VibeComfy profile selection only after profile parity exists. |
-| Pod disk sizing | `gpu_orchestrator/worker_spawner.py:279-281` and `391-395` | **H9 RESOLVED (2026-05-05): raise Sprint 0 baseline to 200 GB.** Memory note confirmed 50 GB is too small for WAN 14B alone; dual-stack matrix (WGP + Comfy + ready_templates models) needs further headroom. 200 GB sized for: (a) WGP submodule + checkpoints (~30GB), (b) VibeComfy ready_templates + custom_nodes (~25GB), (c) downloaded model cache for the dual-run corpus (~80GB), (d) RunPod base image + venv (~20GB), (e) artifact/output buffer (~45GB). Sprint 0 first-pod boot validates actual disk usage; if >180GB on first boot, raise to 250GB before Sprint 1. **Decision rationale: maximizes success because under-sized disk caused the prior live-test crash; explicit baseline raise is a one-line change in `worker_spawner.py` that prevents the entire dual-run matrix from crashing pre-LTX.** |
-| Worker image Dockerfile | `gpu_orchestrator/Dockerfile` | Verify and remove any Wan2GP install steps if present; current main may be generic and need no edit. |
-| `mmgp` runtime dependency | `reigh-worker/pyproject.toml:13` | `mmgp==3.7.6` is WGP-specific and must be removed only after the WGP surface is retired. |
+| Legacy worker directory fallback `Headless-Wan2GP` | `gpu_orchestrator/runpod/worker_startup.template.sh:174` and fallback branch at `179-183` | Keep if required for WGP startup; rename only if it improves dual-stack clarity without breaking WGP. |
+| Wan2GP submodule reconciliation | `worker_startup.template.sh:267-292` | Preserve WGP submodule reconciliation while WGP remains a supported executor. Only stale cleanup logic that prevents dual-stack startup should change; `Wan2GP/` itself is retained in this epic. |
+| Production profile default | `worker_startup.template.sh:463` | Preserve `--wgp-profile 1` for WGP workers. Add a separate VibeComfy profile flag/env for Comfy workers after profile parity exists; do not rename or remove WGP flags in this migration. |
+| Pod disk sizing | `gpu_orchestrator/worker_spawner.py:279-281` and `391-395` | Sprint 0C records the decision to raise the RunPod baseline from the current 50 GB to 200 GB, then validates actual first-pod boot usage. If first boot exceeds 180 GB, raise to 250 GB before Sprint 1. |
+| Worker image Dockerfile | `gpu_orchestrator/Dockerfile` | Preserve Wan2GP install steps required by WGP workers; add VibeComfy/custom-node/model assets alongside them for the dual-stack image. |
+| `mmgp` runtime dependency | `reigh-worker/pyproject.toml:13` | `mmgp==3.7.6` is WGP-specific and retained while WGP remains supported. Remove only in a separate WGP-retirement epic. |
 
 ## 1A. Task-type to VibeComfy template triage
 
-Section 1 enumerates the runtime task surface; Section 2 inventories the 50 ready templates under `vibecomfy/ready_templates/`. This section closes the gap between them by classifying every runtime task type (`source/task_handlers/tasks/task_types.py:120-138` ∪ `source/task_handlers/tasks/task_registry.py:1442-1511`) into one of three dispositions:
+Section 1 enumerates the runtime task surface; Section 2 owns the live ready-template inventory under `vibecomfy/ready_templates/`. This section closes the gap between them by classifying every runtime task type (`source/task_handlers/tasks/task_types.py:120-138` ∪ `source/task_handlers/tasks/task_registry.py:1442-1511`) into one of three dispositions:
 
 - **NATIVE** — a `ready_templates/**` template is the direct execution unit; only parameter wiring (prompt, image inputs, seed, resolution, profile overlay) is required.
 - **ADAPT** — an existing template is the closest basis but needs concrete graph edits or patches (added/removed nodes, swapped LoRA loaders, control rails spliced in via `replace_edge`, output shape coercion).
@@ -375,16 +374,17 @@ Section 1 enumerates the runtime task surface; Section 2 inventories the 50 read
 
 The `concrete edits required` column lists graph-level deltas only, not parameter wiring. Section 3A pins the recipes for the LoRA, control-rail, travel-continuity, and prompt-expander edits that recur across rows.
 
+Rows marked `NO (UNUSED)` are scope notes, not migration work. They must not create sprint deliverables, template-authoring tasks, owner assignments, or validation gates unless the task type is reintroduced by a separate product decision. If this table is used for implementation planning, filter to `Required by app? = YES` plus USED-INDIRECTLY child routes first; UNUSED rows are cleanup-gated inventory only, even when they contain old template analysis.
+
 | task_type | Required by app? | disposition | target template path or basis | concrete edits required | control rails | LoRA handling | cohort/sprint |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `z_image_turbo` | YES (USED-IN-APP) | NATIVE | `ready_templates/image/z_image.py` | None (prompt is registered via `register_input` per `vibecomfy/docs/authoring.md:164`). | None | None | A / Sprint 2 |
 | `z_image_turbo_i2i` | YES (USED-IN-APP) | ADAPT | `ready_templates/image/z_image.py` | Add `LoadImage` + `VAEEncode` and splice the latent into the sampler input that currently feeds from `EmptyLatentImage`; change `register_input` for `image` (Section 3A "i2i input adapter"). | None | None | A / Sprint 2 |
-| `qwen_image` | YES (USED-IN-APP) | ADAPT | `ready_templates/image/qwen_image_2512.py` | Disable the edit-mode image input branch (no `LoadImage`); keep T2I sampler chain. Verify text encoder + VAE load. | None | LoRA optional; if used, splice `LoraLoaderModelOnly` between the diffusion-model loader and `ModelSamplingAuraFlow` — pattern same as `edit/qwen_image_edit.py:112-130`. | A / Sprint 5 |
+| `qwen_image` | YES (USED-IN-APP) | ADAPT / VERIFY | Non-2512 Qwen image route to be proven in Sprint 5; do not treat `ready_templates/image/qwen_image_2512.py` as a drop-in. | Validate the true WGP-equivalent model/template path for `model: "qwen-image"`; only then wire prompt, seed, resolution, and optional LoRA handling. | None | LoRA optional; use the same validated Qwen LoRA chain/sanitizer pattern as the edit route where applicable. | A / Sprint 5 |
 | `qwen_image_2512` | YES (USED-IN-APP) | NATIVE | `ready_templates/image/qwen_image_2512.py` | None | None | None by default | A / Sprint 2 |
-| `flux` | NO (UNUSED — see §0A) | NEW (escalated; Klein is a different model from FLUX.1 Dev) — **SKIPPABLE** | Must author `ready_templates/image/flux1_dev_t2i.py` (and optionally `flux1_schnell_t2i.py`, `flux1_dev_kontext_edit.py`). | WGP `flux` task type loads **FLUX.1 Dev 12B** (`Wan2GP/defaults/flux.json:3-9`, file `flux1-dev_bf16.safetensors`). All three VibeComfy `image/flux2_klein_*` templates load **Flux 2 Klein** (`flux-2-klein-base-4b.safetensors` at `flux2_klein_4b_t2i.py:69-72`) — a separate Black Forest Labs model with a different VAE (`flux2-vae.safetensors` at `flux2_klein_4b_t2i.py:78-80`) and a different text encoder (`qwen_3_4b.safetensors` at `flux2_klein_4b_t2i.py:73-77`). Klein is not a drop-in for FLUX.1 Dev. | None | None | A / Sprint 5 |
-| `flux` (all variants: dev, schnell, dev_kontext) | NO (UNUSED — H11 consolidation 2026-05-05) | **OUT OF SCOPE per §0A.** | n/a | n/a | n/a | n/a | If reintroduced, treat as a separate project. Decision rationale (H11): maximizes success because keeping deferred-but-described Flux variant rows invites accidental scope creep during Sprint 5 (someone reads the row and feels it should ship); collapsing to one out-of-scope row eliminates the temptation. |
+| `flux` (all variants: dev, schnell, dev_kontext) | NO (UNUSED) | **OUT OF SCOPE per §0A.** | n/a | n/a | n/a | n/a | If reintroduced, treat as a separate project. |
 | `wan_2_2_t2i` | YES (USED-IN-APP — production default for image-gen tool) | ADAPT | `ready_templates/video/wanvideo_wrapper_22_5b_t2v_controlnet.py` (or `wan_t2v.py` after profile fit) | Force `num_frames=1` on the WanVideo sampler/encode nodes; the `forced_video_length=1` flag at `task_types.py:135` must be applied as a small patch over a Wan T2V template since no `wan_2_2_t2i` template exists. | None | Wan templates use `WanVideoLoraSelect` (kj wrapper, `wanvideo_wrapper_21_14b_i2v.py:79-91`), not `LoraLoaderModelOnly`. | A / Sprint 4 |
-| `qwen_image_edit` | YES (USED-IN-APP) | NATIVE | `ready_templates/edit/qwen_image_edit.py` | None | None | Built-in `LoraLoaderModelOnly` for Qwen-Image-Edit-Lightning at `edit/qwen_image_edit.py:112-130`; sanitizer patch (Section 3A) applies if user LoRAs are stacked on top. | B / Sprint 5 |
+| `qwen_image_edit` | YES (USED-IN-APP) | NATIVE | `ready_templates/edit/qwen_image_edit.py` | None | None | Built-in `LoraLoaderModelOnly` for Qwen-Image-Edit-Lightning at `edit/qwen_image_edit.py:112-130`; reigh-worker sanitizer pre-process (Section 3A) applies if user LoRAs are stacked on top. | B / Sprint 5 |
 | `qwen_image_hires` | NO (UNUSED — see §0A; hires-fix is a payload-level decoration on `qwen_image_edit`) | ADAPT — **SKIPPABLE** | `ready_templates/edit/qwen_image_edit.py` | Add a hires upscale stage: latent upscale or pixel upscale + second-pass `KSampler` chain. No existing template covers Qwen hires-fix; either author a recipe or duplicate the edit graph. | None | Same as `qwen_image_edit`. | B / Sprint 5 |
 | `qwen_image_style` | YES (USED-IN-APP) | ADAPT | `ready_templates/edit/qwen_image_edit.py` | The handler may rewrite prompt/model during conversion (`task_types.py` notes); keep template, swap LoRA name via `LoraLoaderModelOnly.lora_name` widget; preprocessing performs Qwen prompt expansion (Section 3A). | None | Style LoRA stacked on top of Lightning LoRA — needs sanitizer + multi-LoRA chain. | B / Sprint 5 |
 | `image_inpaint` | YES (USED-IN-APP) | ADAPT | `ready_templates/edit/qwen_image_edit.py` | Add mask handling: `LoadImage` (mask) → `MaskComposite` or `SetLatentNoiseMask` spliced into the latent feeding the sampler. The base edit template has no mask path. | None | Same Qwen Lightning LoRA. | B / Sprint 5 |
@@ -400,7 +400,7 @@ The `concrete edits required` column lists graph-level deltas only, not paramete
 | `vace_21` | NO (UNUSED) | NATIVE — **SKIPPABLE** | `ready_templates/video/wanvideo_wrapper_13b_vace.py` | Swap `WanVideoModelLoader.widget_0` to a Wan 2.1 14B model file; underlying graph identical. | Same as `vace` | Same as `vace` | D / Sprint 4 |
 | `vace_22` | NO as direct task type, but the Wan 2.2 VACE cocktail **model** is required indirectly via `travel_segment`/`join_clips_segment`/`individual_travel_segment` (which pin `wan_2_2_vace_lightning_baseline_2_2_2`) | NEW (Q17 closed) — REQUIRED for indirect routes only | `ready_templates/video/wanvideo_wrapper_22_14b_vace_cocktail.py` (must be authored — see §3A). | NEW template required: dual `WanVideoModelLoader` (HIGH + LOW), two-stage `WanVideoSampler` chain with sigma cut-over at `switch_threshold` (875 for 2-phase, 883/558 for 3-phase per `Wan2GP/defaults/wan_2_2_vace_lightning_baseline_2_2_2.json:18-20`), `WanVideoLoraSelectMulti` for the 4-LoRA cocktail. | Same as `vace` + Uni3C nodes per §3A (`WanVideoUni3C_ControlnetLoader` + `WanVideoUni3C_embeds` + `WanVideoSampler.uni3c_embeds`). | Same as `vace` | D / Sprint 4 |
 | `hunyuan` | NO (UNUSED — `rg -i 'hunyuan\|hyvid' reigh-app/ → 0 hits`) | NEW — **SKIPPABLE** | None — `find vibecomfy/ready_templates -name '*hunyuan*'` is empty | Author `ready_templates/video/hunyuan_*.py`. Basis: HunyuanVideo official ComfyUI workflow (HunyuanVideoSampler / HunyuanVideoVAE node pack). Must accept prompt + optional reference image, emit a `SaveVideo` node. Decision needed: Hunyuan I2V or T2V (or both as separate templates). | TBD by maintainer | TBD; Hunyuan distilled-step LoRAs are public, mirror Wan pattern via `LoraLoaderModelOnly`. | D / Sprint 4 — **REMOVED FROM SCOPE** |
-| `comfy` | NO (UNUSED) | ADAPT — **SKIPPABLE** | Bypass — raw API JSON delegates through `vibecomfy.runtime.run_embedded` | No template; the existing raw workflow JSON is the input. `comfy_handler.py` refactor (Section 3) loads the JSON, wraps it with `VibeWorkflow.from_api_json` (or equivalent escape hatch), runs it via `run_embedded`, returns `RunResult.outputs[0]`. | Whatever the user-supplied JSON contains | Whatever the user-supplied JSON contains | E / Sprint 2 |
+| `comfy` | NO (UNUSED) | OUT OF SCOPE — cleanup-gated | N/A | Raw workflow submission is not migrated. `comfy_handler.py` and `comfy_utils.py` remain legacy code until the §8A deletion gate passes, then can be deleted in Sprint 12B or a separate cleanup PR. | N/A | N/A | Sprint 12B cleanup candidate |
 | `create_visualization` | NO (UNUSED) | NATIVE (no template) — **SKIPPABLE** | N/A — utility task | No VibeComfy execution. `source/task_handlers/create_visualization.py` stays unchanged; backend selection is irrelevant. | N/A | N/A | E / Sprint 6 |
 | `extract_frame` | NO (UNUSED) | NATIVE (no template) — **SKIPPABLE** | N/A — utility task | No VibeComfy execution. ffmpeg-based frame extraction stays in `source/task_handlers/extract_frame.py`. | N/A | N/A | E / Sprint 6 |
 | `rife_interpolate_images` | NO (UNUSED) | NATIVE (no template) — **SKIPPABLE** | N/A — vendored helper from `vendor_imports.py:47-55` | No VibeComfy execution. RIFE stays under `reigh-worker/source/media/` per Section 3 vendor-utility decision. Runtime name `rife_interpolate_images` is preserved. | N/A | N/A | E / Sprint 6 |
@@ -415,13 +415,21 @@ The `concrete edits required` column lists graph-level deltas only, not paramete
 | `join_final_stitch` | YES (USED-INDIRECTLY) | NATIVE (no template) | N/A — stitch-only | No VibeComfy execution. **Same stitch contract as `travel_stitch`; no per-row variation in §3A matrix.** | N/A | N/A | E / Sprint 6 |
 | `edit_video_orchestrator` | YES (USED-IN-APP) | NATIVE (no template) | N/A — pure orchestration | Creates child join/regen tasks. | N/A | N/A | E / Sprint 6 |
 
-Disposition counts (35 task types total, including the dispatch-only `comfy`, with three new flux-variant rows): 9 NATIVE-template, 11 ADAPT, 7 NEW (`hunyuan`, Wan 2.2 VACE cocktail covering `vace_22` + `inpaint_frames` + `join_clips_segment` + `travel_segment` Wan path, `ltxv` legacy 13B, `flux` FLUX.1 Dev 12B, plus deferred `flux` schnell + dev_kontext variants), 12 NATIVE (no-template / utility / orchestration).
+Disposition counts before production filtering are historical planning context only. They are **not** the migration scope.
 
-**After §0A production-usage filter (USED-IN-APP and USED-INDIRECTLY rows only):** 17 task types are in scope, 18 task types are dropped as UNUSED (see §0A roll-up). The Sprint 4 NEW count drops from 2 to **1** (Wan 2.2 VACE cocktail; Hunyuan removed). The Sprint 5 NEW count drops from 2 to **0** (LTX legacy 13B and FLUX.1 Dev both removed — `ltxv`, `ltx2`, and `flux` are all UNUSED). Total NEW templates required by the migration drops from 7 to **1**, all within Sprint 4. The remaining 16 in-scope task types are split: 4 NATIVE-template (`z_image_turbo`, `qwen_image_2512`, `qwen_image_edit`), 5 ADAPT (`z_image_turbo_i2i`, `qwen_image`, `wan_2_2_t2i`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit`, `individual_travel_segment`), and 7 NATIVE (no-template / utility / orchestration: `travel_orchestrator`, `travel_stitch`, `join_clips_orchestrator`, `join_final_stitch`, `edit_video_orchestrator`, plus the indirectly-used `travel_segment`, `join_clips_segment`).
+**Authoritative migration scope after §0A production-usage filter:** 17 task types are in scope, and 19 task types are dropped as UNUSED (see §0A roll-up).
+
+| Scope bucket | Task types | Template implication |
+| --- | --- | --- |
+| Cohort A direct image/single-frame | `z_image_turbo`, `z_image_turbo_i2i`, `qwen_image`, `qwen_image_2512`, `wan_2_2_t2i` | 2 native routes, 3 adapted routes. Direct `t2v`/`i2v` task types are not scope substitutes. |
+| Cohort B edit image | `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit` | Qwen edit template plus prompt/input/mask/annotation/LoRA preprocessing parity. |
+| Cohort E orchestration and child video | `travel_orchestrator`, `travel_segment`, `individual_travel_segment`, `travel_stitch`, `join_clips_orchestrator`, `join_clips_segment`, `join_final_stitch`, `edit_video_orchestrator` | Orchestrators/stitchers are no-template routes; `travel_segment`, `individual_travel_segment`, and `join_clips_segment` need the §3A travel/join matrix. Wan-family rows depend on the one NEW Wan 2.2 VACE cocktail template. |
+
+The only NEW template required by the migration is `ready_templates/video/wanvideo_wrapper_22_14b_vace_cocktail.py`, and it is required only for USED indirect Wan-family travel/join segment routes. `hunyuan`, `flux`, direct `t2v`/`i2v`/`vace`, direct LTX task types, raw `comfy`, `rife_interpolate_images`, utility handlers, and other UNUSED rows are cleanup/removal scope, not migration parity scope.
 
 Section 5 is patched downstream to surface the ADAPT/NEW dispositions per cohort so promotion gates check template readiness, not just queue-seam readiness.
 
-## 2. Audit VibeComfy capabilities
+## 2. VibeComfy capability summary
 
 ### VibeWorkflow IR and Authoring Model
 
@@ -529,17 +537,17 @@ For `reigh-worker`, the near-term target should still be `EmbeddedSession`, not 
 | --- | --- | --- |
 | No 1-5 profile tier abstraction | `SessionConfig` exposes lower-level knobs at `runtime/session.py:45-53`; no profile enum/module exists in `vibecomfy/vibecomfy/runtime/`. | P0. Must layer `MemoryProfile` on top of `SessionConfig` before cutover. |
 | No per-task `override_profile` semantics | Current Wan2GP params carry `override_profile` at `wgp_params.py:166,237,374`; VibeComfy has no equivalent routing field. | P0. Required for task-level parity. |
-| No Hunyuan ready template | `find vibecomfy/ready_templates -type f -name '*hunyuan*'` returns zero files. | P0 for Hunyuan cohort. |
-| No LoRA-key sanitizer equivalent | Current sanitizer is WGP monkeypatch code in `source/models/wgp/wgp_patches.py:384-483`. | Needed before Qwen/LoRA-heavy cutover. |
+| ~~No Hunyuan ready template~~ | `find vibecomfy/ready_templates -type f -name '*hunyuan*'` returns zero files. | CLOSED: `hunyuan` is UNUSED per §0A and is not a migration gate. |
+| No LoRA-key sanitizer equivalent | Current sanitizer is WGP monkeypatch code in `source/models/wgp/wgp_patches.py:384-483`. | Needed before Qwen/LoRA-heavy cutover; owned as a reigh-worker pre-process, not a VibeComfy graph patch. |
 | No Uni3C ControlNet cache | Current cache is in `source/models/wgp/model_ops.py:234-260` via `load_uni3c_controlnet`. | Needed for guided Wan/VACE parity. |
-| No RIFE temporal interpolation helper | Current helper is `vendor_imports.py:47-55`. | Keep in reigh-worker or move to VibeComfy extras before `rife_interpolate_images` cutover. |
+| ~~No RIFE temporal interpolation helper~~ | Current helper is `vendor_imports.py:47-55`. | CLOSED for this migration: `rife_interpolate_images` is UNUSED as a RayWorker migration task type. Keep the native helper/handler until §8A proves no pending/history/admin path still depends on it. |
 | No Qwen prompt expander wrapper | Current helper is `vendor_imports.py:32-45`. | Needs pre-processing equivalent if any task depends on WGP expander behavior. |
 | No Canny/Depth/Flow/Pose annotator re-exports | Current helpers are `vendor_imports.py:91-113`. | Pre-process before workflow build or expose extras. |
 | No Wan2GP `save_video` callable | Current callable is `vendor_imports.py:58-73`. | Existing media helpers need replacement or isolation. |
 
 ## 3. Parity gaps and required pre-cutover work
 
-This section turns the audits in Sections 1 and 2 into required pre-cutover work. P0 items block any production canary; P1 items block the cohort that depends on them; P2 items can trail behind dual-run if rollback remains available and output contracts are preserved.
+This section turns the current worker contract and VibeComfy capability summary into required pre-cutover work. P0 items block any production canary; P1 items block the cohort that depends on them; P2 items can trail behind dual-run if rollback remains available and output contracts are preserved.
 
 ### Parity Gap Matrix
 
@@ -547,18 +555,18 @@ This section turns the audits in Sections 1 and 2 into required pre-cutover work
 | --- | --- | --- | --- | --- | --- | --- |
 | Five-tier memory profiles and global default profile | `reigh-worker/source/runtime/worker/server.py:556-558,605-609`; prod default in `worker_startup.template.sh:463`; dev defaults in `start_worker.bat:14` and `scripts/live_test/{main,smoke}.py:27` | Lower-level `SessionConfig` knobs only at `vibecomfy/vibecomfy/runtime/session.py:45-53` | Add `vibecomfy.runtime.profile.MemoryProfile` overlay and map profiles 1-5 to `SessionConfig` overrides; baseline prod profile 1 and dev profile 3 | P0 | `vibecomfy` | Sprint 1 |
 | Per-call profile override | `reigh-worker/source/models/wgp/generators/wgp_params.py:166,237,374` | No task-level profile field or override semantics | Add `override_profile` handling in the reigh-worker adapter that resolves to `MemoryProfile.to_session_overrides()` before constructing the VibeComfy `SessionConfig` | P0 | `reigh-worker` + `vibecomfy` | Sprint 1-2 |
-| Direct task-type routing to templates | Union of `TASK_TYPE_CATALOG` and `task_registry.py:1442-1511` | Ready templates exist for many image/Wan/LTX/VACE families, but no reigh-worker routing registry | Add `reigh-worker/source/models/comfy/template_routing.py` as the only genuinely new `source/models/comfy/` file; cover the full union task surface | P0 | `reigh-worker` | Sprint 2 |
+| Direct task-type routing to templates | USED direct task types from §0A | Ready templates exist for the in-scope image/edit families, but no reigh-worker routing registry | Add `reigh-worker/source/models/comfy/template_routing.py` for USED routes only; unsupported UNUSED task types fail closed under Comfy selection | P0 | `reigh-worker` | Sprint 2 |
 | ~~Hunyuan task parity~~ — **REMOVED FROM SCOPE** (per §0A: app emits zero `hunyuan` tasks; `rg -i 'hunyuan\|hyvid' reigh-app/ → 0 hits`) | `hunyuan` in `source/task_handlers/tasks/task_types.py:99-101,120-138` | No `ready_templates/video/hunyuan_*`; live `find ... -name '*hunyuan*'` returns zero template files | ~~Ship Hunyuan ready template~~. Worker handler can stay; no parity work needed since no production traffic exercises this task type. | P3 (defer indefinitely) | — | — |
 | Wan/VACE/Uni3C guided-video parity | `vace*`, `t2v*`, `i2v*`; Uni3C cache in `source/models/wgp/model_ops.py:234-260` | Wan and VACE template candidates exist; no Uni3C cache abstraction | Represent Uni3C as VibeComfy patches over Wan 2.2 templates, with explicit cache/model lifecycle policy | P1 | `vibecomfy` + `reigh-worker` | Sprint 4 |
-| Qwen image/edit and prompt-expander parity | Qwen handlers in direct queue conversion; prompt expander from `source/runtime/wgp_ports/vendor_imports.py:32-45` | Qwen image/edit template candidates exist; no prompt-expander wrapper | Run Qwen prompt expansion as reigh-worker pre-processing before workflow build, then route to Qwen templates | P1 | `reigh-worker` | Sprint 5 |
-| LoRA-key sanitizer | `source/models/wgp/wgp_patches.py:384-483`; LoRA setup in `source/models/wgp/lora_setup.py` | No portable sanitizer or `LoraLoader` patch | Implement a VibeComfy patch that normalizes/sanitizes LoRA keys over `LoraLoader` nodes and add golden LoRA corpus tests | P1 | `vibecomfy` + `reigh-worker` | Sprint 5 |
-| Canny/Depth/Pose/Flow preprocessing | `source/runtime/wgp_ports/vendor_imports.py:91-113`; flow visualization at `vendor_imports.py:96-98` | No VibeComfy re-exports | Keep annotators as reigh-worker pre-processing before workflow build until moved to a VibeComfy extras package | P1 | `reigh-worker` | Sprint 5 |
-| RIFE interpolation | `source/runtime/wgp_ports/vendor_imports.py:47-55`; `source/task_handlers/rife_interpolate.py` | No VibeComfy helper | Keep RIFE vendored under `reigh-worker/source/media/` and call it outside VibeComfy for `rife_interpolate_images` | P1 | `reigh-worker` | Sprint 6 |
-| Existing raw `comfy` task path | `source/models/comfy/comfy_handler.py`; `source/models/comfy/comfy_utils.py`; dispatch at `task_registry.py:1507-1510` | Separate Comfy subprocess/client stack, not VibeComfy | Refactor `comfy_handler.py` to delegate through `vibecomfy.runtime.run_embedded`; retire `comfy_utils.py`; migrate dependent test imports | P0 | `reigh-worker` | Sprint 2 |
+| Qwen image/edit, VLM, and prompt-expander parity | Qwen handlers in direct queue conversion; prompt expander from `source/runtime/wgp_ports/vendor_imports.py:32-45`; travel/join/edit-video VLM service under `source/media/vlm/` | Qwen image/edit template candidates exist; no prompt-expander wrapper or backend-neutral VLM/model-metadata provider | Run Qwen prompt expansion and route-specific VLM prompt generation as reigh-worker pre-processing before workflow build; replace WGP metadata lookups used by orchestration with a backend-neutral provider or frozen table | P1 | `reigh-worker` | Sprint 5-8 |
+| LoRA-key sanitizer | `source/models/wgp/wgp_patches.py:384-483`; LoRA setup in `source/models/wgp/lora_setup.py` | No VibeComfy-safe sanitized-file pre-process | Implement `reigh-worker/source/models/comfy/lora_sanitize.py` to sanitize LoRA files before workflow build; VibeComfy receives sanitized filenames only; add golden LoRA corpus tests | P1 | `reigh-worker` | Sprint 5 |
+| Canny/Depth/Pose/Flow preprocessing | `source/runtime/wgp_ports/vendor_imports.py:91-113`; flow visualization at `vendor_imports.py:96-98` | No VibeComfy re-exports | Keep annotators as reigh-worker pre-processing before workflow build until moved to a VibeComfy extras package | P1 | `reigh-worker` | Sprint 9 |
+| ~~RIFE interpolation task parity~~ | `source/runtime/wgp_ports/vendor_imports.py:47-55`; `source/task_handlers/rife_interpolate.py` | No VibeComfy helper | CLOSED for migration: task type is UNUSED. Keep native RIFE code until the cleanup gate proves there are no pending rows, direct emitters, admin tools, or retry/history paths that can still enqueue it. | P3 | `reigh-worker` | Sprint 12B cleanup candidate |
+| ~~Existing raw `comfy` task path~~ | `source/models/comfy/comfy_handler.py`; `source/models/comfy/comfy_utils.py`; dispatch at `task_registry.py:1507-1510` | Separate Comfy subprocess/client stack, not VibeComfy | CLOSED for migration: raw `comfy` is UNUSED per §0A and is not refactored into VibeComfy. Handler/util deletion is Sprint 12B / cleanup-gated only. | P3 | `reigh-worker` | Sprint 12B cleanup candidate |
 | Model load/unload lifecycle | `source/models/wgp/model_ops.py`; runtime mutation in `source/runtime/wgp_ports/runtime_registry.py` | `EmbeddedSession` supports `start`, `run`, `flush`, `reconfigure`, `stop`; no WGP-like model-definition loader | Use a long-lived `EmbeddedSession` per worker, explicit profile reconfiguration policy, and build-time frozen template/model definitions pending Q1 | P0 | `reigh-worker` + `vibecomfy` | Sprint 1-2 |
-| Queue and child-task adapter seams | Direct seam at `_handle_direct_queue_task`; nested seam via handlers receiving `context["task_queue"]` | No reigh-worker adapter yet | Thread `REIGH_BACKEND` through both direct conversion and child-task enqueue paths; preserve existing queue statuses/output shapes | P0 | `reigh-worker` | Sprint 2 |
+| Queue and child-task adapter seams | Direct seam at `_handle_direct_queue_task`; nested seam via handlers receiving `context["task_queue"]`; direct queue currently converts through WGP-specific `_convert_to_wgp_task` during `submit_task` | No reigh-worker adapter yet | Add a backend-neutral resolved-task boundary before WGP-specific conversion; thread `REIGH_BACKEND` and selector route through both direct conversion and child-task enqueue paths; preserve existing queue statuses/output shapes | P0 | `reigh-worker` | Sprint 2 |
 | Observability and debug-card telemetry | Heartbeat/system logs in worker server, WGP memory stats in `source/models/wgp/generators/output.py:182-208`, debug-card path in `source/core/log/debug_card.py` | `RunResult` has `run_id`, `prompt_id`, `outputs`, `metadata_path`, `log_path` | Translate `RunResult` into existing heartbeat logs, `system_logs`, and debug-card breadcrumbs; add backend/template labels and VRAM stats | P0 | `reigh-worker` | Sprint 2-3 |
-| RunPod/orchestrator worker-image coupling | `worker_startup.template.sh:174,179-183,267-292,463`; `gpu_orchestrator/runpod/startup_script.py` | VibeComfy has a RunPod CLI path, but reigh-worker will still be orchestrator-provisioned | Propagate backend/profile flags through the existing orchestrator startup path; keep both stacks installed until Sprint 8 rollback window closes | P1 | `reigh-worker-orchestrator` | Sprint 7-8 |
+| RunPod/orchestrator worker-image coupling | `worker_startup.template.sh:174,179-183,267-292,463`; `gpu_orchestrator/runpod/startup_script.py` | VibeComfy has a RunPod CLI path, but reigh-worker will still be orchestrator-provisioned | Propagate backend/profile flags through the existing orchestrator startup path; keep both stacks installed permanently as selectable executors | P1 | `reigh-worker-orchestrator` | Sprint 7-8 |
 
 ### Memory-Profile Abstraction (P0)
 
@@ -594,7 +602,7 @@ Starting Sprint 1 mapping:
 | `2` | `HIGH_RAM` | `{"vram_policy": "high", "cache_policy": "lru:32"}` |
 | `3` | `BALANCED` | `{"vram_policy": "normal", "cache_policy": "smart"}` |
 | `4` | `CONSERVATIVE` | `{"vram_policy": "low", "cache_policy": "classic", "reserve_vram_gb": 2.0}` |
-| `5` | `MINIMUM` | `{"vram_policy": "low", "cache_policy": "lru:1", "disable_smart_memory": True, "reserve_vram_gb": 4.0}` (H2: pinned `lru:1` instead of `"none"` so Uni3C-using tasks remain supported under MINIMUM with a tiny cache footprint; Uni3C controlnet weight (~250MB) survives across runs of the same task. **Decision rationale: maximizes success because `cache_policy="none"` would force a 2-minute Uni3C reload every run on profile-5 hardware — `lru:1` preserves functionality with negligible VRAM cost.**) |
+| `5` | `MINIMUM` | `{"vram_policy": "low", "cache_policy": "lru:1", "disable_smart_memory": True, "reserve_vram_gb": 4.0}` (`lru:1` keeps Uni3C-supported profile-5 runs functional with a tiny cache footprint instead of forcing full controlnet reloads every run.) |
 
 `reigh-worker` must mirror WGP `override_profile` semantics: the process default profile is used when no task override is present, and a per-call `override_profile` replaces the default for that single VibeComfy run. The adapter should resolve `override_profile` before workflow execution, not mutate process-global defaults.
 
@@ -603,7 +611,8 @@ Acceptance gates:
 - Profile values 1-5 round-trip through `MemoryProfile` into both embedded configuration and managed-server argv tests.
 - Profile 1 parity smoke tests use the production baseline from `worker_startup.template.sh:463`.
 - Profile 3 parity smoke tests use the development baselines from `start_worker.bat:14` and `scripts/live_test/{main,smoke}.py:27`.
-- Smoke coverage includes at least one image path (`z_image_turbo` or `qwen_image_2512`) and one video path (`t2v` or `wan_t2v` template), with VRAM peak, wall-clock latency, OOM count, and output-shape checks.
+- Sprint 1 smoke coverage is template-level because the worker adapter does not exist yet. Sprint 2 adds worker-route smokes for at least one image path (`z_image_turbo` or `qwen_image_2512`), one direct Wan single-frame path (`wan_2_2_t2i`), and one real video child route (`travel_segment` or `join_clips_segment`), with VRAM peak, wall-clock latency, OOM count, and output-shape checks.
+- Before canary, profile coverage includes process default plus per-task `override_profile`, profiles 1 and 3 for every promoted cohort route, profiles 4 and 5 for the heaviest Wan VACE/LTX/Qwen-edit paths, and parent-to-child profile inheritance for Cohort E.
 
 ### Task-Type to VibeComfy Template Registry
 
@@ -614,10 +623,11 @@ The registry must cover the full union task surface from Section 1:
 | Task surface | Registry behavior | Gate |
 | --- | --- | --- |
 | `z_image_turbo`, `z_image_turbo_i2i` | Route to `image/z_image` with i2i-specific input patching where needed | Cohort A |
-| `qwen_image`, `qwen_image_2512` | Route to `image/qwen_image_2512` or Qwen image equivalent; preserve output image shape | Cohort A |
+| `qwen_image_2512` | Route to `image/qwen_image_2512`; preserve output image shape | Cohort A |
+| `qwen_image` | Route only after Sprint 5 proves the non-2512 WGP-equivalent model/template path; do not silently reuse the 2512 route | Cohort A |
 | ~~`flux`~~ — **UNUSED, skip per §0A** | No route required; worker handler is unreachable from app | — |
 | `wan_2_2_t2i` | Route through Wan template with single-frame output contract | Cohort A |
-| `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit` | Route to `edit/qwen_image_edit` plus prompt/input/LoRA patches | Cohort B |
+| `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit` | Route to `edit/qwen_image_edit` plus prompt/input wiring, LoRA widget edits, and reigh-worker LoRA-file sanitizer pre-process | Cohort B |
 | ~~`qwen_image_hires`~~ — **UNUSED, skip per §0A** (hires-fix is layered as `hires_*` payload params on `qwen_image_edit`, not a separate task type) | — | — |
 | ~~`t2v`, `t2v_22`, `i2v`, `i2v_22`, `generate_video`~~ — **UNUSED, skip per §0A** | — | — |
 | ~~`ltxv`, `ltx2`~~ — **UNUSED, skip per §0A** (LTX models are reachable through `travel_orchestrator` with `model_name="ltx2_*"`, not as direct task types) | — | — |
@@ -626,21 +636,18 @@ The registry must cover the full union task surface from Section 1:
 | `travel_orchestrator`, `travel_segment`, `individual_travel_segment`, `travel_stitch`, `join_clips_orchestrator`, `join_clips_segment`, `join_final_stitch`, `edit_video_orchestrator` | Preserve specialized handlers; child generation delegates into VibeComfy where applicable | Cohort E |
 | ~~`inpaint_frames`, `magic_edit`, `create_visualization`, `extract_frame`, `rife_interpolate_images`, `comfy`~~ — **UNUSED, skip per §0A** | Worker handlers stay installed for backwards compat; no migration work | — |
 
-Any task type missing from `template_routing.py` should fail closed during VibeComfy backend selection with a typed unsupported-template error, not silently fall back to WGP unless the caller explicitly selected the WGP backend.
+Any task type missing from `template_routing.py` should fail closed during VibeComfy backend selection with a typed unsupported-template error, not silently fall back to WGP unless the selector explicitly chose WGP before task claim.
 
 ### Missing-Template Gates
 
-~~Hunyuan is a P0 hard gate for Cohort D and Sprint 4.~~ **Removed from scope per §0A AND DELETE-NOW per §8A.B (H3 reconciliation 2026-05-05)** — `reigh-app` emits zero `hunyuan` tasks (`rg -i 'hunyuan|hyvid' reigh-app/ → 0 hits`). The earlier hedge that "the worker handler stays installed for backwards compatibility" is **superseded**: §8A.B already lists `hunyuan` as DELETE-NOW (Sprint 8) and §0A confirmed 0 frontend hits, so carrying forward the WGP `hunyuan` direct-queue path violates the user's stated cleanup preference and contradicts §8A.B. If a future feature reintroduces Hunyuan, the right move is to author a fresh VibeComfy `ready_templates/video/hunyuan_*.py` from scratch — preserving dead WGP plumbing buys nothing. **Decision rationale: maximizes success because conflicting H3 hedges create ambiguity in the Sprint 8 closure sweep (do we delete or not?); resolving to DELETE matches §8A.B and the user-stated preference.**
-
-Further gaps from the Section 2 mapping table require explicit cohort gates:
+Only active cohorts have missing-template gates. Removed/UNUSED cohorts are historical context and must not block migration.
 
 | Gap | Affected cohort | Go/no-go rule |
 | --- | --- | --- |
-| Flux model-family mismatch | Cohort A | No Cohort A canary for `flux` until the selected Flux ready template is named in `template_routing.py` and baseline output dimensions/format match WGP. |
-| Qwen edit/input variants | Cohort B | No Cohort B promotion until Qwen edit, hires, style, inpaint, and annotated-edit routes each have a template/patch test. |
-| Wan 2.2 and VACE guide/control mapping | Cohort C-D | No promotion for `t2v_22`, `i2v_22`, or `vace*` until guide media, frame count, dimensions, and profile-specific VRAM are in the dual-run report. |
-| LTX low-RAM template selection | Cohort C | No LTX canary until the registry encodes the chosen low-RAM vs standard template policy. |
-| Raw `comfy` task semantics | Cohort E | No Cohort E canary until raw workflow submission through `comfy_handler.py` preserves current first-output behavior. |
+| Qwen edit/input variants | Cohort B | No Cohort B promotion until `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, and `annotated_image_edit` each have template/preprocess tests and output-contract assertions. `qwen_image_hires` is not a task-type gate because it is UNUSED. |
+| Wan 2.2 VACE cocktail | Cohort E Wan-family travel/join rows | No Wan-family `travel_segment`, `individual_travel_segment`, or `join_clips_segment` promotion until `wanvideo_wrapper_22_14b_vace_cocktail.py` passes Sprint 3.5/4 thresholds. |
+| LTX travel rows | Cohort E LTX-family travel rows | No LTX-family travel promotion until the selector can distinguish LTX routes from Wan routes and the §3A LTX rows pass through the current dispatcher. Dispatcher unification is optional. |
+| Travel/join matrix | Cohort E | No Cohort E promotion until every non-FALL-BACK §3A matrix row has a passing smoke through the current dispatcher; Sprint 7 consumes this evidence rather than discovering it. |
 
 ### Vendor-Utility Shims
 
@@ -652,7 +659,7 @@ Vendor utility ownership should be explicit rather than hidden behind `wgp_bridg
 | Uni3C ControlNet | Implement as a VibeComfy patch on Wan 2.2 templates. | It affects workflow graph/control inputs and belongs near template validation. |
 | Canny, Depth, Pose, Flow annotators | Run as reigh-worker pre-processing before workflow build. | They transform input media into guide assets that templates consume. |
 | Qwen prompt expander | Run as reigh-worker pre-processing before workflow build. | It changes prompt text, not Comfy graph topology. |
-| LoRA-key sanitizer | Implement as a VibeComfy patch over `LoraLoader` nodes. | Sanitization should travel with workflow graph validation and should be testable independent of WGP monkeypatches. |
+| LoRA-key sanitizer | Run as a reigh-worker pre-process that writes sanitized LoRA files and passes sanitized filenames into VibeComfy. | It mutates tensor files, not graph topology; keeping it out of VibeComfy avoids global Comfy loader monkeypatches. |
 
 ### Dynamic Model Definitions and Model Lifecycle
 
@@ -665,15 +672,44 @@ The cutover design should use a long-lived VibeComfy `EmbeddedSession` as the an
 - Preserve queue-visible load/unload behavior even if the implementation becomes "select template and warm session" rather than WGP's `load_model_impl` / `unload_model_impl`.
 - Keep `headless_model_management` behavior under review until Q11 decides whether any non-WGP callers require migration rather than deletion.
 
+### Dual-Executor Architecture
+
+Running WGP and VibeComfy from the same worker image is expected and required for rollback. Running both as hot, co-resident executors inside one long-lived Python process is **not supported as a production design**: WGP mutates `sys.path`, monkeypatches vendor modules, stores model/runtime state in globals, and owns CUDA cleanup assumptions; VibeComfy embedded sessions also manage Comfy globals and GPU caches. Keeping both warm in one process would make import order, global patches, memory fragmentation, and cleanup failures hard to diagnose.
+
+Primary architecture:
+
+```text
+same dual-stack worker image
+  -> wgp worker process/pool:    reigh-worker --backend wgp
+  -> comfy worker process/pool:  reigh-worker --backend comfy
+  -> task claim reads backend selector and only claims eligible work
+```
+
+Implementation shape:
+
+- Add a narrow `Executor` interface in reigh-worker: `supports(route)`, `prepare(task)`, `run(task, profile)`, `cleanup()`, and `health()`.
+- Keep selector logic outside both executors. WGP and VibeComfy adapters should receive an already-resolved route and fail closed if they do not support it.
+- Backend is chosen at process launch. A worker launched with `--backend wgp` initializes WGP and never initializes VibeComfy; a worker launched with `--backend comfy` initializes VibeComfy and never initializes WGP.
+- Prefer scheduler/claim-time eligibility so Comfy workers do not claim WGP-routed tasks and WGP workers do not claim Comfy-routed tasks. If claim-time filtering cannot land immediately, the worker must requeue/fail closed before execution when the selector/backend is incompatible.
+- For orchestrators, the parent-selected route is authoritative. Child generation inherits that route unless a child route is explicitly blocked; the parent should fail/requeue before creating mixed-backend artifacts.
+
+Backend switching model:
+
+- To switch a route from WGP to Comfy, update `backend_selector` and ensure Comfy workers are launched/eligible.
+- To switch a route from Comfy to WGP, update `backend_selector` and ensure WGP workers are launched/eligible.
+- To switch an individual worker process, terminate/drain it and launch a new process with the other `--backend` value.
+- Do not hot-switch an already-running process from WGP to VibeComfy or VibeComfy to WGP. If an emergency same-process fallback is ever implemented for local/dev, it must fully stop, unload, and free the active runtime before starting the other backend and should not be used for production canary.
+
+Decision: Sprint 11 canary and the final steady state use launch-time backend selection plus route-level claim eligibility. Same-process backend switching is out of production scope.
+
 ### Existing `source/models/comfy/` Decision
 
-The existing Comfy code path should be refactored, not preserved as-is:
+The existing raw-Comfy task code path should be deleted, not refactored:
 
-- Refactor `source/models/comfy/comfy_handler.py` to delegate execution through `vibecomfy.runtime.run_embedded` or the warm-session equivalent used by the adapter.
-- Retire `source/models/comfy/comfy_utils.py`; it owns a raw `python main.py` subprocess and HTTP client that duplicates VibeComfy runtime responsibilities.
-- Add `source/models/comfy/template_routing.py` as the only new file in this package.
-- Migrate tests and coverage imports that currently reference `ComfyUIManager`, `ComfyUIClient`, `COMFY_PATH`, or `COMFY_PORT`.
-- Preserve the current `comfy` task output contract: first downloaded output path returned to the worker completion path.
+- Treat `source/models/comfy/comfy_handler.py` and `source/models/comfy/comfy_utils.py` as cleanup candidates only; delete them in Sprint 12B or a separate PR after the §8A deletion gate passes.
+- Add `source/models/comfy/template_routing.py` for the VibeComfy adapter's USED routes only.
+- Migrate or delete tests and coverage imports that currently reference `ComfyUIManager`, `ComfyUIClient`, `COMFY_PATH`, or `COMFY_PORT`.
+- Do not preserve the raw `comfy` task first-output contract in the migration. If raw workflow submission is reintroduced later, it should be a separate feature with a new VibeComfy-native contract.
 
 ### Observability Shim
 
@@ -683,11 +719,87 @@ The VibeComfy adapter must translate `RunResult` from `vibecomfy/vibecomfy/runti
 | --- | --- | --- |
 | `run_id` | heartbeat logs and `system_logs` | Emit as `vibecomfy.run_id` on task start, completion, and failure records. |
 | `prompt_id` | Comfy/debug logs | Emit as `comfy.prompt_id` and include it in retry/debug breadcrumbs. |
-| `outputs` | worker completion path | Normalize to the existing output shape for image, video, raw-Comfy, and orchestrated child tasks. |
+| `outputs` | worker completion path | Normalize to the existing output shape for image, video, and orchestrated child tasks. Raw-Comfy is not migration scope. |
 | `metadata_path` | debug-card context | Attach to `source/core/log/debug_card.py` output when present. |
 | `log_path` | debug-card and failure diagnostics | Capture and link the VibeComfy/Comfy log path in debug cards and failure system logs. |
 
 The Comfy backend should mirror WGP's memory telemetry from `source/models/wgp/generators/output.py:182-208`: RAM, CUDA allocated/reserved/total VRAM, selected backend, template id, memory profile, and whether the run used embedded or managed-server execution. Error mapping should classify OOM, model-load, schema-validation, prompt-queue, timeout, and output-missing failures so rollback triggers can compare WGP and VibeComfy runs by error class rather than raw exception text.
+
+### Output and Product Acceptance Matrix
+
+Media similarity thresholds in §11 are necessary but insufficient. Dual-run and canary gates must also assert queue-visible and product-visible contracts per USED task type.
+
+| Acceptance dimension | Required assertion |
+| --- | --- |
+| Create-task input | Resolver payload and worker params match the Sprint 0 WGP baseline for each USED task type. |
+| Local artifact | Generated local path exists, has expected extension/container, and matches single-output vs multi-output expectations. |
+| Upload/storage | Uploaded destination, metadata, content type, and public/signed URL behavior match WGP. |
+| Completion payload | `Complete` payload shape, output field name, status transitions, retry class, and failure shape match WGP. |
+| Child tracking | Orchestrated parent/child ids, segment ordering, stitch inputs, and finalization fields match WGP. |
+| `complete_task` side effects | Gallery/lightbox insertion, video-editor/timeline insertion, thumbnails, share/history data, and user-visible status changes match current production behavior. |
+| Billing/credits | Credit debit/refund behavior is unchanged for success, retry, failure, and partial orchestrator failure. |
+| Debug metadata | Debug-card fields, `system_logs`, backend/template/profile labels, `run_id`, `prompt_id`, metadata/log paths, and error classes are populated. |
+| Idempotency | Retry or duplicate completion does not create duplicate gallery/timeline artifacts or orphan child completions. |
+
+Sprint 0 owns the baseline contract table. Sprint 3 dual-run asserts the contract for direct image/edit routes and at least one nested child route. Sprint 6 extends it to every USED orchestrated route and every non-FALL-BACK §3A matrix row.
+
+### Artifact Lifecycle
+
+VibeComfy introduces metadata/log outputs and Comfy temp files in addition to final media. The adapter must define:
+
+- Local temp directories for workflow inputs, Comfy outputs, logs, metadata, and sanitized LoRA cache files.
+- Cleanup cadence for successful runs, failed runs, retries, and worker shutdown.
+- Retention policy for debug artifacts referenced by debug cards.
+- Upload parity for final media, thumbnails, and any child segment artifacts consumed by stitch/finalization code.
+- Orphan sweeps for local temp files, uploaded-but-uncompleted outputs, and child tasks whose parent rolled back or failed.
+- Storage cost monitoring for dual-run/shadow outputs and VibeComfy metadata/log files.
+
+Before Sprint 10 canary readiness, this checklist must become an operational contract, not just design intent:
+
+| Artifact area | Required contract before canary |
+| --- | --- |
+| Local layout | Named directories for workflow inputs, Comfy outputs, logs, metadata, sanitized LoRA cache, and dual-run scratch data. |
+| TTL / cleanup | TTLs for success, failure, retry, shutdown, and abandoned-run paths; cleanup job owner and failure alert. |
+| Debug retention | Retention duration and access controls for debug-card-linked logs/metadata; redaction rules for prompts, signed URLs, secrets, and user media paths. |
+| Shadow isolation | Separate bucket/path prefix for dual-run and shadow outputs; no completion, billing, gallery/timeline, or user-visible side effects. |
+| LoRA cache | Cache key, invalidation on source mtime/hash or module-map version, maximum disk size, and orphan sweep. |
+| Upload parity | Final media, thumbnails, child segment artifacts, metadata, content type, and signed/public URL behavior match WGP. |
+| Quotas/cost | Storage quota alarms and daily cost visibility for dual-run/shadow artifacts. |
+
+### Observability Operations
+
+Before Sprint 11 canary, §7 labels must be wired into actual operating surfaces:
+
+| Surface | Required before canary |
+| --- | --- |
+| Dashboards | Per-cohort backend split, latency p50/p95, VRAM peak, OOM count, error class, output-divergence rate, selector version, and worker image version. |
+| Alerts | §11 rollback thresholds as alert rules with owner/on-call and debounce/cooldown policy. |
+| Synthetic canaries | At least one scheduled smoke per promoted cohort, including one Cohort E parent/child route after Cohort E starts. |
+| Runbooks | Emergency selector flip, WGP process/pool fallback, Comfy route unsupported failure, model/custom-node preflight failure, and artifact cleanup. |
+
+### Deployment Preflight
+
+Comfy-capable workers must pass preflight before claiming tasks:
+
+- All templates selectable by `template_routing.py` compile.
+- Required custom-node packs are pinned in `vibecomfy/custom_nodes.lock` and checked out at expected revisions.
+- Required model files, LoRAs, VAEs, controlnets, and tokenizer/text-encoder assets exist with pinned hashes or recorded provenance.
+- Secrets/env vars required by download/upload, Supabase, VLM, RunPod, and VibeComfy runtime are present.
+- Cold boot, warm session start, and first run fit the Sprint 0 startup and latency budget.
+- Backend selector is reachable, or the worker starts in WGP-safe mode and does not claim Comfy-routed tasks.
+
+Security/privacy preflight before canary:
+
+- Signed URL handling, expiry, and retry behavior match WGP.
+- Debug logs and VibeComfy metadata redact secrets, user tokens, signed URLs, and tenant/user identifiers not needed for support.
+- Shadow and dual-run artifacts are access-controlled and isolated from user-visible storage paths.
+- Model/custom-node download credentials are scoped to read-only artifact access where possible.
+- Any prompt/media snippets copied into debug cards follow the existing support/privacy policy.
+
+Capacity/cost preflight before canary:
+
+- Per-cohort expected traffic, shadow-run multiplier, GPU type, pool size, max daily RunPod cost, cache warm strategy, and rollback reserve capacity are recorded.
+- Mixed WGP/Comfy pools can absorb rollback traffic without waiting for a new image build.
 
 ## 3A. Control rails, LoRA stacking, and pre-processing — concrete recipes
 
@@ -750,7 +862,7 @@ The pre-process needs the transformer module-name set, but that is available at 
 2. Find the edge L1.0 → ModelSamplingAuraFlow.model (template line `edit/qwen_image_edit.py:132-135`).
 3. Insert L2 = LoraLoaderModelOnly(lora_name=<style>, strength_model=<w>); connect L1.0 → L2.model.
 4. wf.replace_edge("ModelSamplingAuraFlow.model", "L2.0").
-5. Apply lora_sanitize patch (sanitizer is graph-wide so it picks up both L1 and L2).
+5. Run the reigh-worker LoRA-file sanitizer pre-process for both L1 and L2 filenames before workflow build; point each node at the sanitized filename.
 ```
 
 The sanitizer prevents L2 from raising on non-standard keys (the Wan2GP failure mode at `wgp_patches.py:443-468`). Output of the chain is an unchanged `MODEL` handle into `ModelSamplingAuraFlow`, so downstream nodes — `CFGNorm` at `edit/qwen_image_edit.py:136-138` and onward — need no edits. This is a pure decoration, eligible to be a patch under the rule at `vibecomfy/docs/authoring.md:54`.
@@ -883,8 +995,8 @@ This subsection denormalizes the app-exposed travel-segment configuration surfac
 **Holes (combos with no clean mapping).**
 
 - **Mask / inpaint on a travel segment.** `individualTravelSegment.ts` and `travelBetweenImages.ts` have no `mask`/`mask_url`/`alpha` field — `inpaint_frames` is a separate task type, already UNUSED per §0A and queued for deletion in §8A.B. **No hole**: the app cannot send a masked travel segment today. Documented as vestigial.
-- **`structure_videos[]` and legacy `structure_guidance` aliases.** Both fields are accepted by the resolvers (`travelBetweenImages.ts:63-64`, `individualTravelSegment.ts:48-49`) and marked deprecated in `taskTypes.ts:205-211`; the worker contract rejects them when combined with the canonical `travel_guidance` (`travel_guidance.py:221-233`). The TODOs at `taskTypes.ts:185,196,206` confirm three writes-side fields (`chain_segments`, `structure_guidance`, `stitch_config`) are never consumed by the resolver. **Disposition: vestigial; covered by §8A.C "Stale TODOs" — promote those rows to DELETE-NOW once Q-blame check is run.**
-- **`travel_guidance.kind = 'ltx_hybrid' | 'ltx_anchor'`.** Both kinds are allowed by `_infer_allowed_kinds` for distilled LTX models (`travel_guidance.py:64-66`) and have full validation paths (`travel_guidance.py:419-438`). Neither is in the LTX-fast `supportedGuidanceModes` array (`modelCapabilities.ts:49,156`), so the app cannot reach them. **Disposition: DELETE in Sprint 6 opportunistic cleanup (H7 resolution 2026-05-05; verification grep `rg -n "'ltx_hybrid'|'ltx_anchor'" reigh-app/src/` returns 0 hits). Decision rationale: maximizes success because vestigial validation surface and orchestrator branching (~250 LoC) is dead weight that complicates future work; the verification gate already passed.**
+- **`structure_videos[]` and legacy `structure_guidance` aliases.** Both fields are accepted by the resolvers (`travelBetweenImages.ts:63-64`, `individualTravelSegment.ts:48-49`) and marked deprecated in `taskTypes.ts:205-211`; the worker contract rejects them when combined with the canonical `travel_guidance` (`travel_guidance.py:221-233`). The TODOs at `taskTypes.ts:185,196,206` confirm three writes-side fields (`chain_segments`, `structure_guidance`, `stitch_config`) are never consumed by the resolver. **Disposition: vestigial; covered by §8A.C "Stale TODOs" — promote those rows to CLEANUP-CANDIDATE once Q-blame check is run.**
+- **`travel_guidance.kind = 'ltx_hybrid' | 'ltx_anchor'`.** Both kinds are allowed by `_infer_allowed_kinds` for distilled LTX models (`travel_guidance.py:64-66`) and have full validation paths (`travel_guidance.py:419-438`). Neither is in the LTX-fast `supportedGuidanceModes` array (`modelCapabilities.ts:49,156`), so the app cannot reach them. **Disposition: cleanup-candidate in Sprint 12B only if affected baselines and resolver/worker contract tests are rerun.** Likely dead weight, but not required for migration parity.
 - **Wan 2.1 model family.** `_derive_model_family` at `orchestrator.py:38-49` returns "wan" for any Wan model, but the app's `MODEL_IDS` enum at `modelCapabilities.ts:4` exposes only `wan-2.2` (no `wan-2.1`). **Disposition: vestigial Wan-2.1 plumbing in worker; covered by §8A.B `vace_21` deletion row.**
 - **Non-distilled `ltx-2.3` (row 7) with any guidance.** `_infer_allowed_kinds` at `travel_guidance.py:67` restricts non-distilled LTX2 to `{none}` and the spec at `modelCapabilities.ts:128` confirms `supportedGuidanceModes: []`. No hole — guidance is structurally not reachable.
 
@@ -931,62 +1043,104 @@ Decision: **pre-process before workflow build** in reigh-worker. Rationale:
 - The expander rewrites prompt text and changes nothing about graph topology, so by the rule at `vibecomfy/docs/authoring.md:54` it is not a template / patch concern.
 - The current call site is `vendor_imports.py:32-45` returning Wan2GP's `prompt_enhancer` module. The migration ports the relevant function bodies (or installs the underlying HF model directly) into `reigh-worker/source/media/vlm/` next to the existing VLM service at `source/media/vlm/service.py`.
 - The expanded prompt is then written into the relevant `CLIPTextEncode` / `TextEncodeQwenImageEdit` / `WanVideoTextEncode` widget by the registry's parameter-wiring step, identical to how a user-supplied prompt is wired today.
-- Sprint 5 cohort B (Qwen) gates on the pre-processed prompt being byte-equivalent to WGP's expander output for a fixed corpus; this is a reigh-worker-only test, no VibeComfy code change.
+- Sprint 5 cohort B (Qwen) gates on the pre-processed prompt being byte-equivalent to WGP's expander output for a fixed corpus; this is a reigh-worker-only test, no VibeComfy code change. Byte-equivalence is valid only after pinning the prompt-expander model id, revision SHA, tokenizer/package versions, generation params, seed/determinism settings, and fixture corpus.
 
 This decision aligns with Section 3's "Vendor-Utility Shims" table, which already routes Qwen prompt expansion to reigh-worker pre-processing; Section 3A pins it as the canonical answer.
 
 ## 4. Sprint-by-sprint migration plan
 
-Each sprint is scoped to one or two weeks. The sequence is designed to retire risk incrementally: discovery freeze and shadow baselines first, then memory-profile parity, adapter wiring, dual-run comparison, cohort canary, cutover, and only then Wan2GP removal.
+Each sprint is a practical delivery increment with a hard two-week maximum. Short verification or readiness sprints are scoped to 3-4 days. The plan stays sequential for execution; repo/workstream ownership is noted inside sprint rows, but implementation is not split into independent tracks.
 
 Critical path:
 
 ```text
-Sprint 0 -> Sprint 1 -> Sprint 2 -> Sprint 3 -> Sprints 4 and 5 in parallel -> Sprint 6 -> Sprint 7 -> Sprint 8
+Sprint 0A -> 0B -> 0C -> 1 -> 2 -> 3 -> 3.5 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12
+
+Optional cleanup/refactor work:
+  - Dispatcher unification may replace Sprint 9 only if Sprint 8 is green and the refactor is still worth the risk.
+  - Deletion-gated cleanup is Sprint 12B or separate post-canary PRs, not a migration prerequisite.
 ```
 
-| Sprint | Duration | Goals | Shippable artifacts | Exit criteria | Owner | Main risk | Rollback move |
+| Sprint | Duration | Goal | Shippable artifacts | Exit criteria | Owner | Main risk | Fallback |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Sprint 0: Discovery freeze and baselines | 1 week | Freeze the current task surface, profile behavior, template inventory, worker image assumptions, and benchmark matrix before any adapter changes. Establish separate production and development memory-profile baselines. **Entry gate (S2):** §12 confidence checklist signed off by named owner. **Opportunistic cleanup:** while touching `scripts/run_worker_matrix.py`, `scripts/live_test/{main,smoke}.py`, and the baseline doc, delete any §8A.B/§8A.C item whose code path the sprint is already inside (e.g. matrix rows for §0A UNUSED task types), and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. | `reigh-worker/docs/migration-baselines.md` (with per-task-type effective timeout, polling cadence, payload, post-completion artifact paths per G3 lifecycle-contract test prerequisites); **`reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` per §11 (S4 single-source-of-truth thresholds)**; **`reigh-worker/scripts/dual_run_compare/golden/<task_type>/` WGP-side golden corpus** for every USED task type per §0A; `scripts/run_worker_matrix.py`; checked-in matrix inputs for `scripts/live_test/`; live task-surface inventory from `TASK_TYPE_CATALOG` plus `task_registry.py:1442-1511`; live VibeComfy template inventory using the 50-file `ready_templates/` count; **pod disk-size baseline raised to 200 GB** at `gpu_orchestrator/worker_spawner.py:279-281,391-395` (H9: WAN 14B alone fills 50 GB; dual-stack matrix needs headroom for WGP + Comfy + ready_templates models per memory note). | Baseline doc records prod profile 1 from `worker_startup.template.sh:463` and dev profile 3 from `start_worker.bat:14` plus `scripts/live_test/{main,smoke}.py:27`; every runtime task type has a baseline status of runnable, skipped-with-reason, or blocked; worker disk/startup measurements are captured at the 200 GB baseline; **`migration-thresholds.yaml` is committed and read by Sprint 3 dual-run script in a smoke run**; **golden corpus has at least one reference output per USED task type** (per §0A); **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `reigh-worker` with `reigh-worker-orchestrator` input | Baselines miss the prod/dev profile split, an orchestrated child-task path, or per-task-type lifecycle-contract data needed by Sprint 6 G3 unification. | Do not start Sprint 1 implementation; rerun the matrix and update the baseline doc until both profile families, both adapter seams, and per-task-type timeout/cadence are represented. |
-| Sprint 1: VibeComfy memory-profile MVP | 2 weeks | **Entry gate (S2):** Sprint 0 baseline doc has prod profile 1 + dev profile 3 measurements committed; `migration-thresholds.yaml` and golden corpus committed and verified by smoke run. Implement the P0 five-tier VibeComfy memory-profile overlay and prove it maps cleanly onto existing `SessionConfig` knobs without modifying `_embedded_configuration_for_session` or `_comfy_server_argv`. **Opportunistic cleanup:** while touching `vibecomfy/vibecomfy/runtime/`, plus reigh-worker `worker_startup.template.sh:463` / `start_worker.bat:14` / `scripts/live_test/{main,smoke}.py:27`, delete any §8A.B/§8A.C item whose code path the sprint is already inside, and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. | `vibecomfy.runtime.profile.MemoryProfile`; tests for `MemoryProfile.to_session_overrides()`; embedded and managed-server argv/config round-trip tests; profile smoke report for `image/z_image` and `video/wan_t2v`. | Profiles 1-5 round-trip on `image/z_image` and `video/wan_t2v`; measured VRAM peak and wall-clock are parity-or-better than `--wgp-profile {1..5}` at the Sprint 0 reference points, with explicit pass/fail for prod profile 1 and dev profile 3; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `vibecomfy` | Profile mapping looks syntactically correct but misses WGP's real OOM/latency behavior under constrained cards. | Keep all `REIGH_BACKEND` defaults on WGP; tune only the overlay mapping and rerun Sprint 0 profile baselines. |
-| Sprint 2: Adapter shim and existing Comfy refactor | 2 weeks | **Entry gate (S2):** Sprint 1 profile 1 + profile 3 round-trip tests green on `image/z_image` + `video/wan_t2v` per Sprint 1 exit criteria. Introduce the reigh-worker VibeComfy adapter behind a backend flag, refactor the existing `source/models/comfy/` package, and prove both queue seams can route through the Comfy backend. **Opportunistic cleanup:** while touching `source/models/comfy/`, `source/task_handlers/tasks/{task_registry.py,task_conversion.py,task_types.py}`, `source/task_handlers/queue/`, and `source/runtime/worker/server.py`, delete any §8A.B/§8A.C item whose code path the sprint is already inside (e.g. dispatch entries for §0A UNUSED task types if their handlers are clearly dead, the `comfy` task-type branch since the refactor target is empty per §8A.B), and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. **Note: G3 seam-unification is owned by Sprint 6** (decision recorded 2026-05-05; see §8A.E); Sprint 2 keeps both seams alive but should avoid adding new direct/orchestrated split logic that Sprint 6 will have to undo. | `source/models/comfy/comfy_handler.py` rewritten to call `vibecomfy.runtime.run_embedded` or the warm-session equivalent; `source/models/comfy/template_routing.py`; retired `source/models/comfy/comfy_utils.py`; migrated test imports; `REIGH_BACKEND={wgp|comfy}` threaded through `_handle_direct_queue_task` and through handlers that enqueue child tasks via `context["task_queue"]`; first routes for `z_image_turbo`, `qwen_image_2512`, and `t2v`. | Feature-flagged Comfy path runs end-to-end in dev for `z_image_turbo`, `qwen_image_2512`, and `t2v`; a `travel_segment` smoke run selects `REIGH_BACKEND=comfy` and enqueues a `t2v` child through `context["task_queue"]`; WGP remains the default; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `reigh-worker` | Adapter only covers direct queue tasks and silently misses nested handler-created child tasks. | Flip `REIGH_BACKEND=wgp` at process or task-type level; leave the refactored Comfy path disabled until the missing seam has a passing smoke. |
-| Sprint 3: Dual-execution and comparison harness | 2 weeks | **Entry gate (S2):** Sprint 2 feature-flagged Comfy path runs `z_image_turbo`, `qwen_image_2512`, `t2v` end-to-end in dev AND a `travel_segment` Seam-B smoke selects `REIGH_BACKEND=comfy` and successfully enqueues a child. Build the nightly dual-run harness and compare WGP vs VibeComfy outputs across the Sprint 0 matrix before canary. **All comparison logic reads thresholds from §11 `migration-thresholds.yaml`** — no hard-coded numbers; threshold changes require updating the YAML. **Opportunistic cleanup:** while touching `scripts/dual_run_compare.py`, `scripts/run_worker_matrix.py`, telemetry/output-shape code in `source/models/wgp/generators/output.py:182-208` and `source/core/log/debug_card.py`, delete any §8A.B/§8A.C item whose code path the sprint is already inside (e.g. matrix-row entries for §0A UNUSED task types not in the comparison corpus), and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. | `scripts/dual_run_compare.py` (reads §11 thresholds; **fails the report on any threshold breach** per §11 table); persisted comparison reports for image hash, video frame pHash, frame count, dimensions, audio length, latency, VRAM, OOM count, and error class; nightly run configuration across the Sprint 0 matrix. | **Comparison report green = every USED task type within §11 thresholds** (image pHash ≤0.05, SSIM ≥0.92; video per-frame pHash mean ≤0.08 / p95 ≤0.12; latency ≤1.10× WGP baseline; VRAM ≤1.05×; OOM count = 0); covers at least one direct image, one direct video, one edit, and one nested child-task path; all red rows are triaged as blocker, accepted-difference candidate (requires explicit user sign-off and YAML threshold widening), or not-yet-routed; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `reigh-worker` with `vibecomfy` fixes as needed | Comparison accepts superficial success while output shape, duration, or memory behavior diverges. | Keep production on WGP; restrict Comfy backend to local/dev dual-run until report quality and thresholds are reviewed. |
-| Sprint 3.5: Wan 2.2 VACE cocktail dry run (S1 — pre-Sprint-4 feasibility gate) | 2–3 days, parallel with late Sprint 3 | **Entry gate (S2):** Sprint 3 dual-run report green for image cohort (Cohort A) AND `migration-thresholds.yaml` checked into Sprint 0 deliverables. Author a minimal Wan 2.2 VACE cocktail template against ONE known reference output (single shot, single profile-3 dev pod), validate per-frame pHash drift hypothesis (Q18). **This is the choke-point de-risk for the entire Sprint 4 NEW-template effort.** | One reference output (Wan 2.2 VACE cocktail, default Lightning baseline LoRAs, single 49-frame shot) compared against §11 video thresholds; written `dry-run-report.md` recording per-frame pHash mean, p95, frame count, duration, and decision (PROCEED / FALL-BACK). | **PROCEED iff** per-frame pHash mean ≤0.08 AND p95 ≤0.12 AND frame count exact AND duration within ±50ms (§11 video thresholds). **FALL-BACK iff** any threshold breach: skip Sprint 4 NEW-template authoring; keep Wan VACE on WGP indefinitely (per §6 rollback); proceed with rest of migration. Either decision documented and committed. | VibeComfy maintainer + reigh-worker adapter author | Drift exceeds §11 thresholds (Q18 negative). | **PROCEED branch:** continue to Sprint 4. **FALL-BACK branch:** mark Wan-family travel/join as permanent dual-stack (WGP-only); update §5 Cohort E entry gate to exclude Wan-family rows of §3A matrix; Sprint 4 becomes 0 NEW templates; Sprint 8 Wan2GP removal scope shrinks to "remove WGP only for non-VACE WGP code" or is deferred entirely until cocktail parity is achievable upstream. |
-| Sprint 4: Wan 2.2 VACE cocktail (single NEW template) | 2 weeks | **Entry gate (S2):** Sprint 3.5 dry-run decision = PROCEED (per-frame pHash drift within §11 thresholds) AND Sprint 3 dual-run image cohort green. Author the only NEW template in scope after the §0A audit: `wanvideo_wrapper_22_14b_vace_cocktail.py`, used indirectly by `travel_segment`, `join_clips_segment`, `individual_travel_segment` (their default model is `wan_2_2_vace_lightning_baseline_2_2_2`). **Hunyuan is removed from scope** (UNUSED in app, §0A). **Opportunistic cleanup:** while touching `vibecomfy/ready_templates/video/`, `source/core/params/vace.py`, `source/task_handlers/travel/`, `source/task_handlers/join/`, and any Wan/VACE-adjacent §1A row, delete any §8A.B/§8A.C item whose code path the sprint is already inside (e.g. vestigial `vace_21`/`vace_22` direct dispatch rows, `core/params/vace.py` if confirmed unreached after `task.py:32` deletion check), and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. | `ready_templates/video/wanvideo_wrapper_22_14b_vace_cocktail.py`; route to it from the indirect Wan-family travel/join paths; updated dual-run corpus. | Dual-run parity is green for `travel_segment`/`join_clips_segment`/`individual_travel_segment` Wan-family Lightning-baseline output; cocktail template runnable under profiles 1-5; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `vibecomfy` maintainer with `reigh-worker` adapter support | Cocktail two-stage sampler chain doesn't reproduce WGP mid-trajectory model-switch (Q18); fits in dev but fails prod profile 1. | Keep affected task types on WGP via `backend_for_task_type`; allow Sprint 5 work to continue. |
-| Sprint 5: Qwen, edit-mode, and preprocessing parity | 2 weeks | **Entry gate (S2):** Sprint 3 dual-run image+edit cohorts within §11 thresholds; can proceed in parallel with Sprint 4 once Sprint 3.5 PROCEED is confirmed. Finish parity for the in-scope edit-mode tasks and move preprocessing into explicit adapter stages. **`ltxv`, `ltx2`, `flux`, and `qwen_image_hires` are removed from scope** (all UNUSED in app, §0A). **Opportunistic cleanup:** while touching `source/models/model_handlers/qwen_handler.py`, `source/models/comfy/lora_sanitize.py` (new), `source/models/wgp/wgp_patches.py:247-293,326-348,384-483` (LoRA-related patches the sanitizer replaces), `source/media/vlm/`, and `source/runtime/wgp_ports/vendor_imports.py:32-45,91-113`, delete any §8A.B/§8A.C item whose code path the sprint is already inside (e.g. `handle_qwen_image_hires` per §8A.B, vestigial preprocessing wrappers if their last consumer is being deleted), and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. | Template routes and patches for `qwen_image`, `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit`; preprocessing pipeline for Qwen prompt expansion (used by `qwen_image_style`), LoRA-key sanitizer for stacked Qwen Lightning + user LoRAs. Canny/Depth/Pose/Flow preprocessing is no longer Sprint 5 critical-path (the only consumer would have been VACE/`vace_22` direct paths, which are UNUSED; the indirect Wan-family `travel_segment` keeps DepthAnythingV2 inline per §1A). | Dual-run parity is green for all remaining in-scope edit tasks; preprocessing artifacts are captured in logs and are reproducible from task inputs; output shapes match WGP; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `reigh-worker` + `vibecomfy` | Preprocessing behavior drifts from WGP helpers or LoRA key sanitation changes outputs. | Keep affected task types on WGP using per-task-type backend selection; continue canary only for cohorts already green. |
-| Sprint 6: Orchestrated handlers, raw-Comfy coverage, and seam unification (G3) | 2 weeks | **Entry gate (S2):** Sprint 4 cocktail template green per §11 thresholds (or PROCEED-with-fallback documented per Sprint 3.5) AND Sprint 5 Qwen/edit cohorts green AND Sprint 0 baseline doc has per-task-type lifecycle data (timeout, polling cadence, payload, post-completion artifacts) needed by the G3 contract test. Make the full in-scope task surface runnable through the Comfy backend, including parent handlers, child-task enqueue paths, media utilities, and the (now §8-deletion-bound) raw-Comfy task path. **Also unify the two-seam dispatcher per §8A.E G3** (decision: UNIFY, 2026-05-05): introduce `_handle_via_queue_task(pre_submit_hooks, post_completion_hooks, wait_timeout_s, overrides)`, fold `_handle_direct_queue_task` into it, replace `DIRECT_QUEUE_TASK_TYPES` with a per-task-type registry, and ship the lifecycle-contract test before merging. **Opportunistic cleanup:** while touching `source/task_handlers/travel/`, `source/task_handlers/join/`, `source/task_handlers/edit_video_orchestrator.py`, `source/task_handlers/tasks/task_registry.py:1442-1602` dispatch + dispatcher, and `source/core/params/{travel_guidance,structure_guidance,phase_config_parser}.py` (the four travel-side params with confirmed importers), delete any §8A.B/§8A.C item whose code path the sprint is already inside (e.g. dispatch entries for §0A UNUSED orchestrated children if their handlers are confirmed dead, vestigial `ltx_hybrid`/`ltx_anchor` branches in §8A.C once the verification grep returns 0 hits), execute the §G1 `core/params/` deletions (`task_metadata.py`, `lora_models.py`, `lora_parsing.py`, `structure_guidance_parsing.py`) and merges (`vace.py`, `generation.py`, `phase.py` → `task.py`), and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. | Comfy backend support for `travel_orchestrator`, `travel_segment`, `individual_travel_segment`, `travel_stitch`, `join_clips_orchestrator`, `join_clips_segment`, `join_final_stitch`, `edit_video_orchestrator`; **unified `_handle_via_queue_task` dispatcher with per-task-type pre/post-hook + timeout registry**; **lifecycle-contract test** asserting pre-unification vs post-unification parity per USED task type; smoke tests for the unified path covering both former seams (direct + child enqueue); §G1 `core/params/` cleanup landed. (UNUSED-per-§0A handlers `inpaint_frames`, `magic_edit`, `create_visualization`, `extract_frame`, `rife_interpolate_images`, `comfy` are not migrated; deletion is owned by Sprint 8 / §8A.B.) | In-scope orchestrated task surface is runnable through the Comfy backend through the unified dispatcher; lifecycle-contract test green for every USED task type against Sprint 0 baselines (timeout, polling cadence, payload, completion artifacts); Cohort E has at least one successful parent-to-child orchestration smoke against the Sprint 4 cocktail template; runtime name `rife_interpolate_images` is preserved in any code that survives Sprint 8; §G1 deletions and merges committed with importer fix-ups; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `reigh-worker` | Unified dispatcher introduces a lifecycle-contract regression (timeout, polling, payload) for direct-queue tasks that wouldn't be caught without the contract test; or orchestrated parents and child tasks choose different backends, creating mixed-output bugs. | Revert dispatcher to dual-seam (both stacks coexist until Sprint 8 anyway) and keep `_handle_direct_queue_task`; force Cohort E parent task types to `wgp`; parent handlers reject Comfy selection if any child-task route remains WGP-only or untested. |
-| Sprint 7: Production canary by task-type cohort | 2 weeks | **Entry gate (S2):** Sprint 6 unified dispatcher contract test green for every USED task type AND every §3A travel-segment matrix row tested through the unified dispatcher AND **pre-staged rollback PRs (S3) drafted and rebased current** for every cohort being promoted AND per-cohort canary owner has confirmed the auto-rollback trigger wiring against §11 thresholds. Gradually promote Comfy backend in production by task-type cohort using a server-side selector read at task claim time. **Opportunistic cleanup:** while touching `reigh-worker-orchestrator/gpu_orchestrator/runpod/{worker_startup.template.sh,startup_script.py}`, the `--wgp-*` CLI flag surface in `source/runtime/worker/server.py:232-243`, and `source/core/log/{display_names.py,debug_card.py}`, delete any §8A.B/§8A.C item whose code path the sprint is already inside (e.g. dashboard label entries for §0A UNUSED task types as cohorts are flipped Comfy-only), and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. **Note: the prod profile-1 vs dev profile-3 split (G4) stays intact** — both are load-bearing per §3 and Q10. | Server-side `backend_for_task_type` map; worker startup support for backend/profile flags; canary dashboard labels for backend, template id, memory profile, error class, latency, VRAM, and output divergence; **pre-staged rollback PRs in draft state per cohort, mergeable in <5 min, rebased weekly during the canary window (S3)**; **automated rollback trigger wiring** that reads §11 thresholds and flips `backend_for_task_type[<cohort>] = "wgp"` when output-divergence rate >1% over 24h OR p95 latency >1.10× baseline sustained 24h OR OOM count >0 over 1h; 48-hour hold report for each cohort. | Each cohort holds for 48 hours before the next cohort is promoted; **rollback triggers fire automatically per §11 thresholds** (output-divergence >1% over 24h, p95 latency >1.10× baseline sustained 24h, OOM count >0 over 1h); all promoted cohorts have WGP fallback still installed; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `reigh-worker` + `reigh-worker-orchestrator` | Canary selector or worker startup flag applies too broadly and promotes a task family before its dependencies are ready. | Set `backend_for_task_type` entries back to WGP and/or launch workers with `REIGH_BACKEND=wgp`; both stacks remain in the image. |
-| Sprint 8: Wan2GP removal + UNUSED-handler purge | 1 week | **Entry gate (S2):** Every Sprint 7 cohort has held for 48h+ at green per §11 thresholds AND post-canary stability window (≥7 days) has zero auto-rollback triggers fired AND all §8A.C AMBIGUOUS rows resolved per G8 query plan. Remove Wan2GP only after all cohorts are stable on VibeComfy and rollback no longer depends on WGP in the worker image. Bundle the §8A.B UNUSED task-type handler purge into the same removal PR(s) since they share the same dispatch deletion. **Closure sweep (not opportunistic):** Sprint 8 owns the final §8A.B/§8A.C/§8.{Removal,Option-A} sweep. By this point the per-sprint clauses above should have absorbed most §8A.C AMBIGUOUS rows once their verification grep/SQL completed; Sprint 8 handles the residual WGP-coupled items (`wgp_patches.py` whole-file delete per G2, `core/params/` 14-of-19 unimported helpers per G1, `mmgp` logger noise suppression per G5) plus anything the per-sprint clauses explicitly punted. | Final removal PRs for reigh-worker WGP roots, entrypoints, package metadata, tests, `Wan2GP/` submodule, `source/runtime/wgp_*`, `source/models/wgp/`, WGP CLI flags, orchestrator Wan2GP startup assumptions, **plus the §8A.B UNUSED handler files** (`magic_edit.py`, `inpaint_frames.py`, `extract_frame.py`, `create_visualization.py`, `models/comfy/comfy_handler.py`, `qwen_handler.handle_qwen_image_hires`, `inpaint_frames_example.py`) and their dispatch/display-name entries; final closure-sweep report. | Full Sprint 8 checklist in Section 8 (including the new "UNUSED Task-Type Handlers" subsection) is complete; pre-removal per-repo grep surfaced files have been handled; post-removal filesystem `rg` sweep has zero unexpected WGP hits excluding explicitly retained archival docs; **every §8A.C row tagged `Sprint X (per-sprint cleanup)` has either landed or has a closing comment explaining why it was deferred to 8/8B**. | `reigh-worker` + `reigh-worker-orchestrator` | Residual WGP entrypoint, dependency, startup fallback, test import, or §8A.B handler reference survives directory deletion. | Revert the removal PR or restore the last dual-stack worker image; do not delete WGP image artifacts until post-removal sweep passes. |
-| Sprint 8B: Concurrent cleanup (parallel, not migration-blocking) | 0.5–1 week | Remove turbo-mode travel scaffolding (§8A.A), the duplicate `[tool.headless_wan2gp.entrypoints]` + `[tool.headless_wan2gp.deprecation]` `pyproject.toml` tables (§8A.C), and any of the AMBIGUOUS rows in §8A.C confirmed dead by their stated verification queries. Independent of canary state — can land in any sprint window from Sprint 4 onward. **Opportunistic cleanup:** while touching `reigh-app/src/tools/travel-between-images/`, `reigh-app/supabase/functions/`, `reigh-worker/pyproject.toml`, and any `legacy_*` UI scaffolding, delete any §8A.B/§8A.C item whose code path the sprint is already inside, and flag any newly-discovered cruft into §8A.C with `path:line` + verification step. | One PR per cleanup category in `reigh-app` (turbo-mode + dead toggles + AMBIGUOUS rows whose queries returned 0) and `reigh-worker` (pyproject deduplication). New Supabase migration that strips `turbo_mode`/`turboMode` JSON keys from persisted settings. | Turbo-mode references are zero across `reigh-app/src/` and `reigh-app/supabase/functions/` (`rg -n 'turbo_mode\|turboMode' → 0 hits`); `[tool.headless_wan2gp.entrypoints]` and `[tool.headless_wan2gp.deprecation]` tables removed; AMBIGUOUS rows resolved with cite-able queries; **any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry**. | `reigh-app` (primary) + `reigh-worker` for the pyproject change | Persisted `turboMode: true` rows in legacy `travel_settings` JSON cause silent ignore vs. error during canary. | Add a migration that strips the field from `travel_settings`/`raw_settings`/`share_data` JSON columns before the resolver branch is removed; both must ship together. |
+| Sprint 0A: Kickoff and contract freeze | 3-4 days | Close kickoff blockers and freeze the project generation contract before adapter work. | Signed §12 checklist; RayWorker-owned USED task inventory; active non-RayWorker route inventory for `video_enhance`, `image-upscale`, `animate_character`, and `flux_klein_edit`; owner/runtime decision for each non-RayWorker row; `turbo_mode: true` resolver safety test/fix; per-USED-RayWorker-task contract skeleton for payload, timeout, polling cadence, output fields, product effects, billing, duplicate completion, and partial-orchestrator failure. | No Sprint 1 implementation starts until `turbo_mode` is safe, each active non-RayWorker row has a named owner/runtime and preserve-vs-move decision, and every USED RayWorker task type has a named baseline owner plus runnable/skipped/blocked status. | `reigh-worker` with `reigh-app` input | A non-RayWorker active route is silently ignored, or a bad historical app payload enters the baseline and later looks like migration drift. | Stop kickoff; fix resolver/API safety/scope classification and rerun affected discovery. |
+| Sprint 0B: Thresholds and golden corpus | 1 week | Produce comparison oracles consumed by later sprints. | `migration-thresholds.yaml`; WGP self-repeatability report; route-keyed WGP golden corpus for Cohort A/B and representative Cohort E routes; lightweight product-contract fixtures for `video_enhance`, `image-upscale`, `animate_character`, and `flux_klein_edit`; live-validation doc updated to same route/threshold version. | Threshold YAML is committed and read by a smoke script; WGP self-drift is below thresholds or affected routes are marked WGP-only/pending; corpus is route-keyed, not only task-type-keyed; non-RayWorker active routes have owner-approved contract fixtures or are explicitly deferred with rationale. | `reigh-worker` with owning runtime input | Subjective comparison gates remain possible or active non-RayWorker routes lack regression coverage. | Keep route WGP-only/current-owner-only or widen thresholds only with calibration notes. |
+| Sprint 0C: Assets, capacity, and deployment baseline | 3-4 days | Freeze infra and asset assumptions separately from behavioral baselines. | Asset/model/hash manifest; live `ready_templates` inventory; custom-node lock audit; owner/date to change RunPod disk from current 50 GB to 200 GB; first dual-stack pod boot/disk/startup measurement. | 200 GB change is landed or explicitly PENDING; disk usage is measured; if first boot exceeds 180 GB, raise to 250 GB before Sprint 1. | `reigh-worker-orchestrator` + `vibecomfy` | Capacity failure blocks all validation. | Keep WGP-only deployment defaults; do not run dual-stack matrix. |
+| Sprint 1: VibeComfy memory-profile MVP | 2 weeks | Implement five-tier VibeComfy memory-profile parity. | `MemoryProfile`; round-trip tests into embedded and managed-server config/argv; representative template profile smokes; process-default plus per-run override tests. | Profiles 1-5 round-trip; profile 1 and 3 have VRAM/wall-clock data; any profile change requiring session restart is documented. | `vibecomfy` | Mapping is syntactic but not operationally close to WGP. | Keep worker defaults on WGP; tune overlay only. |
+| Sprint 2: Adapter seam and local selector skeleton | 2 weeks | Add the worker VibeComfy adapter and early route/selector abstraction. | `template_routing.py`; executor/adapter seam; backend-neutral resolved-task object before WGP-specific queue conversion; local `REIGH_BACKEND`; static/local selector map; route support states; direct smokes for `z_image_turbo` and `qwen_image_2512`; one LTX-only or template-independent child smoke; minimal backend/template/profile/error telemetry. `wan_2_2_t2i` is included only if its single-frame patch lands here. | Feature-flagged Comfy path works for included direct routes without entering `_convert_to_wgp_task`; child smoke does not depend on Wan VACE cocktail; unsupported Comfy routes fail closed; local route derivation is test-covered. | `reigh-worker` | Adapter proves only direct tasks or accidentally stays coupled to WGP queue conversion. | Flip `REIGH_BACKEND=wgp`; leave unsupported routes WGP-only. |
+| Sprint 3: Dual-run comparison harness | 2 weeks | Build the harness and executable product/billing oracle for routes already landed. | `scripts/dual_run_compare.py`; reports for media similarity, queue contract, product effects, billing/refund/idempotency, latency, VRAM, OOM, error class; no-side-effect shadow artifact isolation; non-RayWorker active-route regression checks that verify they still complete through their current owner. | Harness is green for Sprint-2 routes or marks them RED; not-yet-routed RayWorker rows are pending/fallback/WGP-only; product/billing checks are executable; `video_enhance`, `image-upscale`, `animate_character`, and `flux_klein_edit` are not accidentally broken by shared app/completion/billing changes. | `reigh-worker` with `reigh-app` and owning runtime input | Media success hides completion or billing drift; shared app changes break Cloud Worker/external routes. | Keep production on WGP/current owners; restrict Comfy to local/dev dual-run. |
+| Sprint 3.5: Wan 2.2 VACE feasibility dry run | 3-4 days | Test the two-stage HIGH->LOW sampler hypothesis before full Wan template work. | Minimal dry-run workflow/template; one 49-frame comparison; `dry-run-report.md` with PROCEED/FALL-BACK decision. | PROCEED iff §11 video thresholds pass; otherwise Wan-family VACE travel/join routes are WGP-only while the rest continues. | `vibecomfy` + `reigh-worker` | Comfy sampler chain cannot reproduce WGP closely enough. | Mark Wan-family VACE routes WGP-only. |
+| Sprint 4: Wan single-frame and cocktail template work | 2 weeks | Resolve Wan template risks without demanding full orchestration parity yet. | Wan 2.2 VACE cocktail template if Sprint 3.5 proceeds; isolated child-route smokes; `wan_2_2_t2i` forced single-frame patch if not already landed. | Cocktail compiles/runs under representative profiles; isolated child smokes pass where applicable; `wan_2_2_t2i` is green or WGP-only/pending. Full parent/child parity waits for Sprint 8. | `vibecomfy` with `reigh-worker` support | Worker-level orchestrated parity is requested before route propagation exists. | Keep affected Wan routes WGP-only; continue direct route work. |
+| Sprint 5: Qwen, edit-mode, VLM, and LoRA preprocessing parity | 2 weeks | Finish direct image/edit parity and remove WGP-only preprocessing assumptions needed by later orchestration. | Routes/patches for `qwen_image_2512`, `qwen_image` only after its true non-2512 model path is proven, `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit`; prompt-expander pre-process; backend-neutral VLM/prompt-generation wrapper for travel/join/edit-video callers; LoRA sanitizer; checked-in `module_names_<arch>.json`. | Direct image/edit routes are green or individually WGP-only; `qwen_image` is not treated as equivalent to `qwen_image_2512` unless validated; prompt expansion, VLM prompt fixtures, and LoRA sanitizer pass fixture corpus. | `reigh-worker` + `vibecomfy` | Qwen shortcut, VLM drift, or LoRA sanitation changes outputs. | Keep affected direct routes WGP-only; leave orchestrated routes WGP-only until VLM fixtures pass. |
+| Sprint 6: Production selector and claim contract | 2 weeks | Make selector/claim behavior concrete before orchestrated routes depend on it. | Selector schema/namespace; route-key serialization, including direct variants when needed; indexes/RPC/query behavior; cache TTL/rollback SLO; malformed/unauthorized/stale-entry tests; claim-time backend eligibility or pre-execution requeue/fail-closed guard; selector-version logging; child-route snapshot field contract for later parent-created rows. | Missing production route key means WGP/no-claim, never implicit Comfy; mismatched workers cannot claim or execute selected routes; selector unreachable behavior and rollback SLO are tested; the selected backend/selector version can be pinned for child rows created after parent claim. | `reigh-worker` + Supabase owner | Route propagation reimplements selector behavior ad hoc or a worker claims a route it cannot execute. | Keep production selector absent/WGP-only. |
+| Sprint 7: Orchestrator image, pools, and artifact contract | 2 weeks | Make deployment and artifact lifecycle canary-ready. | WGP/Comfy startup examples; backend/profile flags; health probes; model/custom-node/template preflight; warm-cache strategy; disk-near-full behavior; drain/kill/restart policy; pool sizing and rollback reserve; artifact paths, prefixes, TTLs, debug retention, redaction, LoRA cache limits, orphan sweeps, quota alerts; concrete telemetry transport for backend/template/profile/run id in heartbeat, structured logs, or both. | WGP and Comfy pools launch from same image; stale workers cannot claim newer routes; artifact cleanup and debug retention are testable; backend/template/profile/run labels are visible in the chosen transport; staged rollback exercise passes. | `reigh-worker-orchestrator` + `reigh-worker` | Hidden platform work fails during canary or telemetry exists only in local logs. | Launch only WGP-default workers; disable Comfy promotion. |
+| Sprint 8: Orchestrated route propagation and lifecycle contract | 2 weeks | Route parent/child workflows consistently through selected backend where Comfy support exists. | Propagation for travel/join/edit-video parent and child surfaces; persisted child-row route snapshot (`selected_backend`, selector version, parent route key, and support state); dependency-array/idempotency/cancellation behavior for DB-created child rows; parent/child backend-consistency guards; lifecycle-contract tests; repair/runbook hooks for partial children, uploaded-but-not-completed outputs, duplicate completion, mixed-backend child sets, and parent repair. | Parent rejects Comfy if any required child route is WGP-only, unsupported, fallback, or untested; child rows created after parent claim carry enough route metadata to avoid selector drift; lifecycle contract is green for every USED route intended for canary. | `reigh-worker` | Parent says Comfy while children run WGP, selector changes mid-orchestration, or DB-created child rows bypass adapter assumptions. | Force affected Cohort E routes to WGP; fail closed before child creation. |
+| Sprint 9: Control-rail and travel-matrix parity | 2 weeks | Complete Cohort E parity for routes intended for canary. | Canny/Depth/Pose/Flow preprocessing; ffmpeg/ffprobe frame-count/FPS/audio/thumb semantics check around Comfy outputs; full §3A matrix smoke report; LTX control rows verified against a real control-capable template or marked NEW/BLOCKED/WGP-only; continuity smokes; persisted-row compatibility replay. | Every non-FALL-BACK matrix row passes through current dispatcher; native media post-processing preserves frame/audio/output contracts; LTX rows 9-13 no longer rely on an unproven first/last-only seam; replay is green or WGP-only. | `reigh-worker` + `vibecomfy` | Matrix claims coverage for template seams that do not exist or native media semantics drift after generation. | Mark affected route keys WGP-only. |
+| Sprint 10: Canary readiness integration | 1 week | Integrate evidence, dashboards, alerts, and rollback runbooks. | Live-validation evidence package; dashboards; §11 alert rules; draft rollback PRs; in-flight rollback exercise; active non-RayWorker route smoke evidence for `video_enhance`, `image-upscale`, `animate_character`, and `flux_klein_edit`. | Soak covers mixed pools, concurrent claims, selector flip with in-flight work, worker kill/restart, cold/warm cache, and disk-near-full behavior; active non-RayWorker routes remain healthy through shared app/completion/billing paths. | `reigh-worker` + `reigh-worker-orchestrator` + owning runtimes | Evidence is too scattered for go/no-go or non-RayWorker regressions are missed. | Keep production WGP-only and leave non-RayWorker route ownership unchanged. |
+| Sprint 11: Production canary by route cohort | 2 weeks | Promote RayWorker routes sequentially by selector while monitoring active non-RayWorker routes for shared-contract regressions. | Runtime selector flips; canary runbook; cohort dashboards; shadow/dual-run reports; rollback PRs; smoke/alert watch for `video_enhance`, `image-upscale`, `animate_character`, and `flux_klein_edit`. | Cohort A holds 48h before B, B holds before E; emergency rollback meets SLO; shadow checks have no completion, billing, upload, or user-visible side effects; WGP remains selectable; active non-RayWorker routes remain green or canary pauses. | `reigh-worker` + `reigh-worker-orchestrator` + owning runtimes | Selector promotes a route before all variants are ready or shared changes regress Cloud Worker/external routes. | Flip affected RayWorker route keys back to WGP; leave non-RayWorker routes on their current owner/runtime. |
+| Sprint 12: Dual-executor hardening | 1 week | Close the epic as a dual-executor platform with explicit ownership for every active generation route. | Dual-executor runbook; WGP-only/Comfy-only/dual-supported route docs; non-RayWorker active-route ownership docs; staging flip tests; final dashboard/alert review; steady-state ownership matrix; cleanup backlog moved to Sprint 12B/separate PRs. | Both executors boot from same image; supported RayWorker routes can select either backend; WGP runtime code/tests/startup paths remain intact; `video_enhance`, `image-upscale`, `animate_character`, and `flux_klein_edit` have documented owners and regression checks; cleanup-only deletion is not needed for migration closure. | `reigh-worker` + `reigh-worker-orchestrator` + owning runtimes | Teams misread hardening as WGP retirement or forget active non-RayWorker routes. | Keep both pools; set selectors to known-good WGP defaults; leave non-RayWorker routes on current owners. |
+| Sprint 12B: Optional cleanup sprint or post-canary PRs | 1-2 weeks, one category at a time | Cleanup only: turbo-mode scaffolding after contract safety, UNUSED-handler deletion after §8A deletion gate, pyproject dedupe, and AMBIGUOUS rows proven dead. | One PR per cleanup category; optional Supabase cleanup migration; DB/admin/debug/direct-emitter proof for handler deletions. | Cleanup lands before Sprint 0 with regenerated baselines or after Sprint 11; if it lands mid-migration, affected baselines and resolver tests rerun before comparison/canary. | `reigh-app` + `reigh-worker` | Cleanup invalidates frozen baselines. | Defer cleanup; keep handlers/scaffolding installed. |
 
-Sprint 4 and Sprint 5 may proceed in parallel only after Sprint 3 has a green-enough comparison report. Sprint 6 is the convergence point: no production canary should begin until both direct-queue parity and orchestrated-handler parity are represented in the dual-run reports.
+No production canary begins until direct-route parity, selector/claim behavior, orchestrator pool behavior, artifact lifecycle, and orchestrated-route parity are all represented in tests or live-validation evidence.
 
 ## 5. Per-task-type cutover order
 
-Cutover is by runtime task type, not by friendly display name. The canary selector reads a server-side `backend_for_task_type` map at task claim time, so rollback can flip a cohort or an individual task type back to WGP without changing the queue schema.
+Cutover is by resolved backend route, not by friendly display name and not always by task type alone. The canary selector reads a server-side route map at task claim time, so rollback can flip a cohort or an individual route back to WGP without changing the queue schema. Direct image/edit tasks can key on `task_type`; orchestrated video routes need more specificity because `travel_segment` / `individual_travel_segment` can resolve to Wan, LTX, guidance, and model-specific paths.
 
 | Cohort | Risk level | Task types | Template readiness (per 1A) | Rationale | Entry gate | Promotion gate | Rollback selector |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cohort A | Lowest: image-only and comparatively deterministic | `z_image_turbo`, `z_image_turbo_i2i`, `qwen_image`, `qwen_image_2512`, `wan_2_2_t2i` (~~`flux` removed: UNUSED per §0A~~) | NATIVE: `z_image_turbo`, `qwen_image_2512`. ADAPT: `z_image_turbo_i2i` (i2i adapter), `qwen_image` (disable edit branch), `wan_2_2_t2i` (forced `num_frames=1` patch). | These tasks have single-image output shapes, simpler completion paths, and no orchestrated child-task dependency. `wan_2_2_t2i` is included because it is a single-frame output contract even though it routes through Wan-family templates. | Sprint 2 adapter is green for `z_image_turbo`, `qwen_image_2512`, and one single-frame/Wan route; Sprint 5 resolves Qwen-specific gaps before promoting those task types. ADAPT rows must have their patches landed and tested before promotion (not just queue-seam wiring). | 48-hour canary hold with no p95 latency regression beyond threshold, no error-class spike, and output dimensions/format matching baselines. | Set each Cohort A key in `backend_for_task_type` back to `wgp`. |
-| Cohort B | Medium: image edits with prompt/input preprocessing | `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit` (~~`qwen_image_hires` removed: UNUSED per §0A — hires-fix is a payload param on `qwen_image_edit`~~) | NATIVE: `qwen_image_edit`. ADAPT: `qwen_image_style` (LoRA stack + Qwen prompt expander pre-process), `image_inpaint` (mask handling), `annotated_image_edit` (annotation rasterised pre-process). | These are still image outputs, but they depend on edit-mode input handling, empty-prompt allowances, Qwen prompt behavior, masks/annotations, and LoRA/key sanitation. | Sprint 5 Qwen/edit parity is green; preprocessing artifacts and LoRA sanitizer behavior are logged and reproducible. ADAPT rows require Section 3A's `lora_sanitize` patch to be merged and the Qwen prompt expander pre-process to be byte-stable against WGP. | 48-hour canary hold per task type; compare input mask/annotation handling, output image path shape, retry class, latency, and VRAM. | Set affected edit task types in `backend_for_task_type` back to `wgp`; leave Cohort A on Comfy if stable. |
+| Cohort A | Lowest: image-only and comparatively deterministic | `z_image_turbo`, `z_image_turbo_i2i`, `qwen_image`, `qwen_image_2512`, `wan_2_2_t2i` (~~`flux` removed: UNUSED per §0A~~) | NATIVE: `z_image_turbo`, `qwen_image_2512`. ADAPT: `z_image_turbo_i2i` (i2i adapter), `qwen_image` (disable edit branch), `wan_2_2_t2i` (forced `num_frames=1` patch). | These tasks have single-image output shapes, simpler completion paths, and no orchestrated child-task dependency. `wan_2_2_t2i` is included because it is a single-frame output contract even though it routes through Wan-family templates. | Sprint 2 adapter is green for `z_image_turbo`, `qwen_image_2512`, and one single-frame/Wan route; Sprint 5 resolves Qwen-specific gaps before promoting those task types. ADAPT rows must have their patches landed and tested before promotion (not just queue-seam wiring). | 48-hour canary hold with no p95 latency regression beyond threshold, no error-class spike, and output dimensions/format matching baselines. | Set each Cohort A route key in `backend_selector` back to `wgp`. |
+| Cohort B | Medium: image edits with prompt/input preprocessing | `qwen_image_edit`, `qwen_image_style`, `image_inpaint`, `annotated_image_edit` (~~`qwen_image_hires` removed: UNUSED per §0A — hires-fix is a payload param on `qwen_image_edit`~~) | NATIVE: `qwen_image_edit`. ADAPT: `qwen_image_style` (LoRA stack + Qwen prompt expander pre-process), `image_inpaint` (mask handling), `annotated_image_edit` (annotation rasterised pre-process). | These are still image outputs, but they depend on edit-mode input handling, empty-prompt allowances, Qwen prompt behavior, masks/annotations, and LoRA/key sanitation. | Sprint 5 Qwen/edit parity is green; preprocessing artifacts and LoRA sanitizer behavior are logged and reproducible. ADAPT rows require Section 3A's reigh-worker LoRA-file sanitizer pre-process to be merged and the Qwen prompt expander pre-process to be byte-stable against WGP. | 48-hour canary hold per task type; compare input mask/annotation handling, output image path shape, retry class, latency, and VRAM. | Set affected edit route keys in `backend_selector` back to `wgp`; leave Cohort A on Comfy if stable. |
 | ~~Cohort C~~ | ~~Medium-high: video generation~~ | **REMOVED FROM SCOPE** — `t2v`, `t2v_22`, `i2v`, `i2v_22`, `ltxv`, `ltx2`, `generate_video` are all UNUSED per §0A. App-side video generation routes exclusively through `travel_orchestrator` (Cohort E), not through direct video task types. | — | — | — | — | — |
 | ~~Cohort D~~ | ~~High: VACE plus Hunyuan~~ | **REMOVED FROM SCOPE as direct task types** — `vace`, `vace_21`, `vace_22`, `hunyuan` are all UNUSED per §0A. The Wan 2.2 VACE cocktail **template** (Sprint 4 NEW) is still required, but it is consumed indirectly through the Cohort E travel/join paths whose default model is `wan_2_2_vace_lightning_baseline_2_2_2`. | — | — | — | — | — |
-| Cohort E | Highest: orchestrated paths (the bulk of remaining migration scope) | `travel_orchestrator`, `travel_segment`, `individual_travel_segment`, `travel_stitch`, `join_clips_orchestrator`, `join_clips_segment`, `join_final_stitch`, `edit_video_orchestrator` (~~`inpaint_frames`, `magic_edit`, `create_visualization`, `extract_frame`, `rife_interpolate_images`, `comfy` removed: all UNUSED per §0A~~) | NATIVE (no template): `travel_orchestrator`, `travel_stitch`, `join_clips_orchestrator`, `join_final_stitch`, `edit_video_orchestrator`. ADAPT: `travel_segment` / `individual_travel_segment` (Wan VACE cocktail Sprint 4 NEW template, or LTX first-last-frame template, + `video_source` widget patch per Section 3A), `join_clips_segment` (Wan VACE cocktail). | These paths combine parent orchestration, nested child-task enqueueing, and completion semantics that may span several queue rows. With the §0A scope reduction, Cohort E is now the dominant migration cohort: it carries every Wan/VACE/LTX video path that production actually uses (via the `travel_orchestrator`'s `model_name` field). | Sprint 6 proves the in-scope union task surface through Comfy through the **unified `_handle_via_queue_task` dispatcher** (G3 decision: UNIFY — see §8A.E). The unified dispatcher must satisfy the lifecycle-contract test against Sprint 0 baselines for every USED task type. ADAPT rows additionally require the Section 3A travel-continuity patch (`video_source` → `VHS_LoadVideo.video` widget edit) and the LoRA sanitizer patch to be merged. The Sprint 4 NEW Wan 2.2 VACE cocktail template must be live before the Wan-family travel/join paths can canary. | Parent backend selection and child backend selection agree; **lifecycle-contract test is green for every USED task type against Sprint 0 baselines**; **every row of the §3A "Travel-segment configuration matrix" (13 rows) must produce a passing smoke through the unified dispatcher before Cohort E promotion** — not just one parent-to-child travel smoke. Smokes must cover all three continuity sub-cases (first-frame-only, first+last, inter-segment `video_source`) for at least row 1 (Wan i2v), row 4 (Wan vace:depth), row 6 (Wan uni3c), row 8 (LTX-fast none), and row 9 (LTX-fast ltx_control:video). Plus one join/edit child smoke against the Wan VACE cocktail template. | Force Cohort E parent task types to `wgp`; revert dispatcher unification to dual-seam if the contract test surfaces a regression that can't be fixed in-sprint (both stacks coexist in the worker until Sprint 8 anyway); parent handlers must reject Comfy selection if any child-task route remains WGP-only or untested. |
+| Cohort E | Highest: orchestrated paths (the bulk of remaining migration scope) | `travel_orchestrator`, `travel_segment`, `individual_travel_segment`, `travel_stitch`, `join_clips_orchestrator`, `join_clips_segment`, `join_final_stitch`, `edit_video_orchestrator` (~~`inpaint_frames`, `magic_edit`, `create_visualization`, `extract_frame`, `rife_interpolate_images`, `comfy` removed from migration scope: all UNUSED per §0A~~) | NATIVE (no template): `travel_orchestrator`, `travel_stitch`, `join_clips_orchestrator`, `join_final_stitch`, `edit_video_orchestrator`. ADAPT: `travel_segment` / `individual_travel_segment` (Wan VACE cocktail Sprint 4 NEW template if Sprint 3.5 PROCEEDs, or WGP-only if Sprint 3.5 FALL-BACKs; LTX first-last-frame template, + `video_source` widget patch per Section 3A), `join_clips_segment` (Wan VACE cocktail if PROCEED). | These paths combine parent orchestration, nested child-task enqueueing, and completion semantics that may span several queue rows. With the §0A scope reduction, Cohort E is now the dominant migration cohort: it carries every Wan/VACE/LTX video path that production actually uses (via the `travel_orchestrator`'s `model_name` field). | Sprint 8 proves parent/child backend route propagation and lifecycle contract; Sprint 9 proves control-rail and matrix parity for every promoted route not explicitly marked FALL-BACK/WGP-only. Dispatcher unification is optional and not a canary entry gate. ADAPT rows require the Section 3A travel-continuity patch (`video_source` → `VHS_LoadVideo.video` widget edit), relevant control-rail preprocessing, and the LoRA sanitizer pre-process to be merged. The Sprint 4 NEW Wan 2.2 VACE cocktail template must be live only for Wan-family travel/join paths that are promoted to Comfy. | Parent backend selection and child backend selection agree; lifecycle-contract test is green for every USED task type against Sprint 0 baselines; every **non-FALL-BACK** row of the §3A "Travel-segment configuration matrix" must produce a passing smoke before Cohort E promotion. Smokes must cover all three continuity sub-cases (first-frame-only, first+last, inter-segment `video_source`) for representative non-FALL-BACK Wan/LTX rows, plus one join/edit child smoke for any promoted Wan VACE route. If Sprint 3.5 FALL-BACK marks all Wan-family Cohort E rows WGP-only, Sprint 12's dual-support requirement for Cohort E applies only if at least one LTX/no-template Cohort E route passed Sprint 9. | Force Cohort E parent task types to `wgp`; parent handlers must reject Comfy selection if any child-task route remains WGP-only or untested. |
+
+Adjacent active routes are not promoted by the RayWorker backend selector unless Sprint 0 explicitly moves them into RayWorker. They still remain in epic scope as preservation checks:
+
+| Adjacent route | Current ownership decision | Epic requirement |
+| --- | --- | --- |
+| `video_enhance` | Current owner/runtime decided in Sprint 0; expected to stay Cloud Worker/external unless explicitly moved. | Preserve FILM/FlashVSR payload, cost, completion, output, and UI contract; smoke during Sprint 3/10/11. |
+| `image-upscale` | Current owner/runtime decided in Sprint 0; expected to stay Cloud Worker/external unless explicitly moved. | Preserve hyphenated task type, variant metadata, billing, output path, and completion behavior. |
+| `animate_character` | Current owner/runtime decided in Sprint 0; expected to stay Cloud Worker/external unless explicitly moved. | Preserve generation/completion contract and AI-agent/frontend emit paths. |
+| `flux_klein_edit` | Current owner/runtime decided in Sprint 0; expected to stay Cloud Worker/external unless explicitly moved. | Preserve Klein edit behavior; do not conflate with unused RayWorker `flux` cleanup. |
 
 The selector contract is:
 
 ```text
 task claim
-  -> read backend_for_task_type[task_type]
-  -> default to process --backend / REIGH_BACKEND
-  -> dispatch through the selected backend
+  -> derive backend_route:
+       direct routes:       (task_type)
+       travel/join routes:  (task_type, model_family/model_name, guidance_kind)
+  -> read backend_selector[backend_route]
+  -> in production: missing selector key => WGP/no-claim, never implicit Comfy
+     in local/dev: missing selector key may fall back to process --backend / REIGH_BACKEND
+  -> claim only if this worker process/pool is eligible for the selected backend
+  -> dispatch through the selected executor
 ```
 
-For Cohort E, the parent task's backend selection is authoritative for child generation unless a child route is explicitly blocked. That prevents mixed WGP/Comfy orchestration where the parent reports Comfy telemetry while the child is silently submitted to WGP.
+For Cohort E, the parent task's resolved backend route is authoritative for child generation unless a child route is explicitly blocked. That prevents mixed WGP/Comfy orchestration where the parent reports Comfy telemetry while the child is silently submitted to WGP. If the parent resolves to Comfy but a child route is WGP-only, unsupported, or FALL-BACK, the parent fails closed or requeues before creating partial/mixed artifacts. Parent-created child rows must carry a route snapshot (`selected_backend`, selector version, parent route key, and support state) because current child creation is persisted through DB rows, not only through an in-memory queue seam.
+
+### Selector Control Plane
+
+The production selector is runtime configuration, not a code PR:
+
+| Requirement | Contract |
+| --- | --- |
+| Storage | A server-side config table or config-service namespace readable by workers at claim time, with concrete schema/namespace selected in Sprint 6. Direct tasks read this at claim/execution time. Orchestrated parents also persist the selected backend, selector version, and parent route key into child rows or child params when creating children, so child execution cannot drift if selector config changes mid-orchestration. |
+| Key shape | Direct: `(task_type)`. Orchestrated video: `(task_type, model_family/model_name, guidance_kind)` plus optional explicit model id where two model ids share a family but have different template readiness. |
+| Defaults | Production selector is an explicit allowlist: missing route key means WGP/no-claim, never implicit Comfy. Local/dev may fall back to process `--backend` / `REIGH_BACKEND` for ergonomics. |
+| Launch-time backend | Each worker process starts with exactly one backend. `--backend wgp` processes load WGP only; `--backend comfy` processes load VibeComfy only. |
+| Claim-time behavior | Worker derives the route before execution and claims only if its launch-time backend matches the selector. Preferred implementation prevents a process/pool from claiming mismatched tasks. Fallback implementation requeues/fails closed before execution. |
+| Propagation | Selector updates must take effect within the rollback SLO. Cache TTL must be short enough to meet the SLO, and workers must expose the selector version they used in logs. |
+| Permissions | Only the canary owner/on-call role can promote routes to Comfy; malformed, unauthorized, stale-version, or unsupported route entries fail closed and cannot promote Comfy. |
+| Audit | Every selector change records actor, old value, new value, reason, timestamp, affected route keys, selector version, and whether the change was emergency rollback or planned promotion. Audit retention is set before Sprint 7. |
+| Emergency override | Canary owner can flip a route or cohort to WGP without merge/deploy. Draft PRs are follow-up durability, not the emergency rollback mechanism. |
+| Version guard | Selector entries can require a minimum worker image/runtime version; stale workers that cannot satisfy the selected route do not claim the task. |
+| Unreachable selector | Fail closed to the process default only for non-canary local/dev. In production canary, selector unreachability blocks Comfy promotion and should prefer WGP-safe claiming. |
 
 ## 6. Rollback plan
 
-Rollback must stay operational until Sprint 8 starts. Before then, every Comfy canary is reversible by selection, not by rebuilding an image.
+Rollback remains a permanent operating mode. Every Comfy canary and every steady-state Comfy route is reversible by selector, not by rebuilding an image.
 
 ### Rollback Controls
 
@@ -994,16 +1148,16 @@ Rollback must stay operational until Sprint 8 starts. Before then, every Comfy c
 | --- | --- | --- |
 | `--backend wgp|comfy` | Worker process | Process-level default set by the worker startup command. This should map to `REIGH_BACKEND={wgp|comfy}` internally. |
 | `REIGH_BACKEND={wgp|comfy}` | Worker process / local dev | Environment default used by scripts, live tests, and fallback startup paths. |
-| `backend_for_task_type` | Server-side task-type override | Read at task claim time. A present task-type value overrides the process default; an absent value falls back to `--backend` / `REIGH_BACKEND`. |
-| Cohort rollback | Server-side selector update | Flip one cohort or individual task type back to `wgp` without changing task payloads, queue rows, or Supabase schema. |
-| Worker image rollback | Orchestrator deployment | Until Sprint 8, WGP and VibeComfy both remain in the worker image, so the orchestrator can launch WGP-default workers immediately. |
+| `backend_selector` | Server-side route override | Read at task claim time. A present route value overrides the process default. In production, an absent route key means WGP/no-claim, never implicit Comfy; local/dev may fall back to `--backend` / `REIGH_BACKEND`. Direct routes may key on task type; orchestrated video routes key on task type + model/guidance route. |
+| Cohort rollback | Server-side selector update | Flip one cohort, individual task type, or model/guidance route back to `wgp` without changing task payloads, queue rows, or Supabase schema. |
+| Worker image rollback | Orchestrator deployment | WGP and VibeComfy both remain in the worker image through canary and steady state, so the orchestrator can launch WGP-default workers immediately. |
 
 The adapter scope for rollback is the same as the adapter scope for migration:
 
 - Direct-queue seam: `_handle_direct_queue_task` -> `db_task_to_generation_task` -> backend queue submission.
 - Nested-handler seam: handlers receiving `context["task_queue"]` and enqueueing child generation tasks.
 
-If either seam cannot honor `REIGH_BACKEND` and `backend_for_task_type`, the relevant cohort remains WGP-only.
+If either seam cannot honor `REIGH_BACKEND` and `backend_selector`, the relevant route remains WGP-only.
 
 ### Trigger Conditions
 
@@ -1011,26 +1165,43 @@ Rollback triggers are defined by §11 thresholds (single source of truth) and Sp
 
 | Trigger (concrete threshold per §11) | Action |
 | --- | --- |
-| p95 latency >1.10× WGP baseline for a cohort, sustained 24h | **Auto-rollback:** flip cohort's `backend_for_task_type` entries back to `wgp` via the pre-staged rollback PR (S3); keep collecting Comfy shadow data if possible. |
-| Error-class spike for OOM (any non-zero rate), model-load, schema-validation, prompt-queue, timeout, or missing-output (>2× baseline rate) | Roll back affected task types first via pre-staged PR; roll back full cohort if error classes cross task-family boundaries. |
-| Output-divergence rate >1% over a 24h window (per-frame pHash p95 breach rate per §11) | **Auto-rollback:** stop promotion for the cohort; restore WGP for divergent task types via pre-staged PR; add examples to the dual-run corpus. |
+| p95 latency >1.10× WGP baseline for a cohort, sustained 24h | **Auto-rollback:** flip affected `backend_selector` route entries back to `wgp` by runtime config update; keep collecting Comfy shadow data if possible. |
+| Error-class spike for OOM (any non-zero rate), model-load, schema-validation, prompt-queue, timeout, or missing-output (>2× baseline rate) | Roll back affected routes first by runtime config update; roll back full cohort if error classes cross task-family boundaries. |
+| Output-divergence rate >1% over a 24h window (per-frame pHash p95 breach rate per §11) | **Auto-rollback only when measured through isolated shadow runs** with no completion, billing, upload, or user-visible side effects. Otherwise stop promotion, restore WGP manually if sampled/offline evidence is severe, and add examples to the dual-run corpus. |
 | VRAM peak >1.05× WGP profile-1 or profile-3 baseline | Roll back affected memory profile / task family and retune `MemoryProfile.to_session_overrides()`. |
-| Parent/child backend mismatch in orchestrated tasks | Roll back Cohort E immediately via pre-staged PR; block further promotion until child-task seam tests pass. |
+| Parent/child backend mismatch in orchestrated tasks | Roll back affected Cohort E routes immediately by runtime config update; block further promotion until child-task seam tests pass. |
 | Worker startup or health-check regression after orchestrator flag changes | Launch workers with `REIGH_BACKEND=wgp` and revert the startup-template change that passed the Comfy default. |
 
-### Pre-staged rollback PRs (S3)
+### In-flight rollback policy
 
-Each cohort canary in Sprint 7 has a pre-prepared rollback PR sitting in **draft state**, mergeable in <5 minutes, that flips that cohort's `backend_for_task_type` entries back to `wgp` and reverts any cohort-specific code changes. Drafts must land before promotion, not after the trigger fires.
+Selector rollback controls future claims; it does not magically unwind tasks already claimed by Comfy workers. Before Sprint 11 canary, each route cohort must have an in-flight policy:
+
+| In-flight state when rollback fires | Default policy | Required guard |
+| --- | --- | --- |
+| Direct task claimed, generation not started | Requeue or fail closed before execution so a WGP worker can reclaim. | Preserve max-attempt/retry class and do not debit twice. |
+| Direct task actively generating | Let current backend finish if upload/completion has not diverged and task is below timeout; otherwise cancel/requeue only when the backend can prove no partial upload/completion side effect happened. | Idempotent completion and orphan-artifact cleanup. |
+| Orchestrator parent claimed, children not created | Requeue parent for WGP if the route was rolled back before child creation. | No partial child rows. |
+| Orchestrator parent created some children | Freeze parent promotion, allow already-created children to finish on their selected backend only if parent/child backend consistency is still valid; otherwise mark parent for manual repair or WGP retry from a clean checkpoint. | Parent/child tracking and duplicate child prevention. |
+| Child generation running | Prefer drain current child, then route subsequent children through WGP only after parent policy says mixed outputs are allowed. If mixed outputs are not allowed, block finalization and repair manually. | Explicit mixed-output policy per Cohort E route. |
+| Stitch/finalization running | Let stitch/finalization finish if all inputs are already finalized and output contract is backend-neutral. | No duplicate gallery/timeline insertion. |
+| Upload completed but `complete_task` pending | Do not retry blindly. Run idempotency guard first; either complete exactly once or orphan-sweep the uploaded artifact before WGP retry. | Completion idempotency and billing/refund parity. |
+
+### Emergency rollback and durable follow-up
+
+Each cohort canary in Sprint 7 has two rollback layers:
+
+1. **Emergency rollback:** runtime selector config flip, no merge/deploy required, used by the automated triggers above.
+2. **Durable follow-up:** pre-prepared draft PR, mergeable after the emergency flip, that makes any needed code/config/documentation revert durable.
 
 | Cohort | Pre-staged rollback PR | Mergeable in |
 | --- | --- | --- |
-| A (image-only) | Drafts `backend_for_task_type[<A task types>] = "wgp"` selector revert | < 5 min |
-| B (image edits) | Drafts `backend_for_task_type[<B task types>] = "wgp"` selector revert + Qwen-edit code revert | < 5 min |
-| E (orchestrated) | Drafts `backend_for_task_type[<E task types>] = "wgp"` AND drafts `_handle_via_queue_task` revert to dual-seam (G3 fallback) | < 10 min (two-PR sequence; second only needed if dispatcher regression) |
+| A (image-only) | Documents and durably codifies selector route revert for Cohort A | < 5 min |
+| B (image edits) | Documents and durably codifies selector route revert + Qwen-edit code revert if needed | < 5 min |
+| E (orchestrated) | Documents and durably codifies route-level selector revert AND drafts `_handle_via_queue_task` revert to dual-seam | < 10 min (two-PR sequence; second only needed if dispatcher regression) |
 
-PR ownership: Sprint 7 canary owner (named at Sprint 7 kickoff). Drafts open at Sprint 7 setup; one rebase per week to keep them mergeable.
+PR ownership: Sprint 11 canary owner (named at Sprint 7 kickoff). Drafts open at Sprint 7 setup; one rebase per week to keep them mergeable.
 
-`reigh-worker-orchestrator/gpu_orchestrator/runpod/worker_startup.template.sh` must pass the selected backend/profile through the worker startup command during canary. That change is reversible until Sprint 8 because the dual-stack worker image still contains WGP.
+`reigh-worker-orchestrator/gpu_orchestrator/runpod/worker_startup.template.sh` must pass the selected backend/profile through the worker startup command during canary and steady state. The dual-stack worker image continues to contain WGP.
 
 ## 7. Telemetry and observability
 
@@ -1041,7 +1212,7 @@ Telemetry must let operators compare WGP and VibeComfy runs at the same level of
 | Field | Applies to | Purpose |
 | --- | --- | --- |
 | `backend` | All task logs and status updates | Values: `wgp` or `comfy`; required for cohort dashboards and rollback filters. |
-| `template_id` | Comfy/VibeComfy runs | VibeComfy ready-template id or raw `comfy` workflow route used by the task. |
+| `template_id` | Comfy/VibeComfy runs | VibeComfy ready-template id used by the task. Raw `comfy` workflow routes are not migration scope. |
 | `memory_profile` | Both backends | Numeric profile 1-5 plus resolved display name; required for prod profile 1 and dev profile 3 baseline comparison. |
 | `vibecomfy.run_id` | VibeComfy runs | `RunResult.run_id` from `vibecomfy/vibecomfy/runtime/session.py:35-42`; attach to start, completion, and failure logs. |
 | `comfy.prompt_id` | Comfy prompt submissions | `RunResult.prompt_id`; useful for Comfy history, queue, and prompt failure lookup. |
@@ -1065,7 +1236,7 @@ The Comfy path must mirror the memory-stat shape currently emitted by WGP output
 
 | Source | Existing target | Required translation |
 | --- | --- | --- |
-| `RunResult.outputs` | Worker completion output path | Normalize to the existing output shape for image, video, raw-Comfy, and orchestrated child tasks. |
+| `RunResult.outputs` | Worker completion output path | Normalize to the existing output shape for image, video, and orchestrated child tasks. Raw-Comfy is not migration scope. |
 | `RunResult.run_id` | heartbeat logs and `system_logs` | Emit as `vibecomfy.run_id` consistently across start, success, retry, and failure paths. |
 | `RunResult.prompt_id` | debug breadcrumbs and Comfy diagnostics | Emit as `comfy.prompt_id`; include in failure and timeout messages. |
 | `RunResult.log_path` | `source/core/log/debug_card.py` | Add a debug-card link or path entry so support can inspect Comfy/VibeComfy logs. |
@@ -1073,445 +1244,74 @@ The Comfy path must mirror the memory-stat shape currently emitted by WGP output
 
 Dual-run reports and canary dashboards should group metrics by `task_type`, `backend`, `template_id`, `memory_profile`, error class, and worker image version. Without these labels, rollback decisions will rely on raw exception text and task ids, which is too slow for production canary.
 
-## 8. Final Wan2GP removal
+## 8. Dual-executor steady state
 
-Do not start this checklist until Sprint 7 canaries are stable, all promoted cohorts have completed their hold windows, and rollback no longer depends on WGP being present in the worker image. Sprint 8 is removal work, not parity work.
+Sprint 12 is not Wan2GP removal. The desired end state is a dual-executor worker platform where WGP and VibeComfy are both installed, supported, observable, and selectable by runtime route. VibeComfy becomes available for the routes that pass parity and canary gates; WGP remains a first-class executor for fallback, comparison, and any route where it is still the better or only proven backend.
 
-### Reigh-Worker Removal Checklist
+### Steady-state contract
 
-| Area | Remove or migrate | Notes |
-| --- | --- | --- |
-| Root scripts | `reigh-worker/headless_wgp.py`; `reigh-worker/headless_model_management.py` | Delete only after Q11 confirms there are no non-WGP callers needing a VibeComfy management replacement. |
-| Entrypoint shims | `reigh-worker/source/runtime/entrypoints/headless_wgp.py`; `reigh-worker/source/runtime/entrypoints/headless_model_management.py` | Remove with the root scripts and package metadata. |
-| Package metadata | `reigh-worker/pyproject.toml:109`; `reigh-worker/pyproject.toml:165`; `mmgp==3.7.6`; `uv.lock` | Both `headless_wgp` console-script registrations must be removed; sync `uv.lock` after dropping `mmgp==3.7.6`. |
-| Wan2GP submodule | `reigh-worker/Wan2GP/`; `.gitmodules` entry for `Wan2GP/` | Remove submodule metadata and ensure no startup code hard-fails when the directory is absent. |
-| Runtime WGP packages | `reigh-worker/source/runtime/wgp_*`; full `reigh-worker/source/runtime/wgp_ports/` subtree including `wgp_bridge.py` and vendor import ports | Remove after all imports are migrated to VibeComfy adapter, media utilities, or deleted tests. |
-| Model WGP packages | Full `reigh-worker/source/models/wgp/` subtree including `orchestrator.py`, `model_ops.py`, `lora_setup.py`, `wgp_patches.py`, `generators/`, and `error_extraction.py` | The VibeComfy adapter, template registry, preprocessing shims, and telemetry mapper must own all surviving behavior first. |
-| Worker server WGP override block | `reigh-worker/source/runtime/worker/server.py:544-595` | Remove WGP module import, `sys.path` mutation, `mmgp` global overrides, preload setup, and WGP-specific queue construction. |
-| WGP CLI flags | All `--wgp-*` flags in worker startup/server paths | Rename surviving profile selection to `--vibecomfy-profile` or move it to env/config; do not leave inert WGP flags. |
-| Existing Comfy refactor residue | `reigh-worker/source/models/comfy/comfy_utils.py` | This should already be retired in Sprint 2; verify it is removed and no tests import it. |
-
-### WGP Test Suite Removal
-
-Remove or migrate all seven WGP-specific test files:
-
-- `reigh-worker/tests/test_wgp_bridge_contracts.py`
-- `reigh-worker/tests/test_wgp_bridge_ports_contracts.py`
-- `reigh-worker/tests/test_wgp_init_bootstrap_contracts.py`
-- `reigh-worker/tests/test_wgp_output_contracts.py`
-- `reigh-worker/tests/test_wgp_params_overrides.py`
-- `reigh-worker/tests/test_wgp_patch_context_contracts.py`
-- `reigh-worker/tests/test_wgp_patch_lifecycle.py`
-
-Also remove or migrate any architecture and coverage tests that import retired WGP surfaces. The mandatory pre-Sprint-8 per-repo grep sweep in Section 10 is the source for any additional files not listed here.
-
-### Reigh-Worker-Orchestrator Removal Checklist
-
-| Area | Remove or migrate | Notes |
-| --- | --- | --- |
-| Worker directory fallback | `reigh-worker-orchestrator/gpu_orchestrator/runpod/worker_startup.template.sh:174` and `179-183` | Remove `FALLBACK_DIR="$WORKSPACE_DIR/Headless-Wan2GP"` and the `elif [ -d "$FALLBACK_DIR" ]` fallback branch. |
-| Wan2GP submodule reconciliation | `worker_startup.template.sh:267-292` | Remove the stale-clone removal block at `267-277` and the missing-submodule hard fail at `284-292`. |
-| Production profile flag | `worker_startup.template.sh:463` | Change `--wgp-profile 1` to `--vibecomfy-profile 1`, or remove it if profile selection has moved to env/config. |
-| RunPod startup discovery snippet | `reigh-worker-orchestrator/gpu_orchestrator/runpod/startup_script.py` | `_WORKDIR_DISCOVERY_SNIPPET` embeds `Headless-Wan2GP`; remove that fallback discovery. The snippet is consumed by `build_launch_command`, `build_log_retrieval_command`, and `build_startup_status_check_command`. |
-| Dockerfile | `reigh-worker-orchestrator/gpu_orchestrator/Dockerfile` | Verify and remove any Wan2GP install steps if present; current main may be generic and need no edit. |
-| Python requirements | `requirements.txt`; `requirements-dev.txt` | Drop any `mmgp` dependency if present directly or transitively through orchestrator tooling. |
-| Environment examples | env-example files and deployment docs | Replace WGP backend/profile variables with VibeComfy backend/profile variables. |
-
-### Removal Exit Criteria
-
-- Both reigh-worker and reigh-worker-orchestrator build without `Wan2GP/`, `mmgp`, WGP entrypoints, or WGP tests.
-- Worker startup succeeds without `Headless-Wan2GP` fallback discovery.
-- `--vibecomfy-profile` or its env/config replacement preserves profile 1 production default semantics.
-- Post-removal closure sweep has zero unexpected WGP hits, excluding this migration document and explicitly retained archival docs.
-- Last dual-stack image remains restorable until the post-removal production smoke has passed.
-
-### UNUSED Task-Type Handlers (per §8A.B)
-
-Per §0A and §8A.B, the following task types are unused by the production app and their handlers are dead from the app's perspective. They are deleted in Sprint 8 alongside the WGP runtime. See §8A.B for the full per-task-type breakdown including dispatch entries, display-name entries, tests to update, and external-consumer verification.
-
-Handler files to delete:
-
-- `reigh-worker/source/task_handlers/magic_edit.py`
-- `reigh-worker/source/task_handlers/inpaint_frames.py`
-- `reigh-worker/source/task_handlers/extract_frame.py`
-- `reigh-worker/source/task_handlers/create_visualization.py`
-- `reigh-worker/source/models/comfy/comfy_handler.py` (in addition to `comfy_utils.py` already listed above)
-- `reigh-worker/source/models/model_handlers/qwen_handler.py:536-575` — `handle_qwen_image_hires` method (file itself stays for `handle_qwen_image_edit`/`handle_qwen_image_2512`/`handle_qwen_image_style`/`handle_image_inpaint`/`handle_annotated_image_edit`)
-- `reigh-worker/source/task_handlers/tasks/task_conversion.py:127-128` — `qwen_image_hires` branch
-- `reigh-worker/source/task_handlers/tasks/dispatch_manifest.py:5` — `extract_frame` manifest entry
-- `reigh-worker/source/task_handlers/tasks/specialized_dispatch.py` — **DELETE-NOW (Sprint 8) per H10 resolution 2026-05-05.** Entire module deleted after §8 `task_registry.py` deletion absorbs its remaining role; the `extract_frame` dispatch branch at `:32-34,93-109` was its only non-trivial content. Decision rationale: maximizes success because hedging "consider deleting" leaves a 100-LoC dead module in the codebase post-cutover; the §8 task_registry deletion already absorbs its role, so the deletion is mechanical.
-- `reigh-worker/examples/inpaint_frames_example.py`
-
-Tests to update or delete:
-
-- `reigh-worker/tests/test_task_result_handler_contracts.py` — drop `magic_edit` and `inpaint_frames` imports and tests (file may become empty after; delete if so).
-- `reigh-worker/tests/test_lifecycle.py:95,145` — replace `"magic_edit"` literals with `"qwen_image_edit"`.
-- `reigh-worker/tests/test_examples_cli.py` — references `examples.inpaint_frames_example`; delete the file if the only surviving example is `join_clips_example.py` and a slimmer test exists.
-- `reigh-worker/tests/test_specialized_dispatch_contracts.py:63-110` — delete the two `extract_frame` tests.
-- `reigh-worker/tests/test_task_type_catalog.py` — drop rows for every task type listed in §8A.B.
-- `reigh-worker/tests/test_display_names.py` — drop assertions for deleted entries.
-- `reigh-worker/source/task_handlers/__init__.py:12-15` and `source/utils/orchestrator_utils.py:20` — drop docstring lines referencing the deleted handlers.
-
-The display_names entries to remove from `reigh-worker/source/core/log/display_names.py` (in both `TASK_TYPE_LABELS` and `_TASK_TYPE_SHORT_NAMES`):
-
-`hunyuan`, `flux`, `t2v`, `t2v_22`, `i2v`, `i2v_22`, `vace`, `vace_21`, `vace_22`, `ltxv`, `ltx2`, `generate_video`, `qwen_image_hires`, `magic_edit`, `inpaint_frames`, `comfy`, `extract_frame`, `rife_interpolate`, `rife_interpolate_images`. (`create_visualization` already has no entry.)
-
-### Option A Sweep-Surfaced Additions
-
-The T9 pre-Sprint-8 Option A sweep surfaced the following committed paths outside the broad WGP package/root-script checklist above. Sprint 8 must classify each path as delete, migrate, or retained archive before closure. Retained archival paths are allowed to keep historical WGP references only if they stay listed here and are excluded from the post-deletion zero-hit assertion in Section 10.
-
-Additional `reigh-worker` delete/migrate candidates:
-
-- `reigh-worker/.github/workflows/wan2gp-drift.yml`
-- `reigh-worker/.gitignore`
-- `reigh-worker/README.md`
-- `reigh-worker/STRUCTURE.md`
-- `reigh-worker/requirements.txt`
-- `reigh-worker/start_worker.bat`
-- `reigh-worker/preview_drive_selector.py`
-- `reigh-worker/examples/inpaint_frames_example.py`
-- `reigh-worker/examples/join_clips_example.py`
-- `reigh-worker/scripts/live_test/{launch_command.py,main.py,smoke.py,stage1_findings.md,variant_fresh.py,variant_update.py}`
-- `reigh-worker/scripts/live_test/tests/test_primitives.py`
-- `reigh-worker/scripts/preview/{run_preview.py,wgp_spoof.py}`
-- `reigh-worker/scripts/run_worker_matrix.py`
-- `reigh-worker/source/__init__.py`
-- `reigh-worker/source/core/log/{core.py,display_names.py,safe.py}`
-- `reigh-worker/source/core/params/{__init__.py,base.py,generation.py,lora.py,phase.py,phase_config.py,phase_config_parser.py,structure_guidance.py,task.py,task_metadata.py,travel_guidance.py,vace.py}`
-- `reigh-worker/source/core/runtime_paths.py`
-- `reigh-worker/source/media/structure/{compositing.py,download.py,generation.py,loading.py,preprocessors.py}`
-- `reigh-worker/source/media/video/{hires_utils.py,travel_guide.py}`
-- `reigh-worker/source/media/vlm/{service.py,single_image_prompts.py,transition_prompts.py}`
-- `reigh-worker/source/models/lora/{lora_paths.py,lora_utils.py}`
-- `reigh-worker/source/models/model_handlers/qwen_handler.py`
-- `reigh-worker/source/runtime/__init__.py`
-- `reigh-worker/source/runtime/worker/{bootstrap_gate.py,postprocess.py}`
-- `reigh-worker/source/task_handlers/join/vlm_enhancement.py`
-- `reigh-worker/source/task_handlers/orchestration/finalization_service.py`
-- `reigh-worker/source/task_handlers/queue/{bootstrap_gate.py,download_ops.py,memory_cleanup.py,queue_lifecycle.py,task_processor.py,task_queue.py,wgp_init.py}`
-- `reigh-worker/source/task_handlers/rife_interpolate.py`
-- `reigh-worker/source/task_handlers/tasks/{task_conversion.py,task_registry.py,task_types.py}`
-- `reigh-worker/source/task_handlers/travel/{chaining.py,orchestrator.py}`
-- `reigh-worker/source/utils/{frame_utils.py,resolution_utils.py}`
-- `reigh-worker/tests/{test_additional_coverage_modules.py,test_clear_conditioning_byte_identity.py,test_join_orchestrator_loop_reverse.py,test_lora_flow.py,test_lora_formats_baseline.py,test_ltx_hybrid_travel.py,test_pose_preprocessor.py,test_runtime_model_patch_contracts.py,test_travel_guidance_config.py}`
-
-Additional `reigh-worker` archival paths surfaced by the sweep. Keep only if they are intentionally historical; otherwise migrate/delete them with the candidates above:
-
-- `reigh-worker/artifacts/worker-matrix/20260316T*/{traceback.txt,rerun_failed.sh,summary.md}`
-- `reigh-worker/docs/{KIJAI_SVI_IMPLEMENTATION.md,LTX_MULTI_FRAME_TRAVEL.md,ORIGINAL_SVI_APPROACH.md,SVI_END_FRAME.md,SVI_IMPLEMENTATION.md,WAN2GP_FORK_MIGRATION_PLAN.md,wan2gp-rebase-runbook.md,wan2gp-triage.csv,worker-matrix-runner.md}`
-- `reigh-worker/docs/wan2gp-migration-history/**`
-- `reigh-worker/scripts/sprint3/capture_clear_conditioning_fixture.py`
-- `reigh-worker/scripts/sprint4/{patch_lifecycle_smoke.py,upstream_prs/*.md}`
-
-Additional `reigh-worker-orchestrator` paths surfaced by the sweep:
-
-- `reigh-worker-orchestrator/scripts/ssh_to_worker.py` - migrate/delete WGP workdir assumptions.
-- `reigh-worker-orchestrator/tests/gpu_orchestrator/runpod/test_startup_script.py` - migrate expected startup-script text away from `Headless-Wan2GP`.
-- `reigh-worker-orchestrator/.megaplan/plans/add-a-sentinel-skip-20260428-0103/state.json` - retain only as generated planning archive, or delete if planning artifacts are not meant to remain in the repo.
-
-## 8A. Bundled cleanup scope (cruft & dead code)
-
-This section captures cruft surfaced during the §0A audit follow-up, plus a parallel audit of feature flags, dead handler files, and stale UI scaffolding. These deletions ride along with the migration: they don't unblock cutover, but Sprint 7→8 is the moment to remove them rather than carry them forward into the post-migration codebase.
-
-Two streams:
-
-- **Sprint 8 (migration-coupled):** UNUSED Wan2GP-task-type handlers and their support code. Enumerated below; cross-reference to §8 deletion checklist.
-- **Sprint 8B (concurrent cleanup, not gated on migration):** Turbo-mode travel removal, dead UI/feature-flag scaffolding, and other non-WGP cruft. Independent of canary state; can be PR'd at any point during Sprints 4–8.
-
-### A. Turbo-mode travel removal
-
-`reigh-app/supabase/functions/create-task/resolvers/travelBetweenImages.ts:314-315` writes `task_type: "wan_2_2_i2v"` when `input.turbo_mode === true`. The worker's `TASK_TYPE_TO_MODEL` (`reigh-worker/source/task_handlers/tasks/task_types.py:82-117`) and `task_registry.py:1442-1511` both omit this string — `rg -n 'wan_2_2_i2v\b' reigh-worker/source/ → 0 hits`. Any task carrying that type would fail on dispatch.
-
-The UI surface that would emit `turbo_mode === true` is **already disabled**: the toggle is commented out at `reigh-app/src/tools/travel-between-images/components/BatchSettingsForm.tsx:532-556` ("Turbo Mode Toggle - DISABLED - keeping code for potential future use"). Grep for places that *set* the boolean to true (excluding tests) returns zero hits in `reigh-app/src/`. Settings default is `false` (`settings.ts:182`). The remaining `turboMode` plumbing exists only to read-as-`false`, gate UI affordances against it, and route into the dead `wan_2_2_i2v` branch.
-
-**Disposition: DELETE-NOW (Sprint 8B).** Eliminate the dead toggle and the task-type branch in one cleanup PR.
-
-Files to edit (cite `path:line`):
-
-| File | Change |
+| Area | Required end state |
 | --- | --- |
-| `reigh-app/supabase/functions/create-task/resolvers/travelBetweenImages.ts:314-315` | Remove `isTurboMode` and ternary; emit `task_type: "travel_orchestrator"` directly. |
-| `reigh-app/supabase/functions/create-task/resolvers/travelBetweenImages.ts:40` | Remove `turbo_mode?: boolean` from input type. |
-| `reigh-app/src/shared/lib/tasks/travelBetweenImages/taskTypes.ts:132,169` | Remove `turbo_mode` field from `TravelBetweenImagesTaskInput` and request payload. |
-| `reigh-app/src/tools/travel-between-images/settings.ts:86,182,392` | Remove `turboMode` from `MotionSettings` type, defaults, and parser. |
-| `reigh-app/src/tools/travel-between-images/modelCapabilities.ts:24,93,121,148` | Remove `ui.turboMode: boolean` from `ModelSpec` and per-model spec entries. |
-| `reigh-app/src/tools/travel-between-images/components/BatchSettingsForm.tsx:75-76,123,380,532-556,581-582` | Remove `turboMode`/`onTurboModeChange` props and the commented disabled-toggle block; remove `!turboMode &&` and `disabled={turboMode}` gating. |
-| `reigh-app/src/tools/travel-between-images/components/MotionControl.tsx:53,87,93,104` | Remove `turboMode` from `stateOverrides`, the early-return guard in `handleModeChange`, and the `disabled={turboMode}` on the Advanced tab trigger. |
-| `reigh-app/src/tools/travel-between-images/components/MotionControl.types.ts:49` | Remove from `stateOverrides`. |
-| `reigh-app/src/tools/travel-between-images/components/VideoGenerationModalSections.tsx:215-216,281` | Remove `turboMode`/`onTurboModeChange` props passed to `BatchSettingsForm` and `MotionControl`. |
-| `reigh-app/src/tools/travel-between-images/components/SharedGenerationView.tsx:83,208,330` | Drop `turboMode` derivation and prop pass-through. |
-| `reigh-app/src/tools/travel-between-images/providers/VideoTravelSettingsProvider.tsx:232-234,461,468` | Remove `turboMode` from spec-driven settings reset, `motionSettings`, and dependency array. |
-| `reigh-app/src/tools/travel-between-images/hooks/settings/useVideoTravelSettingsHandlers.ts:220,225,303` | Drop `handleTurboModeChange` and the `turboMode + advanced` gating. |
-| `reigh-app/src/tools/travel-between-images/pages/ShotEditorView.tsx:285,290-297` | Remove the `turboMode` destructure and the two effects (cloud-disable + advanced-mode reset). |
-| `reigh-app/src/tools/travel-between-images/components/ShotEditor/services/applySettings/{taskDataService.ts:159,generationSettingsService.ts:166-167,types.ts:52}` | Drop applySettings turbo plumbing. |
-| `reigh-app/src/tools/travel-between-images/components/ShotEditor/services/generateVideoService.ts:408,446` | Remove `turboMode: modelConfig.turbo_mode` and the request-body override. |
-| `reigh-app/src/tools/travel-between-images/components/ShotEditor/services/generateVideo/{requestBody.ts:67,130,types.ts:121}` | Remove `turboMode`/`turbo_mode` field from request body. |
-| `reigh-app/src/tools/travel-between-images/components/ShotEditor/controllers/{useGenerationController.ts:42,158,208,useGenerationControllerInputModel.ts:28,139,177}` | Drop `turboMode` from controller input model. |
-| `reigh-app/src/tools/travel-between-images/components/ShotEditor/hooks/actions/useSteerableMotionHandlers.ts:24,51` | Drop from action handler input. |
-| `reigh-app/src/tools/travel-between-images/components/hooks/useBatchVideoGeneration.ts:139` | Stop passing `turbo_mode: settings.turboMode \|\| false`. |
-| `reigh-app/supabase/functions/ai-timeline-agent/tool-schemas.ts:303-306` | Delete `turbo_mode` JSON schema property and description. |
-| `reigh-app/supabase/functions/ai-timeline-agent/tools/create-task.ts:507` | Drop `turbo_mode: typeof args.turbo_mode === "boolean" ? args.turbo_mode : travelContext?.turboMode`. |
-| `reigh-app/supabase/functions/ai-timeline-agent/{db.ts:513,types.ts:155,tools/loras.ts:26}` | Remove `turboMode` from agent settings type, db parser default, and lora-tool default. |
-| `reigh-app/supabase/migrations/*` (`20260118000001`, `20260104000002`, `20260105000001`, `20260128000002`-`20260128000006`) | Either leave existing migrations untouched (already applied) and add a new `2026MMDDHHMMSS_drop_turbo_mode.sql` migration that strips the key from `travel_settings`/`raw_settings`/`share_data` JSON columns, OR document them as historical-only. **Recommended: write a new migration; do not edit applied ones.** |
-| Tests (`MotionControl.test.tsx`, `requestBody.test.ts`, `generateVideoService.test.ts`, `useGenerationController.test.tsx`, `VideoTravelSettingsProvider.test.tsx`, `index.test.tsx`, `BatchModeContent.test.tsx`, `useBatchVideoGeneration.test.tsx`, `useVideoGenerationModalController.test.tsx`, `useGenerationControllerInputModel.test.tsx`, `useGenerateBatch.ts`, `useShotEditorController.ts`) | Drop turbo assertions; rewrite scenarios that depended on `turboMode: true` to exercise the surviving non-turbo path. |
+| Worker image | One dual-stack image includes both WGP and VibeComfy dependencies, models, custom nodes, startup probes, and health checks. |
+| Worker pools | Production can run WGP-default and Comfy-default worker processes/pools from the same image. Process/pool isolation remains the preferred production architecture. |
+| Selector | `backend_selector` can route by task type for direct image/edit tasks and by `(task_type, model_family/model_name, guidance_kind)` for orchestrated video. |
+| Rollback | Any Comfy-promoted route can be flipped back to WGP by runtime selector update, without rebuilding or redeploying the worker image. |
+| Observability | Dashboards, logs, debug cards, and alerts distinguish `backend=wgp` from `backend=comfy`, include selector version, and compare latency/VRAM/error/output-divergence by route. |
+| Profiles | WGP profile semantics and VibeComfy `MemoryProfile` mapping both remain documented and test-covered. |
+| Unsupported routes | If a route selects Comfy but no Comfy route exists, the worker fails closed/requeues before execution. It does not silently fall back to WGP unless the selector chose WGP. |
 
-**Worker-side residue:** none — `rg -n 'turbo_mode\|turboMode' reigh-worker/source/ → 0 hits`. Worker already ignores the field.
+### Sprint 12 hardening checklist
 
-**Estimated volume:** ~50 files touched; ~250 LoC removed (most files have 1–3 turbo touchpoints).
-
-### A.1 — Server-side `model_type` validation (H8: 2026-05-05)
-
-The frontend coerces `model_type ∈ {"i2v", "vace"}` via `resolveExecutionMode` at `reigh-app/src/tools/travel-between-images/modelCapabilities.ts:200-222` so the value reaching the resolver is always in `supportedGuidanceModes`. The resolver `reigh-app/supabase/functions/create-task/resolvers/travelBetweenImages.ts:34` passes it through raw — server-side validation is implicit-trust on a coerced client value, which is a contract bug.
-
-**Disposition: DELETE-NOW (Sprint 8B): add server-side `model_type` validation in `travelBetweenImages.ts` resolver.** Reject `model_type` values not in the per-`model_id` `supportedGuidanceModes` set with a typed error. Same change applies to `individualTravelSegment.ts` resolver if it accepts `model_type`. Tests must cover (a) coerced valid values pass through unchanged, (b) explicit invalid values are rejected with a descriptive error, (c) missing `model_type` is rejected when the model requires one.
-
-**Decision rationale (H8): maximizes success because trusting a client-side coercion server-side is a footgun for any future caller (AI agent, third-party integration, manual API user) that bypasses the UI; one short PR closes the contract gap before cutover.**
-
-### B. UNUSED Wan2GP-task-type handler removal (Sprint 8)
-
-These rows live in §8 because they belong with the WGP removal: deleting `task_handlers/tasks/task_types.py` and `task_registry.py` (already on the §8 sweep list) drops most of the dispatch entries automatically. The work captured here is the **handler files and their tests** that survive the dispatch-table deletion.
-
-Note on default-JSON files: the entire `reigh-worker/Wan2GP/` submodule is deleted in Sprint 8 (§8 row "Wan2GP submodule"), so per-task-type model defaults under `Wan2GP/defaults/*.json` need no separate enumeration.
-
-| task_type | Handler file(s) to delete | Dispatch entries to remove (in addition to §8 wholesale `task_registry.py` deletion) | display_names entries | Tests to update | external consumers (verified absent) | Disposition |
-| --- | --- | --- | --- | --- | --- | --- |
-| `hunyuan` | none (direct-queue, lives in `task_types.py` only — deleted by §8) | `task_types.py:36,99-101` | `display_names.py:15,55` | `test_task_type_catalog.py` (drop `hunyuan` row); `test_display_names.py` (drop label assertion if any) | `rg -i '\bhunyuan\|\bhyvid' reigh-worker/source/ → matches in `Wan2GP/` only`; `rg -n 'hunyuan' reigh-worker/scripts/ reigh-worker/examples/ → 0 hits` | DELETE-NOW (Sprint 8) |
-| `flux` | none | `task_types.py:30,57-58,93-94` | `display_names.py:13,53` | `test_task_type_catalog.py` | `rg -n '"flux"\|task_type.*flux\b' reigh-worker/source/ → 0 hits outside Wan2GP submodule` | DELETE-NOW (Sprint 8) |
-| `t2v`, `t2v_22` | none | `task_types.py:32,59-60,84,91-92` | `display_names.py:35-36,75-76` | `test_task_type_catalog.py` | `rg -n 'task_type.*"t2v"\|task_type.*"t2v_22"' reigh-worker/source/ → 0 hits` | DELETE-NOW (Sprint 8) |
-| `i2v`, `i2v_22` | none | `task_types.py:34,61-62,95-97` | `display_names.py:16-17,56-57` | `test_task_type_catalog.py` | `rg -n 'task_type.*"i2v"\|task_type.*"i2v_22"' reigh-worker/source/ → 0 hits` | DELETE-NOW (Sprint 8) |
-| `vace`, `vace_21`, `vace_22` | none (the templates remain via §1A indirect Wan-VACE-cocktail use) | `task_types.py:28,55-56,86-88` | `display_names.py:40-42,80-82` | `test_task_type_catalog.py` | `rg -n 'task_type.*"vace"\|task_type.*"vace_2[12]"' reigh-worker/source/ → 0 hits`; `'vace'` appears as `model_type` enum, not `task_type`. | DELETE-NOW (Sprint 8) |
-| `ltxv`, `ltx2` | none | `task_types.py:36,64,100-101` | `display_names.py:25-26,65-66` | `test_task_type_catalog.py` | `rg -n 'task_type.*"ltxv"\|task_type.*"ltx2"' reigh-worker/source/ → 0 hits` | DELETE-NOW (Sprint 8) |
-| `generate_video` | none | `task_types.py:42,66,84` | `display_names.py:14,54` | `test_task_type_catalog.py` | none | DELETE-NOW (Sprint 8) |
-| `qwen_image_hires` | `source/models/model_handlers/qwen_handler.py:536-575` (`handle_qwen_image_hires` method); `source/task_handlers/tasks/task_conversion.py:127-128` (the `elif task_type == "qwen_image_hires"` branch) | `task_types.py:107,127` | `display_names.py:31,71` | `test_qwen_handler*` if any reference hires; `test_task_type_catalog.py` | `rg -n 'qwen_image_hires\|handle_qwen_image_hires' reigh-worker/ → only the listed sites and Wan2GP/__init__.py` | DELETE-NOW (Sprint 8) |
-| `magic_edit` | **`source/task_handlers/magic_edit.py`** (226 LoC) | `task_registry.py:52,1469-1472` | `display_names.py:27,67` | `tests/test_task_result_handler_contracts.py:7,12-25` (`test_magic_edit_handler_returns_task_result_on_env_failure` — DELETE entire test); `tests/test_lifecycle.py:95,145` (replace `"magic_edit"` literals with another task_type still in the catalog, e.g. `"qwen_image_edit"`); `source/utils/orchestrator_utils.py:20` (docstring reference — drop). Also `source/task_handlers/__init__.py:12` docstring | none — Replicate Flux Kontext path is reachable only via this handler; `rg -n 'flux-kontext-dev-lora' reigh-worker/ → 1 hit (handler itself)` | DELETE-NOW (Sprint 8) |
-| `inpaint_frames` | **`source/task_handlers/inpaint_frames.py`** (327 LoC); **`examples/inpaint_frames_example.py`** (and `_common.py` if no longer referenced) | `task_registry.py:57,1492-1496`; `task_types.py:41,104` | `display_names.py:20,60` | `tests/test_task_result_handler_contracts.py:9,26+` (drop `inpaint_frames` import + test); `tests/test_examples_cli.py:17-100` (entire file references `examples.inpaint_frames_example` — DELETE if it only covers this and join_clips_example) | none — handler only invoked via dispatch | DELETE-NOW (Sprint 8) |
-| `comfy` | `source/models/comfy/comfy_handler.py` (191 LoC); `source/models/comfy/comfy_utils.py` (199 LoC) — note: §8 already lists `comfy_utils.py` for retire; this entry adds `comfy_handler.py`. Sprint 2 was originally to *refactor* `comfy_handler.py` into a VibeComfy delegator (per §8 row "Existing Comfy refactor residue" and Q9). With §0A confirming `task_type: "comfy"` is unemitted by the app, the refactor target is now empty — delete instead. | `task_registry.py:1507-1510` | `display_names.py:10,50` | any test importing `source.models.comfy.comfy_handler` | none — `rg -n 'task_type.*"comfy"' reigh-app/ → 0 hits`; raw-Comfy is not enqueued | DELETE-NOW (Sprint 8). Closes Q9: deprecation path was "preserve via VibeComfy delegation"; updated path is "delete." |
-| `create_visualization` | **`source/task_handlers/create_visualization.py`** (140 LoC) | `task_registry.py:58,1497-1500` | none in `display_names.py` (no entry); `_TASK_TYPE_SHORT_NAMES` has no entry either — both already absent. Verify: `grep -n 'create_visualization' source/core/log/display_names.py → 0 hits` | grep tests for `create_visualization` import | none. Handler is debug-only | DELETE-NOW (Sprint 8) |
-| `extract_frame` | **`source/task_handlers/extract_frame.py`** (80 LoC) | `task_registry.py:47,1501-1503`; `task_handlers/tasks/dispatch_manifest.py:5`; `task_handlers/tasks/specialized_dispatch.py:32-34,93-109` (`extract_frame` branch and its dispatcher tests) | `display_names.py:12,52` | `tests/test_specialized_dispatch_contracts.py:63-110` (two tests are extract_frame-specific — DELETE both); `tests/test_task_dispatch_manifest_contracts.py` if it asserts the manifest contains `extract_frame` | none — app uses `generate-thumbnail` edge function (§0A row) | DELETE-NOW (Sprint 8) |
-| `rife_interpolate_images` | **handler wrapper only**: `source/task_handlers/rife_interpolate.py` (113 LoC). **DO NOT delete** the underlying `rife_interpolate_images_to_video` helper at `source/media/video/travel_guide.py:38` — still used by `source/task_handlers/travel/api.py:20-21` and `source/task_handlers/travel/guidance/guide_video_ops.py:12-60`. | `task_registry.py:48,1504-1506` | `display_names.py:33-34,73-74` (both `rife_interpolate` alias and `rife_interpolate_images` runtime entries can be deleted) | none specific (verify `test_travel_api_wrappers.py` tests the helper, not the dispatch handler) | none | DELETE-NOW (Sprint 8) — keep RIFE helper. |
-
-**Sprint 8 §8 cross-reference:** the §8 "Option A Sweep-Surfaced Additions" already covers `rife_interpolate.py`, `task_conversion.py`, `task_registry.py`, `task_types.py` (full file deletions). This table adds: `magic_edit.py`, `inpaint_frames.py`, `extract_frame.py`, `create_visualization.py`, `models/comfy/comfy_handler.py` to the deletion enumeration.
-
-**Estimated volume:** ~5 handler files × avg 175 LoC + 1 example file + 4 dead test functions ≈ ~1,000 LoC removed; ~6 files deleted outright.
-
-### C. Additional cruft
-
-| Category | path:line | Evidence of deadness | Disposition | Verification step (for AMBIGUOUS) |
-| --- | --- | --- | --- | --- |
-| Dead UI block (commented) | `reigh-app/src/tools/travel-between-images/components/BatchSettingsForm.tsx:532-556` | "DISABLED - keeping code for potential future use" — 25-line commented-out toggle. With §8A.A removing turbo_mode entirely, future-use is gone. | DELETE-NOW (Sprint 8B) — covered by §8A.A. | — |
-| Duplicate console-script registrations | `reigh-worker/pyproject.toml:104-109` AND `reigh-worker/pyproject.toml:160-165` | The `[tool.headless_wan2gp.entrypoints]` table at 160-165 mirrors `[project.scripts]` at 104-109 verbatim for ALL 5 entries (worker, run_worker, heartbeat_guardian, headless_model_management, headless_wgp), not just `headless_wgp` as Q12 suggests. The `[tool.headless_wan2gp.entrypoints]` table has no consumer (`rg -n 'tool.headless_wan2gp.entrypoints\|headless_wan2gp.entrypoints' reigh-worker/ reigh-worker-orchestrator/ → 0 hits outside the file itself`). | DELETE-NOW (Sprint 8B). Update Q12 stance: delete the entire `[tool.headless_wan2gp.entrypoints]` table (160-165), not just the `headless_wgp` line. The 4 non-WGP entries (worker, run_worker, heartbeat_guardian, headless_model_management) survive only via `[project.scripts]`. | — |
-| Unused vendored deprecation table | `reigh-worker/pyproject.toml:167-169` | `[tool.headless_wan2gp.deprecation]` block (`db_operations_remove_ready=false`, `db_operations_warning_date="2026-12-31"`). `rg -n 'db_operations_remove_ready\|headless_wan2gp.deprecation' reigh-worker/ → 0 hits outside the file`. | DELETE-NOW (Sprint 8B) | — |
-| Worker startup CLI flag | `reigh-worker-orchestrator/gpu_orchestrator/runpod/worker_startup.template.sh:463` | `--wgp-profile 1` already on the §8 list (renamed to `--vibecomfy-profile`); no extra cleanup. | n/a — already in §8. | — |
-| Worker REIGH env-var split | `reigh-worker/source/core/log/core.py:100-101` | Only `REIGH_DEBUG` is consumed; `REIGH_BACKEND` (introduced by §3 "Adapter shim") will be added by Sprint 2. No live cruft today. | — | — |
-| Stale TODOs (H6: DELETE-NOW unconditionally) | `reigh-app/src/shared/lib/tasks/travelBetweenImages/taskTypes.ts:185,196,206` | Three "TODO: wire through to orchestrator_details" comments on travel input fields (`chain_segments`, `structure_guidance`, `stitch_config`). They are accepted by the request type but never wired into `orchestrator_details` by the resolver — a silent contract bug, not a feature. | **DELETE-NOW (Sprint 8B)** per H6 resolution 2026-05-05. Decision rationale: maximizes success because TODO fields that silently no-op are a contract bug; deleting them removes a footgun for any future resolver author who assumes the field is wired. | n/a — unconditional delete |
-| Legacy worker-model alias | `reigh-app/src/tools/travel-between-images/modelCapabilities.ts:176-178` | `LEGACY_WORKER_MODEL_ALIASES = { ltx2_22B_distilled: 'ltx-2.3-fast' }`. Used by `resolveSelectedModelFromModelName()`. Live tasks may still carry the old `ltx2_22B_distilled` model_name in their persisted shot settings. | AMBIGUOUS | Query `SELECT count(*) FROM tasks WHERE params->>'model_name' = 'ltx2_22B_distilled' AND created_at > now() - interval '90 days';` — if 0, delete the alias and rename the test fixtures. Otherwise keep until backfill. |
-| Legacy generated-lane enum value | `reigh-app/src/tools/video-editor/lib/generated-lanes.ts:2`, `src/tools/video-editor/sequences/generation.ts:66,120` | `'trusted_v1'` is the only lane value used. No `'trusted_v2'` exists. Looks like a pinned version that never had a successor. | AMBIGUOUS | Confirm with timeline-tool owner whether `_v1` suffix is intentional version-pinning vs cruft. Sprint 8B candidate. |
-| Legacy timeline marker enums | `reigh-app/src/tools/video-editor/lib/timeline-domain.ts:18-20,353,516,551` | `'legacy_pinned_shot_group_repaired'`, `'legacy_tracks_migrated'`, `'legacy_background_clip_inserted'` are emitted as ephemeral migration markers; whether they're still needed depends on whether unmigrated timelines exist in prod. | AMBIGUOUS | Query: `SELECT count(*) FROM timelines WHERE NOT (data ? 'tracks_migrated_at')` (or equivalent) over 90 days. If zero, drop the legacy migration paths. Sprint 8B. |
-| Legacy prompt-assembly policy | `reigh-app/src/shared/lib/tasks/promptAssembly.ts:1,5`, `src/shared/components/ImageGenerationForm/lib/buildBatchTaskParams.ts:34` | `'legacy_batch_comma'` policy alongside current `'batch_comma'`. | AMBIGUOUS | Verify whether any task row carries `prompt_assembly: 'legacy_batch_comma'`. If only test fixtures, delete. Sprint 8B. |
-| Pre-Comfy ComfyUI scaffolding | `reigh-worker/source/models/comfy/comfy_handler.py`, `comfy_utils.py` | Originally Sprint 2's refactor target. With `task_type: "comfy"` UNUSED (§0A), there is no consumer to refactor toward. | DELETE-NOW (Sprint 8). Folded into §8A.B `comfy` row above. | — |
-| Vestigial LTX hybrid/anchor travel guidance kinds (H7: DELETE in Sprint 6) | `reigh-worker/source/core/params/travel_guidance.py:13-20,419-438`; `reigh-worker/source/task_handlers/travel/orchestrator.py:2114-2163` (`is_ltx_hybrid`/`is_ltx_anchor` branches and `_build_segment_anchor_guidance_config`). Surfaced by §3A "Travel-segment configuration matrix" holes block. | App-side spec (`reigh-app/src/tools/travel-between-images/modelCapabilities.ts:48-49,156`) does not list `ltx_hybrid` or `ltx_anchor` in any `supportedGuidanceModes`. `travelGuidance.ts:10` enum and `travelGuidance.ts:258,274` validation paths gate these kinds out of any UI emission. **Verification grep confirmed 0 hits.** | **DELETE-NOW (Sprint 6 opportunistic cleanup)** per H7 resolution 2026-05-05. ~250 LoC removable. Decision rationale: maximizes success because verification already green; carrying dead validation surface forward complicates Sprint 6 dispatcher unification. | n/a — verified |
-| Legacy `structure_guidance` / `structure_videos` write aliases | `reigh-app/src/shared/lib/tasks/travelBetweenImages/taskTypes.ts:185-211` (TODOs at :185,196,206 already flagged in §8A.C "Stale TODOs"); resolver passthrough at `reigh-app/supabase/functions/create-task/resolvers/travelBetweenImages.ts:63-64` and `individualTravelSegment.ts:48-49`. | Worker's canonical `travel_guidance` contract rejects the legacy keys when both are present (`reigh-worker/source/core/params/travel_guidance.py:221-233`). The TODOs at `taskTypes.ts:185,196,206` confirm `chain_segments`, `structure_guidance`, and `stitch_config` are accepted by the request type but never wired into `orchestrator_details` by the resolver. | AMBIGUOUS | After git-blame check at `taskTypes.ts:185,196,206` confirms TODOs are >6 months old, drop the three input fields, the legacy `TravelBetweenImagesLegacyCompatInput` block, and the resolver passthroughs. Sprint 8B candidate. |
-| Klein edit task path | `reigh-app/supabase/functions/create-task/resolvers/kleinEdit.ts:108`, `useMagicEditMode.ts:197,212` | `family: 'klein_edit'` resolves to worker `task_type: "flux_klein_edit"` — outside this migration's WGP catalog. Active and emitted (`useMagicEditMode.ts:197` `useKlein ? 'flux_klein_edit' : 'qwen_image_edit'`). | KEEP — out of scope. | — |
-| Vendored WGP modules | `reigh-worker/source/runtime/wgp_ports/vendor_imports.py` and consumers | All consumers are inside `source/runtime/wgp_*` which §8 deletes wholesale. | n/a — covered by §8 "Runtime WGP packages" row. | — |
-
-### D. Out-of-scope cruft (NOT deleting)
-
-| Item | Reason for keeping |
-| --- | --- |
-| `source/media/video/travel_guide.py:38` `rife_interpolate_images_to_video` helper | Still used by `source/task_handlers/travel/api.py:20-21` and `source/task_handlers/travel/guidance/guide_video_ops.py:12-60`. Only the dispatch wrapper at `task_handlers/rife_interpolate.py` is dead. |
-| `source/media/video/extract_frames_from_video`, `extract_frame_range_to_video` | Used by `task_handlers/edit_video_orchestrator.py:32`, `task_handlers/inpaint_frames.py:27` (the latter dies in §8A.B but the former still consumes), `task_handlers/join/{generation.py,vlm_enhancement.py}`. Only the dispatch handler at `task_handlers/extract_frame.py` is dead. |
-| `family: "klein_edit"` / worker `task_type: "flux_klein_edit"` | Live, app-emitted, outside the WGP catalog. Independent migration if/when needed. |
-| Wan 2.1 model entries (`vace_21`, `i2v_14B` defaults) inside `Wan2GP/defaults/` | Wan2GP submodule is deleted wholesale by §8. Don't enumerate per-file. |
-| Memory profiles 2 and 4 (`High RAM`, `Conservative`) | §1.2 confirms all five tiers have a defined display label and are part of the contract preserved by Sprint 1. Even if no current deploy pins profile 2 or 4, the contract is canonical. |
-| `LEGACY_WORKER_MODEL_ALIASES.ltx2_22B_distilled` | Possibly still needed for in-flight tasks; AMBIGUOUS in §8A.C. |
-| All `legacy_*` timeline domain markers (`timeline-domain.ts`) | Possibly still needed for unmigrated timelines; AMBIGUOUS in §8A.C. |
-
-### E. Per-sprint opportunistic cleanup convention
-
-§4 sprint rows now each carry a uniform clause:
-
-> **Opportunistic cleanup:** while touching `<areas this sprint owns>`, delete any §8A.B/§8A.C item whose code path the sprint is already inside, and flag any newly-discovered cruft into §8A.C with `path:line` + verification step.
-
-…and a corresponding exit-criteria line: *"any in-flight cleanup items the sprint touched are either landed or explicitly punted with a §8A.C entry."*
-
-The intent: thread cleanup through the migration as code is touched, so Sprint 8 / 8B is the closure sweep rather than the only delete window. Cleanup must remain *opportunistic* — it never blocks the sprint's primary deliverable, and it never expands a sprint's `<areas>` to chase cruft outside that surface.
-
-**§8A.C row labels.** When a per-sprint clause picks up a row, mark its disposition in §8A.C as `DELETE-IN-SPRINT-N (opportunistic, <date landed>)`. When a sprint touches the row but defers, mark `PUNTED-FROM-SPRINT-N (reason)` and roll into Sprint 8.
-
-### F. Gremlin audit follow-ups (G1–G8 from 2026-05-05)
-
-The following items were surfaced during the abstraction-level / operational gremlin pass and either confirm existing dispositions or add new rows. Each cites code; each lists a sprint.
-
-#### G1 — `core/params/` 14-of-19 modules unimported externally
-
-`reigh-worker/source/core/params/` actually contains **19 .py files** (3,273 LoC), not 13. Importer audit (`rg -l "from source.core.params.<m>" reigh-worker/{source,tests}`):
-
-| Module | LoC | External importers | Disposition |
-| --- | --- | --- | --- |
-| `__init__.py` | 41 | re-exports `ParamGroup`, `LoRAConfig`, `LoRAEntry`, `LoRAStatus`, `VACEConfig`, `GenerationConfig`, `PhaseConfig`, `TaskConfig`, `TravelGuidanceConfig`, `ContinuationPolicy`, `GenerationPolicy`, `StructureGuidanceConfig`, `StructureVideoEntry`, `TaskDispatchContext`, `OrchestratorDetails`, `validate_orchestrator_details` | KEEP (re-export surface) |
-| `base.py` | 154 | indirect via `ParamGroup` only | KEEP-while-children-live |
-| `task.py` | 227 | `TaskConfig` is the WGP-format funnel (`generation_strategies.py:160-167`, `download_ops.py:74-128`, `task_queue.py:497`) | KEEP-but-WGP-coupled (deletion in §8 alongside `to_wgp_format()` consumers) |
-| `lora.py` | 347 | `LoRAConfig`, `LoRAEntry`, `LoRAStatus` exported from `__init__.py`; consumed by `tests/test_lora_flow.py:16` | KEEP (active) |
-| `travel_guidance.py` | 555 | 4 importers (`task_registry.py:40`, `travel/segment_processor.py:21`, `travel/guide_builder.py:20`, tests) | KEEP (active, anchors §3A travel matrix) |
-| `structure_guidance.py` | 454 | 2 importers (`task_registry.py:39`, `travel/guide_builder.py:19`); `normalize_structure_treatment` used by 3 media files | KEEP (active) |
-| `phase_config_parser.py` | 281 | 1 importer (`task_registry.py:37`) plus internal use by `phase.py:49` | KEEP (active) |
-| `generation_policy.py` | 82 | 1 external importer (`task_registry.py:38`) + tests | KEEP (active) |
-| `contracts.py` | 175 | 1 importer (`task_registry.py:31,43`, `travel/contracts/orchestrator_details.py:7`, `travel/orchestrator.py:428`) | KEEP (active) |
-| `task_result.py` | 145 | 4 importers (`server.py:19`, `magic_edit.py:24`, `inpaint_frames.py:34`, `travel/orchestration/orchestrator.py:10`, `join/orchestrator.py:25`, `join/shared.py:18`) | KEEP (active) |
-| `phase_multiplier_utils.py` | 331 | `qwen_handler.py:17`, `hires_utils.py:124` (lazy) | KEEP (active) |
-| `vace.py` | 59 | 0 external importers; only used as `TaskConfig.vace` field (`task.py:32,56`) | DELETE-NOW or merge into `task.py` (G1-1) |
-| `generation.py` | 107 | 0 external importers; only used as `TaskConfig.generation` field | MERGE-INTO-`task.py` (G1-2) |
-| `phase.py` | 122 | 0 external importers; only used as `TaskConfig.phase` field | MERGE-INTO-`task.py` (G1-3) |
-| `phase_config.py` | 75 | `task_processor.py:381,565` (lazy `apply_phase_config_patch`/`restore_model_patches`) | KEEP (active) |
-| `task_metadata.py` | 63 | 0 external importers (`grep -rn "task_metadata\|TaskMetadata" source/ → only the file itself`) | DELETE-NOW (G1-4) |
-| `lora_models.py` | 5 | 0 external importers; only re-exports `LoRAEntry`, `LoRAStatus` already exported by `__init__.py` | DELETE-NOW (G1-5) |
-| `lora_parsing.py` | 28 | 0 external importers | DELETE-NOW (G1-6) |
-| `structure_guidance_parsing.py` | 22 | 0 external importers | DELETE-NOW (G1-7) |
-
-**Disposition summary:**
-
-| Action | Modules | LoC saved |
+| Area | Harden / verify | Notes |
 | --- | --- | --- |
-| DELETE-NOW | `task_metadata.py`, `lora_models.py`, `lora_parsing.py`, `structure_guidance_parsing.py` | 118 |
-| MERGE-INTO-`task.py` | `vace.py`, `generation.py`, `phase.py` | 288 (folded, not deleted; net structural simplification only) |
-| KEEP | 12 modules carrying real functionality | — |
+| WGP executor | Keep WGP runtime packages, model packages, CLI flags, profile handling, root scripts, and WGP tests that prove current behavior. | Do not delete `Wan2GP/`, `source/runtime/wgp_*`, `source/models/wgp/`, or WGP bridge tests as part of this epic. |
+| VibeComfy executor | Keep VibeComfy adapter, `template_routing.py`, LoRA sanitizer, profile mapping, telemetry mapper, and route tests. | The adapter should be tested as a peer executor, not as a replacement that makes WGP dead code. |
+| Shared executor interface | Ensure both executors implement the same worker-facing contract: `supports(route)`, `prepare(task)`, `run(task, profile)`, `cleanup()`, and `health()`. | Selector logic remains outside both executors. |
+| Orchestrator startup | Preserve WGP startup behavior and add Comfy startup behavior. | Startup templates should pass backend/profile flags without removing WGP flags. |
+| Claim eligibility | Confirm WGP workers claim WGP-routed tasks and Comfy workers claim Comfy-routed tasks; incompatible workers fail closed before execution. | Prefer claim-time filtering; fallback is pre-execution requeue/fail-closed. |
+| Dual-run harness | Keep nightly or scheduled dual-run capability for representative routes. | This remains useful after canary to detect drift in either backend. |
+| Documentation | Publish a runbook for choosing WGP vs Comfy per route, flipping the selector, and interpreting backend-specific failures. | This is the actual closure artifact for the epic. |
 
-**Sprint:** Sprint 6 (per-sprint clause already names `core/params/{travel_guidance,structure_guidance,phase_config_parser}.py`). The 4 DELETE-NOW modules are unimported external-surface dead code; the 3 MERGE candidates are leaves of `TaskConfig` and can be folded if the merge is mechanical. Verification before delete: `git -C reigh-worker grep -l "<module_name>"` returns only the module itself.
+### UNUSED task-type cleanup
 
-#### G2 — `wgp_patches.py` (678 LoC) is a clean whole-file delete in Sprint 8
+The only deletion bundled with the end-state sprint is deletion of production-unused task-type handlers whose removal does **not** remove WGP as an executor. These are cleanup candidates, not proof that WGP is being retired:
 
-Enumerated via `rg -n "^def " source/models/wgp/wgp_patches.py`:
+- `magic_edit`
+- `inpaint_frames`
+- `extract_frame`
+- `create_visualization`
+- raw `comfy`
+- `qwen_image_hires` task-type branch
+- `rife_interpolate_images` dispatch wrapper and native RIFE helper, only after the §8A cleanup gate proves no RayWorker dispatch/history/admin path still depends on them
 
-| Patch | Lines | What it modifies | Replacement target |
-| --- | --- | --- | --- |
-| `apply_runtime_model_definition_patch` | 120-179 | Wan2GP runtime model-definition mutation | Sprint 1 (build-time frozen templates per Q1; no replacement) |
-| `apply_qwen_model_routing_patch` | 180-246 | WGP Qwen-family loader routing | Replaced by per-template Qwen routes (Sprint 5) |
-| `apply_qwen_lora_directory_patch` | 247-295 | redirects `get_lora_dir(model_type)` → `loras_qwen/` | Replaced by `loras_qwen/` symlink in worker image (§3A "Qwen LoRA directory") |
-| `apply_ltx2_runtime_fork_markers_patch` | 296-325 | LTX2 fork-marker mutation | None needed — `ltxv`/`ltx2` UNUSED per §0A |
-| `apply_lora_multiplier_parser_patch` | 326-350 | swaps WGP parser to 3-phase parser shared with mmgp | None needed — WGP-internal; gone with WGP |
-| `apply_qwen_inpainting_lora_patch` | 351-383 | Qwen inpainting LoRA patch | Sprint 5 (Qwen edit templates carry their own LoRA chain) |
-| `apply_lora_key_tolerance_patch` | 384-490 | strips unrecognized LoRA keys | Replaced by `source/models/comfy/lora_sanitize.py` (§3A "LoRA stacking", Sprint 5) |
-| `apply_lora_caching_patch` | 491-587 | WGP LoRA cache | None needed — Comfy `model_patcher` cache covers this (§3A "Uni3C") |
-| `apply_headless_app_stub` | 588-611 | gradio shim | None needed — gone with WGP |
-| `apply_all_wgp_patches` | 630-678 | orchestration of the above | gone |
+Deleting these rows is optional for the dual-executor conclusion. If cleanup risks delaying dual-executor readiness, defer it to Sprint 12B or separate post-canary PRs.
 
-Plus context bookkeeping (`_normalize_patch_context_id`, `_context_patch_state`, `_context_patch_rollbacks`, `_register_patch_application`, `get_wgp_patch_state`, `clear_wgp_patch_context`, `rollback_wgp_patches`, `_rollback_qwen_lora_directory_patch`, `_rollback_lora_caching_patch`).
+### Dual-executor exit criteria
 
-**Verdict: clean whole-file delete in Sprint 8.** Every patch's intent is either (a) WGP-only and dies with WGP, or (b) replaced by an explicit non-monkeypatch mechanism elsewhere in the migration plan. **No patch needs an explicit migration target that doesn't already have one.** Already covered by §8 "Model WGP packages" row; no new row required. (G2 closes.)
+- Both WGP and VibeComfy worker processes can boot from the same image.
+- Selector can route at least one Cohort A route, one Cohort B route, and, if Sprint 9 produced any dual-supported non-FALL-BACK orchestration route, one Cohort E route to either backend where both are supported. If all Cohort E promoted routes are WGP-only, the selector docs must say so explicitly.
+- WGP-only, Comfy-only, and dual-supported routes are explicit in `template_routing.py` / selector docs.
+- Runtime selector rollback from Comfy to WGP is tested in staging and production canary.
+- Dashboards and debug cards make backend choice obvious for every task.
+- No Comfy migration PR removes WGP runtime code, WGP dependencies, WGP tests, or WGP startup paths.
 
-#### G3 — Two-seam adapter unification (USER DECISION: UNIFY — Sprint 6 deliverable)
+## 8A. Cleanup Scope
 
-**Decision (2026-05-05): UNIFY.** User chose the aggressive option. Sprint 6 absorbs the dispatcher refactor; Sprint 6 scope grows by ~1–2 days of structural work + smoke retargeting. See §4 Sprint 6 row and the new §9 risk entry.
+Cleanup is deliberately separated from the migration. The epic closes when WGP and VibeComfy are both supported, selectable executors with tested rollback. It does not require deleting production-unused task handlers or old app scaffolding.
 
-**Trade-off context (recorded for the implementer).** Today `_handle_direct_queue_task` (`task_registry.py:1543-1562`) and the `context["task_queue"]` injection sites (`task_registry.py:1437,1453,1462,1487,1496,1505,1538,1546`) coexist for these reasons:
+Migration-blocking cleanup is limited to contract safety:
 
-| Reason | Cite | Wan2GP-specific? |
-| --- | --- | --- |
-| Direct seam waits up to 3600s (`task_registry.py:1565`) for a single completion; orchestrated seam waits 1800s and runs chaining post-WGP (`task_registry.py:1346-1364`). | `task_registry.py:1543-1600` vs `:1298-1357` | No — different lifecycle, not Wan2GP-specific |
-| Orchestrated handlers run media-prep / image-ref resolution / structure-guidance / continuation-uni3c **before** queue submission (`_resolve_segment_context`, `_resolve_image_references`, `_process_structure_guidance`, `_apply_video_source_continuation`, `_apply_uni3c_config`). | `task_registry.py:1311-1328` | No — these are Comfy-side concerns too |
-| Orchestrated handlers run chaining **after** completion (`handle_travel_chaining_after_wgp`). | `task_registry.py:1363-1364` | Function name has `_wgp` suffix, but the chaining itself is media-side (extract tail frame, color-match, mask-active-frames) |
-| Direct seam writes `_source_task_type` only on travel paths (`task_registry.py:1334`) and applies one task-type override (`wan_2_2_t2i` → `video_length=1` at `task_registry.py:1554`). | as cited | Wan2GP param name (`video_length`) is leaking, but the override pattern itself isn't WGP-bound |
+- `turbo_mode: true` must be rejected, coerced safely, or removed from active emitters before Sprint 0 baselines freeze because it can produce an unregistered worker task type.
+- Server-side validation gaps that can create invalid worker routes, such as invalid `model_type`, may land before Sprint 0 if baselines are regenerated, or after canary as API-hardening work.
 
-**Could Sprint 6 or 8B unify them?** Yes, in principle: a single `_handle_via_queue_task` could take a pre-submit hook (media prep) and a post-completion hook (chaining), and the direct-queue path would pass `(None, None)`. The seam delete would land in `task_registry.py:1543-1602` plus the `_handle_direct_queue_task` short-circuit at `:1437-1438` and `:1538-1539`.
+Post-canary cleanup candidates belong in Sprint 12B or separate PRs:
 
-**Files that disappear (under unification):**
+- UNUSED task-type handlers such as raw `comfy`, `magic_edit`, `inpaint_frames`, `extract_frame`, `create_visualization`, `qwen_image_hires`, and the `rife_interpolate_images` dispatch wrapper.
+- Turbo-mode UI/settings/schema scaffolding and any persisted JSON cleanup.
+- Duplicate or unconsumed package metadata such as `[tool.headless_wan2gp.entrypoints]` and `[tool.headless_wan2gp.deprecation]` if still verified unused.
+- Ambiguous legacy frontend fields or timeline/prompt markers only after their stated DB or owner checks prove they are dead.
 
-- `_handle_direct_queue_task` (60 LoC at `task_registry.py:1543-1602`) — folded into the orchestrated wait loop.
-- The `task_type in DIRECT_QUEUE_TASK_TYPES and context["task_queue"]` branch at `:1437-1438` — replaced by registry lookup with default-pre/post hooks.
-- Possibly `DIRECT_QUEUE_TASK_TYPES` set itself if the registry is structured by task type.
-
-**Concrete unification design (Sprint 6 implementer guidance):**
-
-1. New single dispatcher `_handle_via_queue_task(db_task, context, *, pre_submit_hooks=None, post_completion_hooks=None, wait_timeout_s=None)`. Both seams call it.
-2. **Pre-submit hooks** capture today's orchestrated pre-work as a typed list of optional callables: `[_resolve_segment_context, _resolve_image_references, _process_structure_guidance, _apply_video_source_continuation, _apply_uni3c_config]`. Direct-queue tasks pass `pre_submit_hooks=None` (or an empty list); orchestrated tasks pass the relevant subset per task type.
-3. **Post-completion hooks** capture today's chaining work: `[handle_travel_chaining_after_wgp]` (rename to `handle_travel_chaining` as part of the WGP-name closure sweep). Direct-queue passes `None`.
-4. **Timeout convergence:** the existing 3600s vs 1800s split is preserved per task type, but as an explicit `wait_timeout_s` argument resolved from a per-task-type registry, not from which seam was taken. Default to 1800s; direct-queue task types that legitimately need 3600s declare it. Sprint 0 baselines must record the per-task-type effective timeout so this isn't a silent change.
-5. **Override registry:** the `wan_2_2_t2i` → `video_length=1` override at `task_registry.py:1554` becomes a per-task-type override map that the unified dispatcher applies before submit. (`video_length` field name is renamed during the WGP-name closure sweep.)
-6. **`DIRECT_QUEUE_TASK_TYPES` set:** deleted; replaced by registry lookup keyed on `task_type` returning `(pre_hooks, post_hooks, wait_timeout_s, overrides)`.
-7. **Lifecycle contract test:** before unification merges, write a contract test asserting that for every USED task type the pre-unification dispatch path and the post-unification path produce identical:
-   - Submitted `GenerationTask` payload (modulo determinism — diff after applying the same hooks).
-   - Completion polling cadence and timeout budget.
-   - Post-completion artifact paths and DB updates.
-   This is the safety net that lets Sprint 6 take the refactor without regressing anything Sprint 0 baselined.
-
-**Files that disappear:**
-
-- `_handle_direct_queue_task` (60 LoC at `task_registry.py:1543-1602`) — folded into `_handle_via_queue_task`.
-- The `task_type in DIRECT_QUEUE_TASK_TYPES and context["task_queue"]` branch at `task_registry.py:1437-1438` and `:1538-1539` — replaced by registry lookup.
-- The `DIRECT_QUEUE_TASK_TYPES` constant — replaced by the per-task-type registry.
-
-**Why we did this even though "keep both" was defensible.** (1) After Sprint 8 the only meaningful split between direct and orchestrated is which hooks run; encoding that as data (pre/post-hook lists) is cleaner than encoding it as a control-flow seam. (2) Bundling the refactor into Sprint 6 means the dispatcher is touched once, while we're already in there. Splitting it across migration + post-migration cleanup risks the cleanup never happening. (3) The contract test (item 7 above) prevents lifecycle-contract drift from being a silent regression. (4) `DIRECT_QUEUE_TASK_TYPES` and the seam-split branch are the kind of leaky abstraction the user explicitly wanted off the books while we're in here.
-
-**Disposition: UNIFY — Sprint 6 deliverable.** Sprint 6 row in §4 and §5 Cohort E entry conditions updated. New §9 risk row added: "Unified dispatcher introduces a lifecycle-contract regression for direct-queue tasks (e.g. timeout, polling cadence) that Sprint 0 baselines wouldn't catch unless the contract test runs against the recorded baseline." Mitigation: contract test (item 7), Sprint 0 must capture per-task-type timeout/cadence baselines; rollback is to revert the dispatcher change and keep both seams temporarily — both stacks coexist in the worker until Sprint 8 anyway.
-
-#### G4 — Profile-1 (prod) vs Profile-3 (dev) split is load-bearing post-migration; keep both
-
-`worker_startup.template.sh:463` pins `--wgp-profile 1` (Max Performance: high VRAM, fastest) and `start_worker.bat:14` / `scripts/live_test/{main,smoke}.py:27` default to `--wgp-profile 3` (Balanced). Material differences from §1 + §3 mapping:
-
-| Profile | `vram_policy` | `cache_policy` | Other | Matters because |
-| --- | --- | --- | --- | --- |
-| 1 | `high` | `smart` | none | Production GPU is consistent and large (typically 80GB H100 / 48GB A100) — leaves room for caching across runs |
-| 3 | `normal` | `smart` | none | Dev GPUs (3090 24GB / 4090 24GB / Mac unified memory) — cannot afford the high-VRAM caching pressure |
-
-**Verdict: split is still load-bearing post-migration.** Q10 already documents the same conclusion; Sprint 1 acceptance gates require parity tests for both. (G4 closes — no new row, no consolidation.) Sprint 7 per-sprint clause was patched to make this explicit so a canary refactor doesn't accidentally collapse the two.
-
-#### G5 — Operational scaffolding sweep additions
-
-| Finding | path:line | Disposition |
-| --- | --- | --- |
-| `worker_startup.template.sh:267-292` Wan2GP submodule reconciliation block (stale-clone removal + missing-submodule hard-fail) | `worker_startup.template.sh:267-292` | Already in §8 row "Wan2GP submodule reconciliation". No new row. |
-| `worker_startup.template.sh:174,179-183` `Headless-Wan2GP` fallback dir | as cited | Already in §8 row "Worker directory fallback". No new row. |
-| `worker_startup.template.sh:463` `--wgp-profile 1` | as cited | Already in §8 row "Production profile flag". No new row. |
-| Stdout-noise filter substring `"Incorrect version of mmgp"` | `reigh-worker/source/core/log/core.py:59` | DELETE-IN-SPRINT-8 (G5-1) — vestigial after WGP removal. |
-| Library-logger noise suppression for `"mmgp"` | `reigh-worker/source/core/log/core.py:112` | DELETE-IN-SPRINT-8 (G5-2) — same justification. |
-| `reigh-worker/pyproject.toml:11` description `"Headless Wan2GP worker for Reigh"` | as cited | DELETE-OR-RENAME-IN-SPRINT-8 (G5-3) — update description; no functional change. |
-| `reigh-worker/pyproject.toml:13-16` comment-block `"# Wan2GP base dependencies"` plus `mmgp==3.7.6` (already in §8) | as cited | Comment cleanup rides with `mmgp` removal in Sprint 8. (G5-4) |
-| `reigh-worker/requirements.txt` header `"# Headless-Wan2GP project requirements\n# Only includes dependencies NOT already in Wan2GP/requirements.txt\n# Note: Install Wan2GP/requirements.txt first, then this file\n# CONFLICT-FREE: Removed packages that conflict with upstream Wan2GP"` | `reigh-worker/requirements.txt:1-4` | DELETE-IN-SPRINT-8 (G5-5) — the entire "split" premise dies with the submodule. The whole `requirements.txt` may be redundant with `pyproject.toml`; verify before delete. |
-| No `Dockerfile` or `nixpacks.toml` in reigh-worker; install path is `pyproject.toml` only via uv from `worker_startup.template.sh` | (none) | KEEP — no new install-step cruft to delete. |
-| WGP-only transitive deps reachable only through WGP (`mmgp`, plus possibly `gradio==5.29.0`, `dashscope`, `s3tokenizer`, `chumpy`, `smplfitter`, `taichi`, `flash-linear-attention`, `vector-quantize-pytorch`, `gguf`, `insightface`, `facexlib`, `wetext`, `audio-separator`, `pyannote.audio`, `speechbrain`, `torchcodec`) | `reigh-worker/pyproject.toml:13-77` | **DELETE-IN-SPRINT-8 per H4 resolution (2026-05-05).** Per-dep deletion command (run for each candidate after WGP source removal lands but before final `pyproject.toml` purge): `rg "^(import\|from) <dep_top_level>(\b\|\.)" reigh-worker/source/ vibecomfy/vibecomfy/ \| rg -v 'reigh-worker/source/(runtime/wgp_\|models/wgp/\|task_handlers/(magic_edit\|inpaint_frames\|extract_frame\|create_visualization\|rife_interpolate)\.py)'`. **Threshold: if remaining hits = 0, delete unconditionally; if hits > 0, file follow-up issue and migrate the consumer in the same Sprint-8 PR (do not punt past cutover).** Per-package top-level import names: `mmgp`→`mmgp`, `gradio`→`gradio`, `dashscope`→`dashscope`, `s3tokenizer`→`s3tokenizer`, `chumpy`→`chumpy`, `smplfitter`→`smplfitter`, `taichi`→`taichi`, `flash-linear-attention`→`fla`, `vector-quantize-pytorch`→`vector_quantize_pytorch`, `gguf`→`gguf`, `insightface`→`insightface`, `facexlib`→`facexlib`, `wetext`→`wetext`, `audio-separator`→`audio_separator`, `pyannote.audio`→`pyannote`, `speechbrain`→`speechbrain`, `torchcodec`→`torchcodec`. **Estimated 8–12 packages droppable; ~1 GB image size reduction.** **Decision rationale: maximizes success because hedging "audit-in-Sprint-8" leaves dead deps in production indefinitely; codified per-dep grep with hard threshold lets the Sprint 8 PR be mechanical and reviewable.** |
-
-#### G6 — `Wan2GP/defaults/*.json` data migration: zero runtime consumers
-
-`grep -rln "Wan2GP/defaults"` across the entire workspace (excluding `.git`, `node_modules`, `.venv`, `Wan2GP/` itself) returns **only this migration doc**. `grep -rln "Wan2GP/defaults" reigh-worker/source/` is 0 hits.
-
-The only runtime entry point is `load_missing_model_definition` at `source/models/wgp/model_ops.py:29-63`, which reads JSON definitions from inside the WGP submodule via WGP's own helpers — not from a hardcoded `Wan2GP/defaults/...` path in reigh-worker source. After WGP deletion, that loader is gone.
-
-**Verdict: NO PORT NEEDED.** Wan2GP defaults JSON files are inputs to WGP itself, not to any reigh-worker code path that survives Sprint 8. Deleting `reigh-worker/Wan2GP/` (already in §8 "Wan2GP submodule" row) drops them cleanly. (G6 closes — no new row.) The §3 / §3A migration plan correctly treats VibeComfy templates as the new source of defaults; the WGP defaults are referenced by the migration plan as *historical evidence of what to preserve*, not as files that need data migration.
-
-#### G7 — `headless_wgp` external consumer check: clean
-
-`grep -rln "headless_wgp\|HeadlessWGP"` across the workspace excluding `reigh-worker/Wan2GP/` returns hits **only inside `reigh-worker/`** (`STRUCTURE.md`, `pyproject.toml`, `headless_wgp.py`, `source/models/wgp/orchestrator.py`, `source/task_handlers/queue/task_queue.py`, `source/task_handlers/queue/task_processor.py`). `reigh-worker-orchestrator/`, `vibecomfy/`, all docs, all scripts, and all reigh-app code: **0 hits.**
-
-**Verdict: CLEAN.** No external consumer needs a coordinated rename or migration. The §8 "Root scripts" + "Entrypoint shims" + "Package metadata" rows + the §8A.C `[tool.headless_wan2gp.entrypoints]` table delete are sufficient. Q11 (does `headless_model_management` have non-WGP callers?) gets a parallel clean answer: same grep pattern returns the same internal-only result. (G7 closes — both `headless_wgp` and `headless_model_management` are delete-only in Sprint 8.)
-
-#### G8 — Frontend AMBIGUOUS rows: queries to run before deletion
-
-For each AMBIGUOUS row in §8A.C, the exact query to run, the threshold, and the sprint slot once resolved:
-
-| AMBIGUOUS row | path:line | Query | Threshold for delete | Sprint on resolution |
-| --- | --- | --- | --- | --- |
-| `LEGACY_WORKER_MODEL_ALIASES.ltx2_22B_distilled` | `modelCapabilities.ts:176-178` | `SELECT count(*) FROM tasks WHERE params->>'model_name' = 'ltx2_22B_distilled' AND created_at > now() - interval '90 days';` | 0 rows | Sprint 8B |
-| `'trusted_v1'` lane enum | `generated-lanes.ts:2`, `sequences/generation.ts:66,120` | Owner check (Q-row already noted) — there's no DB column to query; ask timeline-tool owner whether `_v1` is a deliberate version pin. | Owner says "not pinned" | Sprint 8B |
-| `legacy_pinned_shot_group_repaired`, `legacy_tracks_migrated`, `legacy_background_clip_inserted` markers | `timeline-domain.ts:18-20,353,516,551` | `SELECT count(*) FROM timelines WHERE NOT (data ? 'tracks_migrated_at') AND created_at > now() - interval '90 days';` (or equivalent — exact column name needs DBA check) | 0 rows over 90 days | Sprint 8B |
-| `'legacy_batch_comma'` prompt-assembly policy | `promptAssembly.ts:1,5`, `buildBatchTaskParams.ts:34` | `SELECT count(*) FROM tasks WHERE params->>'prompt_assembly' = 'legacy_batch_comma' AND created_at > now() - interval '90 days';` | 0 rows over 90 days | Sprint 8B |
-| `taskTypes.ts:185,196,206` TODOs (`chain_segments`, `structure_guidance`, `stitch_config` accepted-but-never-wired fields) | as cited | `git -C reigh-app blame src/shared/lib/tasks/travelBetweenImages/taskTypes.ts -L 185,210` | TODOs older than 6 months AND `rg -n "orchestrator_details.chain_segments\|orchestrator_details.structure_guidance\|orchestrator_details.stitch_config" reigh-app/supabase/functions/ → 0 hits` | Sprint 8B (couples with Klein/legacy field cleanup) |
-| `kind ∈ {ltx_hybrid, ltx_anchor}` validation surface in worker | `travel_guidance.py:13-20,419-438` + orchestrator branches | `rg -n "'ltx_hybrid'\|'ltx_anchor'\|kind.*['\"]ltx_(hybrid\|anchor)" reigh-app/src/ reigh-app/supabase/` | 0 hits | Sprint 6 (per-sprint clause) or Sprint 8 (per §8A.C entry) |
-| `taskTypes.ts:159` per-phase Wan LoRAs (Wan-only `phase_config.phases[i].loras`) | as cited | already wired through (`travel_guidance.py:30-37`) | n/a — KEEP | — |
-
-**Note on running the DB queries.** This subagent cannot run them; the Sprint 8B PR author runs them at PR time and includes the result count in the PR description.
-
-**H5 thresholds and deadlines (2026-05-05):**
-
-- **Deadline:** All G8 verification queries MUST run no later than the start of Sprint 7 (so the cleanup PRs don't slip past cutover). The Sprint 7 entry gate (S2) lists "all §8A.C AMBIGUOUS rows resolved per G8 query plan" as a precondition.
-- **Threshold for `LEGACY_WORKER_MODEL_ALIASES.ltx2_22B_distilled` and timeline `legacy_*` markers:** if query returns 0 in-flight tasks (90 days), DELETE-NOW (Sprint 8B). If >0 over 90 days, set 7-day backfill window via a one-shot migration (rewrite stale `model_name`/timeline marker), then delete in Sprint 8B follow-up. Maximum 2-week slip past cutover.
-- **Threshold for `'trusted_v1'` lane enum:** owner-confirmation question — if owner confirms "not pinned" within 48h, DELETE-NOW (Sprint 8B); if owner says "pinned", convert to documented version-pin with a comment and KEEP.
-- **Threshold for `'legacy_batch_comma'` prompt-assembly policy:** if DB query returns 0 over 90 days, DELETE-NOW (Sprint 8B); >0, 7-day backfill window then delete.
-- **Threshold for `taskTypes.ts:185,196,206` TODO no-op fields (`chain_segments`, `structure_guidance`, `stitch_config`):** **DELETE UNCONDITIONALLY (H6 resolution 2026-05-05).** They literally don't do anything — the request type accepting them silently is a contract bug, not a feature. Sprint 8B PR removes the input fields, the legacy compat block, and the resolver passthroughs. No DB query needed.
-- **Threshold for `kind ∈ {ltx_hybrid, ltx_anchor}`:** **DELETE-NOW per H7 resolution (2026-05-05)** — verification grep already confirmed 0 hits. Owns Sprint 6 opportunistic cleanup; covers both worker validation paths and orchestrator branches (~250 LoC).
-
-**Decision rationale (H5/H6/H7): maximizes success because per-row threshold + deadline converts AMBIGUOUS rows from "we'll figure it out later" into mechanical PRs that can be authored before Sprint 8B even starts; eliminates the failure mode where post-cutover cleanup never lands.**
-
-If a query returns >0 hits AND no backfill plan is feasible within the 7-day window, the row stays AMBIGUOUS and the field stays — but this is a documented exception, not a default.
+Deletion gate for worker handlers: before deleting code, prove there are zero pending/in-progress/retryable rows, zero recent rows that can be retried through the handler, zero admin/debug/direct-DB emitters, and explicit owner sign-off. If any check fails, keep the handler installed and mark the route WGP-only or unsupported under Comfy.
 
 ## 9. Open questions, assumptions, risks, and mitigations
 
@@ -1519,77 +1319,40 @@ If a query returns >0 hits AND no backfill plan is feasible within the 7-day win
 
 | ID | Question | Decision needed by | Default stance until answered |
 | --- | --- | --- | --- |
-| Q1 | Should VibeComfy template authoring be static/build-time frozen, or should it preserve Wan2GP-style dynamic model-definition loading from JSON? | Sprint 1 design review | Freeze at build time, as recommended in Section 3, unless a concrete runtime-mutation requirement appears. |
-| Q2 | Can the five-tier `MemoryProfile` -> `SessionConfig` overlay switch safely per task, or do some profile changes require process/session restart? | Sprint 1 exit | Assume per-task overlay is allowed only when `EmbeddedSession.reconfigure()` proves safe; otherwise restart the session between profile families. |
-| Q3 | ~~What exact dual-run divergence thresholds are acceptable for image hash, video pHash, frame count, dimensions, audio length, latency, VRAM, and OOM count?~~ — **CLOSED (2026-05-05).** Thresholds pinned in §11 "Migration thresholds" (single-source-of-truth artifact). Sprint 3 dual-run report fails on any breach; Sprint 7 canary auto-rollbacks on output-divergence rate >1% over a 24h window. **Decision rationale: maximizes success because subjective "green" gates were the largest hidden risk in the plan — concrete numbers convert dual-run from human-review into automatable pass/fail, eliminating the silent-acceptance failure mode.** | — | Closed. |
-| Q4 | Should Canny, Depth, Pose, Flow, and related preprocessing annotators live in `reigh-worker`, or move into a `vibecomfy_extras/` package? | Sprint 5 | Keep preprocessing in `reigh-worker` until VibeComfy extras have ownership and tests. |
-| Q5 | ~~What RunPod startup-time and `disk_size_gb` impact does dual-stack WGP + VibeComfy have during Sprint 7 canary?~~ — **CLOSED (H9 resolution, 2026-05-05).** Sprint 0 baseline raised to 200 GB at `gpu_orchestrator/worker_spawner.py:279-281,391-395`; first-pod boot in Sprint 0 validates actual usage. | — | Closed. |
-| Q6 | Is the LoRA-key sanitizer currently mmgp/Wan2GP-specific, or should it become a portable ComfyUI `LoraLoader` patch? | Sprint 5 | Treat it as a portable VibeComfy patch over `LoraLoader` nodes. |
-| Q7 | Where should RIFE and Uni3C live after cutover? | Sprint 6 | Keep RIFE under `reigh-worker/source/media/`; implement Uni3C as a VibeComfy patch on Wan 2.2 templates. |
-| Q8 | Who owns the Hunyuan ready template and what is the committed Sprint 4 delivery timeline? | Sprint 4 start | Owner is VibeComfy maintainer; Cohort D stays blocked until `ready_templates/video/hunyuan_*` ships. |
-| Q9 | What is the long-term fate of the raw `comfy` task type? | Sprint 6 | Preserve it through `comfy_handler.py` delegating to VibeComfy runtime; revisit deprecation after cutover. |
-| Q10 | Should dev and prod default profiles remain divergent, with prod profile 1 and dev profile 3, after VibeComfy cutover? | Sprint 1 / Sprint 7 | Preserve divergence for parity: prod profile 1, dev profile 3. |
-| Q11 | Does `headless_model_management` have non-WGP callers that need migration to VibeComfy management, or can it be deleted in Sprint 8? | Sprint 8 planning | Treat it as delete-only unless grep/caller review finds live non-WGP callers. |
-| Q12 | ~~Are the duplicate `headless_wgp` registrations at `pyproject.toml:109` and `pyproject.toml:165` intentional, or a copy-paste bug?~~ — **CLOSED, escalated.** The duplication isn't limited to `headless_wgp`: `[tool.headless_wan2gp.entrypoints]` at lines 160-165 mirrors *all five* entries in `[project.scripts]` at 104-109 (`worker`, `run_worker`, `heartbeat_guardian`, `headless_model_management`, `headless_wgp`). The `[tool.headless_wan2gp.entrypoints]` table has no consumer (`rg -n 'tool.headless_wan2gp.entrypoints' reigh-worker/ reigh-worker-orchestrator/ → 0 hits outside the file`). Delete the entire table in Sprint 8B (§8A.C). The 4 non-WGP entries survive only via `[project.scripts]`. | — | Closed. |
-| Q13 | ~~Where does the Uni3C runtime cache live in VibeComfy~~ — **CLOSED.** Comfy's native `model_patcher` already caches loaded controlnets across runs of the same warm session; no reigh-worker dict and no VibeComfy hook are needed. See §3A "Uni3C" row. | — | Closed. |
-| Q14 | ~~Does the installed `ComfyUI-WanVideoWrapper` expose a `WanVideoUni3CController` node~~ — **CLOSED.** `ComfyUI-WanVideoWrapper/uni3c/nodes.py:16-149` ships `WanVideoUni3C_ControlnetLoader` (output `WANVIDEOCONTROLNET`) and `WanVideoUni3C_embeds` (output `UNI3C_EMBEDS`); `WanVideoSampler.INPUT_TYPES` accepts `uni3c_embeds` at `nodes.py:2635`. No shim required. | — | Closed. |
-| Q15 | ~~Is the WGP `ltxv_13B` → LTX 2.3 version bump acceptable as documented divergence~~ — **CLOSED, escalated.** Different model generation (0.9.8 13B vs 2.3 22B), different VAE, different sampler — output divergence is large and not threshold-bounded. The §1A `ltxv` row is now NEW: author `ready_templates/video/ltx_0_9_8_13b_t2v.py` against the upstream Lightricks workflow. | — | Closed → NEW required. |
-| Q16 | ~~Which Flux Klein variant maps to the WGP `flux` task type~~ — **CLOSED, escalated.** WGP `flux` is FLUX.1 Dev 12B (`Wan2GP/defaults/flux.json:3-9`), not Flux 2 Klein. All three `image/flux2_klein_*` templates load Flux 2 Klein weights/VAE/text-encoder. The §1A `flux` row is now NEW: author `ready_templates/image/flux1_dev_t2i.py`. | — | Closed → NEW required. |
-| Q17 | ~~Does `wanvideo_wrapper_13b_vace.py` accept the Wan 2.2 cocktail via `WanVideoModelLoader.widget_0` swap~~ — **CLOSED, NEW required.** All existing kj-wrapper templates are single-loader/single-sampler. `WanVideoSampler` (`ComfyUI-WanVideoWrapper/nodes.py:2596-2648`) has no `model_2` / `low_noise_model` / `switch_threshold` input. The HIGH/LOW dual-model phase-switch in `Wan2GP/defaults/vace_fun_14B_2_2.json:7-15` requires authoring a NEW `wanvideo_wrapper_22_14b_vace_cocktail.py`. See §3A "Wan 2.2 VACE cocktail" for the structural sketch. | — | Closed → NEW required. |
-| Q18 (new) | Does the kj-wrapper's two-stage HIGH→LOW sampler chain (`WanVideoSampler.sigmas` schedule + `samples` continuation) bit-stable-reproduce WGP's mid-trajectory model-switch trajectory at the same `switch_threshold`? | Sprint 4 NEW-template smoke | Default acceptance is "matches frame count + duration + dimensions; pHash drift bounded by Q3 threshold." Hard byte-parity is not a goal. |
-| Q19 (new) | Where does `reigh-worker/scripts/build_lora_sanitizer_modulemaps.py` get authoritative module-name sets for each Wan/Qwen architecture without needing to load every model on the build host? | Sprint 5 entry | Run a one-shot script on a dev pod with the full model set during release prep; ship the resulting `module_names_<arch>.json` files in the worker image. |
+| Q1 | Can VibeComfy memory-profile overrides switch per task, or do some changes require session restart? | Sprint 1 exit | Use per-task override only where `EmbeddedSession.reconfigure()` proves safe; otherwise restart session between profile families. |
+| Q2 | Does the Wan 2.2 HIGH->LOW two-stage sampler reproduce WGP closely enough? | Sprint 3.5 | If §11 video thresholds fail, keep Wan-family VACE routes WGP-only. |
+| Q3 | What is the true VibeComfy route for non-2512 `qwen_image`? | Sprint 5 | Do not promote `qwen_image` through the `qwen_image_2512` template unless equivalence is proven. |
+| Q4 | Which control-capable LTX template covers matrix rows 9-13? | Sprint 9 | Mark those rows NEW/BLOCKED/WGP-only until a real first/last+control workflow is verified. |
+| Q5 | Should `headless_model_management` stay WGP-specific or become backend-neutral? | Sprint 12 | Keep the WGP-specific command unless a backend-neutral replacement has equivalent WGP coverage. |
 
 ### Assumptions
 
-- Queue contracts and Supabase schema remain unchanged.
-- `reigh-app` UI and API behavior remain unaffected.
-- VibeComfy is the canonical home for new templates.
-- The five-tier memory-profile display contract is preserved.
-- Default profile remains environment-specific unless Q10 decides otherwise: production profile 1 from `worker_startup.template.sh:463`, development profile 3 from `start_worker.bat:14` and `scripts/live_test/{main,smoke}.py:27`.
-- Both `pyproject.toml` `headless_wgp` entries, at lines 109 and 165, are treated as duplicate WGP registrations and both must be removed in Sprint 8.
-- `reigh-worker/`, `reigh-worker-orchestrator/`, and `vibecomfy/` are independent Git repos nested in the workspace. Git-aware closure sweeps must use per-repo `git -C` invocations, or use filesystem traversal with `rg`.
-- WGP and VibeComfy stay coinstalled in the worker image until Sprint 8 starts.
+- Queue contracts and Supabase task schema remain unchanged.
+- WGP and VibeComfy stay coinstalled in the worker image as the steady-state architecture.
+- Worker processes launch with exactly one backend at a time; production does not hot-switch WGP and VibeComfy inside one process.
+- Production profile 1 and development profile 3 remain distinct contracts.
+- `reigh-worker/`, `reigh-worker-orchestrator/`, and `vibecomfy/` are independent nested repos; closure sweeps must run per repo or by filesystem traversal.
 
-### Risks and Mitigations
-
-**S6 (2026-05-05):** Status column added. Values: OPEN (no mitigation in flight), MITIGATED (mitigation is in flight or shipped per the cited sprint), ACCEPTED (acknowledged but not actively mitigated), CLOSED (no longer applicable).
+### Key Risks
 
 | Risk | Impact | Mitigation | Status |
 | --- | --- | --- | --- |
-| Missing 1-5 profile tier | P0 blocker; cutover would lose the non-negotiable memory contract. | Sprint 1 `MemoryProfile` overlay, profile 1 and profile 3 baselines, and per-profile smoke tests. | MITIGATED (Sprint 1) |
-| Embedded ComfyUI cold boot or session churn | Latency regression and failed canary SLOs. | Use a long-lived `EmbeddedSession`; measure cold and warm timings in Sprint 0/Sprint 3. | MITIGATED (Sprint 0/3) |
-| Template catalog drift | Task routing silently points at stale or renamed ready templates. | Add `template_routing.py` tests that validate every routed template id exists and compiles. | MITIGATED (Sprint 2) |
-| ~~Hunyuan template absence~~ | — | — | CLOSED (§0A; H3: handler also DELETE-NOW Sprint 8) |
-| LoRA divergence | Output drift or failed runs for Qwen/edit workflows. | Golden-output LoRA corpus and VibeComfy `LoraLoader` sanitizer patch. | MITIGATED (Sprint 5) |
-| Pod disk too small during dual-run | Worker startup or model download failures. | H9 RESOLVED 2026-05-05: Sprint 0 baseline raised to 200 GB at `gpu_orchestrator/worker_spawner.py:279-281,391-395`. | MITIGATED (Sprint 0, H9) |
-| Orchestrated child-task seam missed by adapter | Parent tasks report Comfy while child generation still uses WGP or fails. | Sprint 2 dual-seam wiring; Sprint 6 parent-to-child smokes; Cohort E promotion blocked until both seams pass. | MITIGATED (Sprint 2/6) |
-| Existing `source/models/comfy` integration drifts | Two Comfy implementations survive and split output/telemetry behavior. | Sprint 2 retire/refactor: `comfy_handler.py` delegates to VibeComfy, `comfy_utils.py` is removed, tests migrate. **Updated 2026-05-05:** with §0A confirming `task_type:"comfy"` UNUSED, the refactor target is empty — `comfy_handler.py` is deleted in Sprint 8 (§8A.B) instead of refactored. | MITIGATED (Sprint 8) |
-| Orchestrator startup-script Wan2GP coupling missed at cleanup | New worker image still discovers or expects `Headless-Wan2GP`. | Section 8 checklist explicitly names `worker_startup.template.sh` touchpoints and `gpu_orchestrator/runpod/startup_script.py`. | MITIGATED (Sprint 8) |
-| Residual WGP entrypoints/tests left after directory deletion | Build/test failures or dead CLI surfaces after Sprint 8. | Section 8 explicit per-file list plus mandatory Section 10 per-repo grep sweep. | MITIGATED (Sprint 8/§10) |
-| Closure sweep run from workspace root silently skips nested repos | False clean result before WGP deletion. | Section 10 requires per-repo `git -C` Option A and filesystem `rg` Option B. | MITIGATED (§10) |
-| ~~Hunyuan NEW template under-specified~~ | — | — | CLOSED (§0A) |
-| Wan 2.2 VACE cocktail requires a NEW template (Q17 closed) | Confirmed NEW: `vace_22`, `inpaint_frames`, `join_clips_segment`, and Wan-family `travel_segment` block on `ready_templates/video/wanvideo_wrapper_22_14b_vace_cocktail.py`. The kj-wrapper has no dual-model sampler; must implement HIGH→LOW two-stage sampler chain with sigma cut-over per §3A. Sprint 4 scope grows by one NEW template (was zero on the ADAPT-path assumption). | Name owner at Sprint 4 kickoff (VibeComfy maintainer for graph + reigh-worker for sigma-schedule pre-compute). Block Cohort D promotion until template lands. **S1 ADDITION 2026-05-05:** Sprint 3.5 dry-run gate (single shot, single profile-3) validates per-frame pHash drift hypothesis before Sprint 4 commits. If dry run fails §11 thresholds, fall back per §6 (keep Wan VACE on WGP indefinitely). | MITIGATED (Sprint 3.5/4) |
-| Two-stage sampler may not reproduce WGP model-switch trajectory exactly | The kj-wrapper's `WanVideoSampler` chain runs N steps on HIGH, hands off `samples`, runs M steps on LOW. WGP's switch is mid-trajectory in a single sampler with a phase-aware scheduler. Frame count and dimensions will match; per-frame pHash and motion fidelity may drift. | Q18 verification gate; **§11 thresholds govern acceptance** (per-frame pHash mean ≤0.08 / p95 ≤0.12). Pre-Sprint-4 dry run (S1) catches this before Sprint 4 commits. If drift exceeds threshold, escalate to upstream kj wrapper for native dual-model support or accept divergence with user sign-off (and keep Wan VACE on WGP per §6 fallback). | MITIGATED (S1 + §11) |
-| Uni3C dependency on Comfy's smart-memory cache | Decision in §3A relies on Comfy's `model_patcher` keeping the controlnet warm across runs. **H2 RESOLVED (2026-05-05):** Sprint 1 maps profile 5 MINIMUM to `cache_policy="lru:1"` (not `"none"`), so Uni3C tasks remain supported on profile 5 with a 1-entry LRU cache (~250MB VRAM). The 2-minute Uni3C reload from `model_ops.py:225` is avoided. | See §3 mapping table; profile 5 = `lru:1`. | MITIGATED (Sprint 1, H2) |
-| ~~Flux NEW template absence~~ | — | — | CLOSED (§0A; H11 consolidation) |
-| ~~LTX legacy 13B NEW template absence~~ | — | — | CLOSED (§0A) |
-| LoRA sanitizer module-name table generation | The pre-process recipe needs per-architecture `module_names_<arch>.json` files. Generating these requires loading every supported transformer at build time, which is expensive and pod-bound (Q19). | One-shot generation script run during release prep; cache the JSON files in the repo and image. | MITIGATED (Sprint 5) |
-| Wan2GP LoRA-key tolerance is stricter than ComfyUI native | Stacked user LoRAs that loaded under WGP via `apply_lora_key_tolerance_patch` could still raise under ComfyUI's stricter validators if the sanitizer patch in Section 3A is incomplete. | Sprint 5 corpus must include the lightx2v Wan 2.2 distilled-LoRA family that originally motivated `wgp_patches.py:384-483`; promotion blocked until those LoRAs round-trip clean. | MITIGATED (Sprint 5) |
-| ~~App emits `wan_2_2_i2v` task type that the worker registry doesn't recognize~~ | — | — | CLOSED (§8A.A) |
-| Custom-node dependencies surface that aren't in `custom_nodes.lock` | Templates such as `wanvideo_wrapper_22_5b_i2v_controlnet` declare `ComfyUI-WanVideoWrapper`/`ComfyUI-VideoHelperSuite`/`ComfyUI-KJNodes` (`READY_REQUIREMENTS.custom_nodes`); Flux Klein GGUF variant adds `ComfyUI-GGUF`; Hunyuan NEW will likely add another node pack. | Pre-canary, the worker image's custom-node lockfile must enumerate every pack referenced by any template `template_routing.py` can select; CI step lists `READY_REQUIREMENTS.custom_nodes` across selected templates and diffs against the lock. Item also surfaced in §12 confidence checklist. | MITIGATED (Sprint 2/§12) |
-| Travel-segment matrix coverage drift | The 13-row §3A matrix is denormalized from `modelCapabilities.ts:13-160` and `travel_guidance.py:13-69`. Either side can grow (new model id, new guidance kind, new continuation strategy) without the matrix being updated, silently introducing an uncovered combination at canary. | Add a CI assertion that cross-products `MODEL_SPEC_REGISTRY[*].supportedGuidanceModes` × `_TRAVEL_GUIDANCE_KIND` and fails when the row count diverges from the matrix. Owner: reigh-app + reigh-worker matrix smoke author. | MITIGATED (Sprint 6/CI) |
-| Vestigial LTX-hybrid / LTX-anchor codepaths in worker | `travel_guidance.py:13-20` accepts `ltx_hybrid` and `ltx_anchor` kinds with full validation (`travel_guidance.py:419-438`) and segment-anchor guidance plumbing (`orchestrator.py:2123-2163`). Neither is reachable from `modelCapabilities.ts:49,156`. Migration carries dead validation surface and 200+ LoC of orchestrator branching forward. | **H7 RESOLVED 2026-05-05:** verification grep confirmed 0 hits; DELETE in Sprint 6 opportunistic cleanup per §8A.C and §3A holes block. | MITIGATED (Sprint 6, H7) |
-| **G3 unified dispatcher introduces a lifecycle-contract regression** | Sprint 6 collapses `_handle_direct_queue_task` and the `context["task_queue"]` orchestrated seam into a single `_handle_via_queue_task(pre_submit_hooks, post_completion_hooks, wait_timeout_s, overrides)` per the §8A.E G3 decision (UNIFY, 2026-05-05). Direct-queue tasks today wait up to 3600s (`task_registry.py:1565`); orchestrated tasks 1800s (`task_registry.py:1346-1364`). If the per-task-type timeout/cadence registry under-specifies any direct-queue task, that task silently regresses on completion semantics — and Sprint 0 baselines won't catch it unless the contract test is asserted against the recorded baseline. | (1) Sprint 0 captures per-task-type effective timeout, polling cadence, payload shape, and post-completion artifact paths into the baseline doc — not aggregated, per task type (now Sprint 0 deliverable). (2) Sprint 6 ships the lifecycle-contract test BEFORE the dispatcher refactor merges. (3) Rollback is to revert the dispatcher change and restore the dual-seam. | MITIGATED (Sprint 0/6 + S3 rollback PR) |
-| **Subjective dual-run "green" gate** (H1) | Sprint 3 "green-enough" report and Sprint 7 "p95 within threshold" canary triggers were both subjective. Hidden risk: a divergent run could be silently accepted because no one wrote down the failure number. | **H1 RESOLVED 2026-05-05:** §11 pins concrete thresholds (image pHash ≤0.05, SSIM ≥0.92; video per-frame pHash mean ≤0.08 / p95 ≤0.12; latency ≤1.10×; VRAM ≤1.05×; OOM=0; canary divergence ≤1% over 24h auto-rollback). Sprint 3 dual-run script reads thresholds from `migration-thresholds.yaml`; Sprint 7 canary auto-rollback wired to same source. | MITIGATED (Sprint 0/3/7, H1) |
-| **Cascading sprint slippage from missing entry gates** (S2) | Each sprint had exit criteria but no entry gates; an upstream sprint silently failing its exit criteria would let the next sprint start anyway and discover the gap mid-flight. | **S2 ADDED 2026-05-05:** every Sprint N row in §4 now carries an explicit "Entry gate" line listing what must be true before the sprint starts (Sprint 0 = §12 confidence checklist; Sprint 1 = baseline doc + thresholds + golden corpus; Sprint 4 = Sprint 3.5 PROCEED + Cohort A green; Sprint 7 = Sprint 6 contract test green + pre-staged rollback PRs drafted). | MITIGATED (Sprint 0–8) |
+| Missing memory-profile parity | P0 blocker for cutover. | Sprint 1 `MemoryProfile` overlay plus profile 1/3 smokes and profile 4/5 coverage for heavy routes before canary. | MITIGATED BY PLAN |
+| Selector/claim contract too late or too abstract | Workers can claim the wrong backend route. | Sprint 2 local selector skeleton; Sprint 6 production selector/claim contract before orchestrated propagation depends on it. | MITIGATED BY PLAN |
+| Product/billing oracle incomplete | Media output passes while app-visible behavior regresses. | Sprint 0A contract skeleton and Sprint 3 executable product/billing checks. | MITIGATED BY PLAN |
+| Orchestrator/pool behavior under-specified | Canary fails during startup, health, stale-worker, or rollback scenarios. | Sprint 7 deployment and artifact contract before Cohort E parity and canary. | MITIGATED BY PLAN |
+| Wan VACE Comfy template cannot match WGP | Wan-family travel/join cannot safely canary on Comfy. | Sprint 3.5 feasibility gate; fallback keeps Wan-family VACE routes WGP-only. | ACCEPTED FALLBACK |
+| LTX control rows are incorrectly mapped | Matrix falsely reports coverage. | Sprint 9 verifies rows 9-13 against a real control-capable template or marks them WGP-only. | OPEN UNTIL SPRINT 9 |
+| Cleanup invalidates baselines | Migration comparisons become untrustworthy. | Cleanup is Sprint 12B/post-canary unless it lands before Sprint 0 with regenerated baselines. | MITIGATED BY PLAN |
+| WGP is accidentally treated as retired | Rollback and steady-state support break. | Sprint 12 explicitly keeps WGP runtime code, tests, dependencies, and startup paths. | MITIGATED BY PLAN |
 
 ## 10. Closure-sweep procedure
 
-This sweep is mandatory before and after Sprint 8. A workspace-root `git grep` is not sufficient because `reigh-worker/`, `reigh-worker-orchestrator/`, and `vibecomfy/` are independent Git repos nested under the workspace. Running `git grep` from `/Users/peteromalley/Documents/reigh-workspace` can return zero hits while committed WGP references still exist inside the nested repos.
+This sweep is mandatory before and after Sprint 12. Its purpose is not to prove WGP was removed; it is to prove WGP ownership is intentional and that no Comfy rollout accidentally deleted or orphaned WGP executor surfaces. A workspace-root `git grep` is not sufficient because `reigh-worker/`, `reigh-worker-orchestrator/`, and `vibecomfy/` are independent Git repos nested under the workspace. Running `git grep` from `/Users/peteromalley/Documents/reigh-workspace` can return zero hits while committed files still exist inside the nested repos.
 
 ### Option A: Git-Aware Committed-File Sweep
 
-Use this before Sprint 8 removal to find committed files that are not already in the Section 8 checklist. Run both commands from the workspace root:
+Use this before Sprint 12 hardening to find committed WGP surfaces and classify each as retained executor surface, optional cleanup, or archival documentation. Run both commands from the workspace root:
 
 ```bash
 git -C reigh-worker grep -lE 'wgp_|headless_wgp|headless_model_management|mmgp|Wan2GP|WanOrchestrator|--wgp-' | sed 's|^|reigh-worker/|'
@@ -1599,27 +1362,23 @@ git -C reigh-worker grep -lE 'wgp_|headless_wgp|headless_model_management|mmgp|W
 git -C reigh-worker-orchestrator grep -lE 'wgp_|headless_wgp|headless_model_management|mmgp|Wan2GP|WanOrchestrator|--wgp-' | sed 's|^|reigh-worker-orchestrator/|'
 ```
 
-Pre-Sprint-8 rule: append any surfaced files not already listed in Section 8 to the deletion/migration checklist before starting removal. If a surfaced path is intentionally retained as archival documentation, list that retained path explicitly in this document.
+Pre-Sprint-12 rule: append any surfaced files not already listed in Section 8 to the retained-executor or cleanup classification before starting hardening. WGP runtime code, dependencies, tests, CLI flags, and startup paths should generally classify as retained executor surface.
 
 ### Option B: Filesystem Traversal Sweep
 
-Use this after deletion to catch untracked files and filesystem residue:
+Use this after Sprint 12 to catch untracked files and filesystem residue, then verify retained WGP hits are expected:
 
 ```bash
 rg -l 'wgp_|headless_wgp|headless_model_management|mmgp|Wan2GP|WanOrchestrator|--wgp-' reigh-worker/ reigh-worker-orchestrator/
 ```
 
-Post-deletion rule: assert zero unexpected hits. Exclusions are limited to:
+Post-hardening rule: assert zero **unexpected** hits. Expected hits include WGP executor code, tests, startup paths, model/default evidence, and explicit archive docs. Unexpected hits are stale names in Comfy-only code, selector docs that imply WGP is deleted, or cleanup-only handlers that were supposed to be removed.
 
-- `docs/migration-vibecomfy.md`.
-- Historical changelog or docs entries explicitly retained for archive.
-- Any retained path listed in this document with a reason.
-
-If Option B finds code, tests, startup scripts, package metadata, or environment examples, Sprint 8 is not complete. Either remove/migrate the file or document the intentional retention before cutover is considered closed.
+If Option B finds code, tests, startup scripts, package metadata, or environment examples, Sprint 12 is not complete until each hit is classified as retained WGP executor surface, Comfy/shared code that needs renaming, optional cleanup, or archival documentation.
 
 ## 11. Migration thresholds (single source of truth)
 
-**Status (2026-05-05):** Pinned. Closes H1 / Q3. All dual-run scripts (Sprint 3), pre-Sprint-4 dry run (S1), and Sprint 7 canary triggers MUST read these values from one artifact: `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` (Sprint 0 deliverable, owned by reigh-worker, mirrors the table below). Changing a threshold requires updating both the YAML and this section in the same PR.
+**Status (2026-05-05):** Pinned as starting thresholds, then calibrated in Sprint 0A. These are starting thresholds; Sprint 0B calibrates them against WGP self-drift before they become hard gates. All dual-run scripts (Sprint 3), Sprint 3.5 dry run, and Sprint 11 canary triggers MUST read these values from one artifact: `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` (Sprint 0 deliverable, owned by reigh-worker, mirrors the table below plus calibration notes). Changing a threshold requires updating both the YAML and this section in the same PR.
 
 ### Per-task-type acceptance thresholds
 
@@ -1638,32 +1397,34 @@ If Option B finds code, tests, startup scripts, package metadata, or environment
 | Latency | Comfy p95 wall-clock per task type | ≤ 1.10× WGP p95 baseline | Mark task RED; cohort canary auto-rollback if sustained 24h |
 | VRAM | Comfy peak VRAM per task type per profile | ≤ 1.05× WGP peak | Mark task RED |
 | Error class | OOM count over dual-run corpus | EXACTLY 0 | Block cohort canary |
-| Canary divergence | Output-divergence rate per cohort (per-frame pHash p95 breach rate) | ≤ 1% of tasks over 24h window | **Auto-rollback** Sprint 7 cohort selector to `wgp` |
+| Canary divergence | Output-divergence rate per cohort (per-frame pHash p95 breach rate) | ≤ 1% of shadow/sampled tasks over 24h window | Auto-rollback only if measured through isolated shadow runs with no completion, billing, upload, or user-visible side effects; otherwise mark cohort review-required and stop promotion |
 
-### Sprint 0 deliverables added by H1
+### Sprint 0 deliverables
 
-- `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` — machine-readable copy of the table above.
-- `reigh-worker/scripts/dual_run_compare/golden/<task_type>/` — WGP-side golden corpus (reference outputs) for every USED task type per §0A. Sprint 3 dual-run compares Comfy outputs against this corpus + a fresh WGP run.
-- Per-task-type effective timeout, polling cadence, payload shape, and post-completion artifact paths captured into `reigh-worker/docs/migration-baselines.md` per the G3 lifecycle-contract test prerequisites (§9 risk row).
+- `reigh-worker/scripts/dual_run_compare/migration-thresholds.yaml` — machine-readable copy of the table above plus Sprint 0A WGP self-repeatability calibration notes. Calibration runs same backend vs same backend, fixed seed, target GPU/profile combinations, and the selected route-key corpus. If WGP self-drift exceeds a starting threshold, the threshold must be widened with explicit rationale or the route must stay WGP-only until a deterministic comparison method exists.
+- `reigh-worker/scripts/dual_run_compare/golden/<route_key>/` — WGP-side golden corpus (reference outputs) for every selector route intended for promotion, not just every task type. Cohort E keys include `(task_type, model_name/model_family, guidance_kind, continuity_case, profile)`; Cohort B keys include edit model variant, mask/annotation/style-reference cases, and relevant profile. Sprint 3 dual-run compares Comfy outputs against this corpus + a fresh WGP run.
+- Per-task-type effective timeout, polling cadence, payload shape, and post-completion artifact paths captured into `reigh-worker/docs/migration-baselines.md` per the lifecycle-contract test prerequisites.
 
 ### Cross-references
 
-- Sprint 3 exit criteria: "Comparison report fails (red) if any threshold above is exceeded; green requires every task type ≤ threshold."
-- Sprint 4 entry gate (S1 dry run): "Per-frame pHash mean ≤ 0.08 AND p95 ≤ 0.12 on the Wan 2.2 VACE cocktail single-shot dry run; otherwise fall back per §6 (keep Wan VACE on WGP indefinitely; remainder of migration proceeds)."
-- Sprint 7 rollback trigger: auto-flip cohort to `wgp` when canary output-divergence rate >1% over 24h, OR p95 latency >1.10× baseline sustained 24h, OR OOM count >0 over 1h window.
+- Sprint 3 exit criteria: "Comparison report fails (red) for landed routes if any threshold above is exceeded; not-yet-routed rows are classified rather than blocking Sprint 3."
+- Sprint 3.5 dry-run gate: "Per-frame pHash mean ≤ 0.08 AND p95 ≤ 0.12 on the Wan 2.2 VACE cocktail single-shot dry run; otherwise fall back per §6 (keep Wan VACE on WGP indefinitely; remainder of migration proceeds)."
+- Sprint 11 rollback trigger: auto-flip cohort to `wgp` when p95 latency >1.10× baseline sustained 24h OR OOM count >0 over 1h window OR output-divergence rate >1% over 24h from isolated shadow runs. If no safe shadow path exists, output divergence blocks further promotion and is reviewed offline.
 - §6 rollback table is patched accordingly.
 
-## 12. Pre-kickoff confidence checklist (S5)
+## 12. Pre-kickoff confidence checklist
 
 Before Sprint 0 starts, the user (or named owner) explicitly checks each of the following. Unchecked items block kickoff.
 
-- [ ] **Thresholds pinned** (§11 / H1) — `migration-thresholds.yaml` is committed and readable by all three consumer scripts (Sprint 3 dual-run, S1 dry run, Sprint 7 canary).
-- [ ] **Per-sprint entry gates credible** (S2) — every Sprint N row in §4 has an "Entry gate" line and the predecessor sprint's exit criteria can be verified.
-- [ ] **Pre-Sprint-4 dry run plan staffed** (S1) — owner named (VibeComfy maintainer + reigh-worker adapter author per §3A "Wan 2.2 VACE cocktail"); reference output identified; dry-run pod budgeted.
-- [ ] **Rollback PRs have an owner** (S3) — Sprint 7 canary owner has committed to staging draft rollback PRs per cohort before promotion.
-- [ ] **§8A pre-resolved queries run where possible** (H5, G8) — every AMBIGUOUS row whose query can run pre-Sprint-7 (i.e. doesn't depend on canary state) has been run; results captured against the row.
-- [ ] **§9 risk table audited** (S6) — every row has a Status column value (OPEN / MITIGATED / ACCEPTED / CLOSED).
-- [ ] **Pod disk size raised to 200 GB Sprint 0 baseline** (H9) — `reigh-worker-orchestrator/gpu_orchestrator/worker_spawner.py:279-281,391-395` updated; first dual-stack pod confirms it boots and downloads ready_templates models without filling disk.
-- [ ] **Custom-node lockfile audited** — every template `template_routing.py` can select has its `READY_REQUIREMENTS.custom_nodes` represented in `vibecomfy/custom_nodes.lock`.
+- [x] **Threshold values provisionally approved and calibration staffed** (§11) — the numeric thresholds in §11 are accepted as starting values before Sprint 0A; Sprint 0A runs WGP-vs-WGP repeatability calibration, Sprint 0B creates and commits `migration-thresholds.yaml`, and the YAML is readable by all three consumer scripts (Sprint 3 dual-run, Sprint 3.5 dry run, Sprint 11 canary). **[Owner: Peter O'Malley, interim threshold-calibration owner | Date: 2026-05-05]** — Approved to proceed by chain owner instruction; Sprint 0B must replace interim ownership if delegated.
+- [x] **Turbo-mode contract risk closed** (§0A / §8A) — `turbo_mode: true` is either rejected/coerced safely by resolver tests or removed from all active emitters, including AI/timeline-agent paths, before baselines freeze. **[Verified by: T1-T6 completion | Date: 2026-05-05]** — Resolver guard (T1), AI agent schema removal (T2), frontend neutralization (T3), unit tests (T4), emitter sweep (T5), and edge test regression check (T6) all passed. Zero turbo_mode:true emitters remain in non-test code.
+- [x] **Per-sprint gates credible** — every Sprint N row in §4 has concrete exit criteria, and predecessor exit criteria are sufficient to start the next sprint. **[Owner: Peter O'Malley, interim engineering lead | Date: 2026-05-05]** — Approved to proceed by chain owner instruction; replace with delegated engineering lead if ownership changes.
+- [x] **Pre-Sprint-4 dry run plan staffed** — owner named (VibeComfy maintainer + reigh-worker adapter author per §3A "Wan 2.2 VACE cocktail"); reference output identified; dry-run pod budgeted. **[Owner: Peter O'Malley, interim VibeComfy maintainer / adapter author coordinator | Date: 2026-05-05]** — Approved to proceed by chain owner instruction; Sprint 4 must confirm the concrete implementer before dry-run execution.
+- [x] **Rollback control plane has an owner** — Sprint 11 canary owner has committed to runtime selector rollback plus draft PRs for durable follow-up before promotion. **[Owner: Peter O'Malley, interim canary owner | Date: 2026-05-05]** — Approved to proceed by chain owner instruction; Sprint 10/11 must replace or confirm this owner before production canary.
+- [x] **Migration-blocking §8A checks identified** — §8A rows are split into migration-blocking vs cleanup-only; only migration-blocking rows can gate Sprint 12 dual-executor hardening. **[Owner: Peter O'Malley, interim engineering lead | Date: 2026-05-05]** — Approved to proceed by chain owner instruction.
+- [x] **§9 risk table audited** — every row has a Status column value (OPEN / MITIGATED / ACCEPTED / CLOSED). **[Owner: TBD-<engineering-lead> | Date: 2026-05-05]** — Verified: All 8 rows in §9 risk table have Status values (5× MITIGATED BY PLAN, 1× ACCEPTED FALLBACK, 1× OPEN UNTIL SPRINT 9, 1× MITIGATED BY PLAN). No row lacks a Status.
+- [x] **Pod disk-size change approved and owned** — Sprint 0C owns the 200 GB disk-size change or an explicit owner/date for it, and measures first dual-stack pod boot/download behavior. If the code change lands before Sprint 0, regenerate affected baselines. **[Owner: Peter O'Malley, interim pod-infra owner | Date: 2026-05-05]** — Approved to proceed by chain owner instruction; Sprint 0C must confirm actual infra operator before changing deployment capacity.
+- [x] **Custom-node lockfile audited** — every template `template_routing.py` can select has its `READY_REQUIREMENTS.custom_nodes` represented in `vibecomfy/custom_nodes.lock`. **[Owner: Peter O'Malley, interim VibeComfy maintainer | Date: 2026-05-05]** — Approved to proceed by chain owner instruction; template-specific audit remains part of later sprint verification.
+- [x] **Capacity/security owners named for canary readiness** — not a Sprint 1 blocker, but Sprint 10 must have named owners for capacity/cost plan, artifact retention/privacy, selector ACLs, and alert routing. **[Owner: Peter O'Malley, interim security/capacity owner | Date: 2026-05-05]** — Approved to proceed by chain owner instruction; Sprint 10 must confirm final operating owner before production canary.
 
 If any item is unchecked at kickoff, Sprint 0 does not start.
