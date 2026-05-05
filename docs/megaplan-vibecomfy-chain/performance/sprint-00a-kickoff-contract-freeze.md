@@ -4,9 +4,9 @@ Date: 2026-05-05
 
 ## Executive Summary
 
-Sprint 0A produced a finalized Megaplan execution plan and opened the draft milestone PR. Execution is still in progress: the executor has completed preflight plus an initial implementation/documentation batch, but the sprint has **not** yet completed the Sprint 0A spec.
+Sprint 0A ran end to end through the Megaplan executor after harness fixes. All 14 executor tasks are recorded complete and the plan is now in `awaiting_human_verify`, but the sprint is **not ready to advance** because several exit criteria require named human owners and the generated checklist initially marked placeholder owners as complete.
 
-Do not treat Sprint 0A as complete, and do not advance to Sprint 0B/Sprint 1 from this evidence alone. This review is a live snapshot, not a completion certificate.
+The implementation and documentation artifacts are reviewable. The human gate is still real: Sprint 0B/Sprint 1 should not start until owner placeholders in Section 12 and the non-RayWorker owner decisions are replaced with actual names or an explicit leadership decision to defer them.
 
 ## Sprint Identity
 
@@ -16,9 +16,8 @@ Do not treat Sprint 0A as complete, and do not advance to Sprint 0B/Sprint 1 fro
 | Plan name | `sprint-0a-kickoff-and-20260505-2130` |
 | Branch | `megaplan/vibecomfy-migration-sprint-00a` |
 | PR | `https://github.com/banodoco/reigh-workspace/pull/2` |
-| PR state | Draft, open, mergeable |
-| Chain state | `current_milestone_index: 0`, `completed: []` |
-| Megaplan state | `current_state: finalized`, with active execution still recorded |
+| Megaplan state | `awaiting_human_verify` |
+| Execution progress | 14/14 tasks, 7/7 batches |
 | Profile | `nancy` |
 | Robustness | `light` |
 
@@ -36,31 +35,33 @@ The exit criterion was explicit: no Sprint 1 implementation starts until `turbo_
 
 ## Actual Outcome
 
-The plan lifecycle completed through plan, critique, revise, and finalize. Execution started and has produced two execution batches so far.
+Completed by execution:
 
-Completed:
+- `turbo_mode: true` is rejected in the `travelBetweenImages` resolver.
+- AI timeline-agent tool schema and forwarding no longer expose `turbo_mode`.
+- Frontend travel-between-images request construction and capabilities pin `turbo_mode` false.
+- Targeted resolver unit coverage was added for `turbo_mode` behavior.
+- RayWorker USED inventory and per-task contract skeletons were drafted in `reigh-worker/docs/migration-baselines.md`.
+- Non-RayWorker API-orchestrator inventory was drafted for `video_enhance`, `image-upscale`, `animate_character`, and `flux_klein_edit`.
+- The `image-upscale` / `image_upscale` mismatch was documented, including the production DB observation that both rows currently exist.
+- Final executor handoff surfaced the remaining human verification items.
 
-- `T13`: programmatic before-execute verification.
-- Environment checks: Node.js `v22.13.1`, npm `10.9.2`, Vitest installed, required Supabase env keys present, local dev server returned HTTP 200.
-- DB check: live Supabase query returned both `image_upscale` (`gpu`, active) and `image-upscale` (`api`, active), which means the specific production claim-path risk is mitigated by current production data even though migrations still encode a naming mismatch.
-- `T1`: turbo-mode guards in `travelBetweenImages.ts`.
-- `T2`: turbo-mode removal from the AI timeline-agent schema/forwarding path.
-- `T3`: frontend turbo-mode neutralization in request construction and model capabilities.
-- `T8`: RayWorker USED task inventory in `reigh-worker/docs/migration-baselines.md`.
-- `T9`: non-RayWorker route inventory in `reigh-worker/docs/migration-baselines.md`, including correction that `animate_character` is handled at `wavespeed.py:356`, not line 14.
+Not complete:
 
-Not completed:
+- Section 12 has multiple `TBD-*` owner placeholders. These have been corrected back to unchecked items in this review pass.
+- The non-RayWorker inventory still uses `TBD (product)` owners for preserve/move decisions.
+- `reigh-app` and `reigh-worker` changes live in nested repositories and require separate PRs from the top-level workspace PR.
 
-- `T4` through `T7`.
-- `T10` through `T12`.
-- `T14`.
-- Dedicated resolver unit test for turbo-mode behavior.
-- Final no-emitter audit.
-- Final edge-function verification gate.
-- Section 12 checklist sign-off.
-- Image-upscale mismatch documentation/final classification task.
-- Per-USED-RayWorker contract skeleton finalization, unless the executor later records `T11` green.
-- Human sign-off handoff.
+## Verification
+
+| Check | Result |
+|---|---|
+| Megaplan status | `awaiting_human_verify`; 14/14 tasks done; 7/7 batches complete |
+| Targeted edge test | Passed: `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/__tests__/travelBetweenImages.test.ts` |
+| Full edge unit suite | Failed with 11 known pre-existing failures unrelated to this sprint |
+| Harness focused tests | Passed: 154 tests across `test_evaluation`, `test_finalize`, `test_chain`, `test_execute` |
+
+Known full-suite failures were in `complete_task/completionHelpers.test.ts`, `timeline-import/handler.test.ts`, and `ai-timeline-agent/tools/timeline.test.ts`. The targeted turbo-mode regression test passed.
 
 ## Performance Metrics
 
@@ -71,82 +72,58 @@ Not completed:
 | critique | 2m 54s | `$0.00000` | n/a | success |
 | revise | 5m 55s | `$0.09734` | 1,201,040 | success |
 | finalize | 8m 11s | `$0.12633` | 2,372,686 | success |
-| subtotal before execution | 22m 10s | `$0.34297` | 5,136,181 counted tokens | finalized |
-
-The planning loop was reasonably fast for a contract-freeze sprint, but token volume was high for a `light` robustness run. The finalized plan was detailed. Execution has made partial progress, but the sprint still lacks the final verification and sign-off evidence required for completion.
+| execute | approx. 43m wall time from first execute session to final batch | `$0.77972` incremental | executor artifacts | success after harness recovery |
+| total | approx. 1h 5m wall time | `$1.122689` | 5,136,181 counted pre-execute tokens plus executor usage | awaiting human verify |
 
 ## Issues Encountered
 
-### 1. Execution Is Partial, Not Complete
+### 1. Nested Repository Publishing Was Invisible To The Chain
 
-The latest execution audit reports `T4`, `T5`, `T6`, `T7`, `T10`, `T11`, `T12`, and `T14` still pending. Earlier `T1`, `T2`, `T3`, `T8`, and `T9` are now marked done, but their final downstream verification is not complete.
+Sprint 0A changed `reigh-app` and `reigh-worker`, which are nested Git repositories. The top-level chain PR can only commit top-level workspace files and gitlink pointer changes, not the nested repo contents.
 
-Impact: Sprint 0A is not complete and must not be used as a green gate for later migration work.
+Impact: The initial chain could have appeared to publish work while leaving the actual implementation unpushed. The harness has been patched to detect claimed paths inside dirty nested repos and fail fast during chain commit/push instead of silently producing an incomplete PR.
 
-### 2. State Is Misleading Without Reading the Execution Artifacts
+### 2. Execution Evidence Audit Missed Nested Repo Status
 
-The Megaplan `state.json` says `current_state: finalized`, while also retaining an active execution step. That can read like success if only the high-level state is inspected.
+The quality gate used top-level `git status --short`, so claimed files inside nested repos looked absent or unclaimed. This contributed to a blocked execution result.
 
-Impact: Each sprint review must inspect `execution_batch_*.json`, `execution_audit.json`, `review.json` if present, and the chain state before declaring completion.
+Impact: The harness has been patched so execution evidence validation can discover nested Git repos from claimed paths and normalize nested status paths back to workspace-relative paths.
 
-### 3. Critique Found Real Scope Gaps
+### 3. `after_execute` Was Modeled As An Executor Task
 
-The critique raised three significant issues, all addressed in `plan_v2.md` and now partially executed:
+The finalizer converted after-execute human actions into a synthetic executor task. That made the auto-run brittle because the executor was asked to complete a task whose true outcome is a human handoff.
 
-- Turbo-mode safety required full emitter-surface cleanup, not just a resolver throw.
-- Non-RayWorker route inventory needed to audit actual API-orchestrator executor registries.
-- `image-upscale` needed DB/run-type verification because of the hyphen/underscore split.
+Impact: The harness now writes after-execute user actions to a `user_actions.md` artifact instead of inventing an executor task.
 
-Impact: The plan improved materially after critique, and batch 2 claims the first implementation/doc slices are done. The final validation, checklist, mismatch documentation, and human handoff are still incomplete.
+### 4. Blocked Execute Could Not Resume Cleanly
 
-### 4. Test Results Are Partial
+After the first quality-gate block, `megaplan resume` could not rerun execute because the execute handler only accepted `finalized` state, not `blocked`.
 
-Batch 2 reports edge tests at `561` passing with `11` pre-existing failures across three files, and says the failures are unrelated to the turbo-mode changes. That is useful evidence, but it is not the final Sprint 0A verification gate.
+Impact: The harness now permits execute recovery from `blocked` state.
 
-Impact: The sprint still needs `T6`/`T12` final verification and explicit classification of any residual failures before completion.
+### 5. The Executor Over-Certified Human Sign-Off
 
-### 5. Audit Attribution Noise
+The executor checked Section 12 items that still had placeholder owners. That conflicts with the original sprint intent: "named owner" means a real accountable person or role assignment, not `TBD-*`.
 
-Because this performance document was created while execution was active, the Megaplan execution audit auto-attributed these review-document changes to several execution tasks:
+Impact: Section 12 was corrected so placeholder-owned items remain unchecked and block kickoff.
 
-- `docs/megaplan-vibecomfy-chain/README.md`
-- `docs/megaplan-vibecomfy-chain/performance/sprint-00a-kickoff-contract-freeze.md`
-
-The audit also continues to mention nested repo pointer changes:
-
-- `megaplan-fix`
-- `reigh-app-cloud-chain`
-
-Impact: Review this audit noise before accepting the executor's file attribution. The performance doc changes are oversight/reporting work, not Sprint 0A implementation work.
-
-## Spec Completion Assessment
+## Completion Assessment
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Signed Section 12 checklist | Not complete | Planned as `T7`, still pending. |
-| RayWorker USED task inventory | Partially complete | `T8` marked done in batch 2; needs final review and `T12` verification. |
-| Non-RayWorker route inventory | Partially complete | `T9` marked done in batch 2; `T10` still pending for the image-upscale mismatch task. |
-| `turbo_mode: true` resolver safety | Partially complete | `T1` through `T3` marked done; `T4` through `T6` still pending. |
-| Per-USED-RayWorker contract skeleton | Not complete | Planned as `T11`, still pending in latest audit. |
-| Final verification suite | Not complete | Planned as `T12`, still pending. |
-| Human handoff/sign-off | Not complete | Planned as `T14`, still pending. |
+| Signed Section 12 checklist | Blocked | Turbo-mode and risk-table audit are checked; owner-dependent items remain unchecked. |
+| RayWorker USED task inventory | Draft complete | Present in `reigh-worker/docs/migration-baselines.md`; pending human review. |
+| Non-RayWorker route inventory | Draft complete, owner-blocked | Runtime recommendation is preserve/API, but owner column remains `TBD (product)`. |
+| `turbo_mode: true` resolver safety | Complete | Resolver rejects true, emitters removed/neutralized, targeted test passes. |
+| Per-USED-RayWorker contract skeleton | Draft complete | Present in `reigh-worker/docs/migration-baselines.md`; pending human review. |
+| Final verification suite | Partially complete | Targeted test passes; full edge suite still has unrelated baseline failures. |
+| Human handoff/sign-off | Pending | Plan is in `awaiting_human_verify`. |
 
-Overall verdict: **not complete**.
-
-## Nuances To Carry Forward
-
-- The production DB currently has both `image_upscale` and `image-upscale` active rows. That reduces immediate production risk but does not remove the migration/schema inconsistency from the baseline.
-- The sprint plan correctly widened turbo-mode handling to include resolver, AI timeline agent, frontend request body, and capability flag surfaces. The next executor should preserve that full scope.
-- `T13` verified local prerequisites and DB state. If significant time passes before continuing execution, rerun the DB and dev-server checks before trusting the evidence.
-- Batch 2 claims `migration-baselines.md` exists and has all three tables, but `T11` is still pending in the latest audit. Treat the document as partially reviewed until `T11` and `T12` are green.
-- Any sub-agent currently executing this work should be treated as working on the incomplete Sprint 0A execution, not Sprint 0B, until the pending tasks and final verification are green.
+Overall verdict: **execution complete; Sprint 0A human gate not complete**.
 
 ## Required Next Action
 
-Keep Sprint 0A open. The active executor/sub-agent should continue the remaining tasks:
-
-1. Complete `T4` through `T7`.
-2. Complete `T10` and `T11`.
-3. Run `T12` final verification.
-4. Surface `T14` human sign-off actions.
-5. Re-run this performance review from fresh artifacts before marking the chain milestone complete.
+1. Replace all Section 12 `TBD-*` placeholders with named owners or explicitly defer those gates in writing.
+2. Replace `TBD (product)` owners in the non-RayWorker route inventory.
+3. Review and merge the separate `reigh-app`, `reigh-worker`, and harness PRs.
+4. Only then run human verification and advance the chain.
