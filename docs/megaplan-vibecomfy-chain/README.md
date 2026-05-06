@@ -5,6 +5,8 @@ This directory turns `docs/migration-vibecomfy.md` into an ordered Megaplan chai
 Sprint performance reviews are recorded after each milestone under `performance/`. They are the source of truth for whether a sprint actually completed to spec, separate from the chain plan and PR metadata.
 
 - `performance/sprint-00a-kickoff-contract-freeze.md`
+- `performance/sprint-00b-thresholds-golden-corpus.md`
+- `performance/sprint-06-production-selector-claim-contract.md`
 
 ## Directive
 
