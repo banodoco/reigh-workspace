@@ -42,15 +42,12 @@ milestones:
   - label: sprint-02-adapter-seam-local-selector
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-02-adapter-seam-local-selector.md
     branch: megaplan/vibecomfy-migration-sprint-02
-    profile: poirot
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
-      - revise=claude:high
+    phase_model: []
     bakeoff:
-      enabled: true
-      arms: [poirot, all-codex]
-    notes: Long-lived seam every later sprint imports. Both premiums plus high thinking on author phases.
+      enabled: false
+    notes: Long-lived seam every later sprint imports. Use all-codex per chain directive.
 
   - label: sprint-03-dual-run-comparison-harness
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-03-dual-run-comparison-harness.md
