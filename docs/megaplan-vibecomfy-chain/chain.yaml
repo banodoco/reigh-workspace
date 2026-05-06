@@ -32,10 +32,9 @@ milestones:
   - label: sprint-01-vibecomfy-memory-profile-mvp
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-01-vibecomfy-memory-profile-mvp.md
     branch: megaplan/vibecomfy-migration-sprint-01
-    profile: holmes
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
+    phase_model: []
     bakeoff:
       enabled: false
     notes: Push plan effort instead of going robust. Profiles 1-5 are referenced by every benchmark.
