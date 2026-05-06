@@ -6,6 +6,19 @@ Sprint performance reviews are recorded after each milestone under `performance/
 
 - `performance/sprint-00a-kickoff-contract-freeze.md`
 
+## Directive
+
+Drive `chain.yaml` one milestone at a time until the migration is complete. Use the milestone profile from the chain spec; Sprint 01 onward is intentionally `all-codex`.
+
+For every milestone:
+
+1. Run `chain start --one`, inspect the actual outcome, and keep fixing/resuming until the milestone is truly done.
+2. If a Megaplan harness edge case blocks or corrupts progress, root-cause it in `/Users/peteromalley/Documents/megaplan`, patch the harness, test it, push the harness branch/PR, then resume the chain.
+3. If live VibeComfy or backend proof is required, use real RunPod yourself. Do not require extra WGP pre-run proof when WGP is already the trusted control.
+4. Publish changed nested repos before advancing the top-level chain PR, and do not hide nested repo dirt behind a top-level commit.
+5. Append detailed lessons, failure phase, root cause, fix, residual risk, and evidence to `/Users/peteromalley/Documents/learnings/megaplan-vibecomfy-sprint-00a-2026-05-05.md`.
+6. Keep this directory's sprint performance notes current when a milestone completes or reveals an important harness/process issue.
+
 Operating cadence for each milestone:
 
 1. Start or resume only one chain milestone at a time.
