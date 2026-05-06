@@ -52,65 +52,59 @@ milestones:
   - label: sprint-03-dual-run-comparison-harness
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-03-dual-run-comparison-harness.md
     branch: megaplan/vibecomfy-migration-sprint-03
-    profile: holmes
+    profile: all-codex
     robustness: standard
     phase_model: []
     bakeoff:
       enabled: false
-    notes: Comparison oracle blocks canary.
+    notes: Comparison oracle blocks canary. Use all-codex per chain directive.
 
   - label: sprint-03-5-wan-vace-feasibility
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-03-5-wan-vace-feasibility.md
     branch: megaplan/vibecomfy-migration-sprint-03-5
-    profile: marlowe
+    profile: all-codex
     robustness: light
     phase_model: []
     bakeoff:
       enabled: false
-    notes: One reversible decision.
+    notes: One reversible decision. Use all-codex per chain directive.
 
   - label: sprint-04-wan-single-frame-cocktail-template
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-04-wan-single-frame-cocktail-template.md
     branch: megaplan/vibecomfy-migration-sprint-04
-    profile: holmes
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
+    phase_model: []
     bakeoff:
       enabled: false
-    notes: Template authoring is fiddly.
+    notes: Template authoring is fiddly. Use all-codex per chain directive.
 
   - label: sprint-05-qwen-edit-vlm-lora-parity
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-05-qwen-edit-vlm-lora-parity.md
     branch: megaplan/vibecomfy-migration-sprint-05
-    profile: holmes
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
+    phase_model: []
     bakeoff:
       enabled: false
-    notes: Several preprocessing surfaces, each bounded.
+    notes: Several preprocessing surfaces, each bounded. Use all-codex per chain directive.
 
   - label: sprint-06-production-selector-claim-contract
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-06-production-selector-claim-contract.md
     branch: megaplan/vibecomfy-migration-sprint-06
-    profile: poirot
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:xhigh
-      - revise=claude:high
+    phase_model: []
     bakeoff:
-      enabled: true
-      arms: [poirot, all-codex]
-    notes: The schema lives forever. Push thinking to xhigh on plan instead of going robust.
+      enabled: false
+    notes: The schema lives forever. Use all-codex per chain directive.
 
   - label: sprint-07-orchestrator-image-pools-artifacts
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-07-orchestrator-image-pools-artifacts.md
     branch: megaplan/vibecomfy-migration-sprint-07
     profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
+    phase_model: []
     bakeoff:
       enabled: false
     notes: Pool sizing plus drain/kill policy. Use all-codex for consistency with the chain default preference.
@@ -118,77 +112,72 @@ milestones:
   - label: sprint-08-orchestrated-route-lifecycle
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-08-orchestrated-route-lifecycle.md
     branch: megaplan/vibecomfy-migration-sprint-08
-    profile: poirot
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
-      - revise=claude:high
+    phase_model: []
     bakeoff:
-      enabled: true
-      arms: [poirot, all-codex]
-    notes: Parent/child consistency. Worth seeing alternatives.
+      enabled: false
+    notes: Parent/child consistency. Use all-codex per chain directive.
 
   - label: sprint-09-control-rail-travel-matrix
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-09-control-rail-travel-matrix.md
     branch: megaplan/vibecomfy-migration-sprint-09
-    profile: holmes
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
+    phase_model: []
     bakeoff:
       enabled: false
-    notes: Many bounded sub-rows.
+    notes: Many bounded sub-rows. Use all-codex per chain directive.
 
   - label: sprint-10-canary-readiness-integration
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-10-canary-readiness-integration.md
     branch: megaplan/vibecomfy-migration-sprint-10
-    profile: nancy
+    profile: all-codex
     robustness: light
     phase_model: []
     bakeoff:
       enabled: false
-    notes: Dashboards plus runbooks.
+    notes: Dashboards plus runbooks. Use all-codex per chain directive.
 
   - label: sprint-11a-production-canary-code-patches
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-11a-production-canary-code-patches.md
     branch: megaplan/vibecomfy-migration-sprint-11a-code
-    profile: poirot
+    profile: all-codex
     robustness: standard
-    phase_model:
-      - plan=claude:high
+    phase_model: []
     bakeoff:
       enabled: false
-    notes: Mid-canary patches have no rollback iteration.
+    notes: Mid-canary patches have no rollback iteration. Use all-codex per chain directive.
 
   - label: sprint-11b-production-canary-runbook-dashboard
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-11b-production-canary-runbook-dashboard.md
     branch: megaplan/vibecomfy-migration-sprint-11b-runbook
-    profile: nancy
+    profile: all-codex
     robustness: light
     phase_model: []
     bakeoff:
       enabled: false
-    notes: Do not pay premium for the runbooks.
+    notes: Do not pay premium for the runbooks. Use all-codex per chain directive.
 
   - label: sprint-12-dual-executor-hardening
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-12-dual-executor-hardening.md
     branch: megaplan/vibecomfy-migration-sprint-12
-    profile: marlowe
+    profile: all-codex
     robustness: standard
     phase_model: []
     bakeoff:
       enabled: false
-    notes: Verification phases benefit from gate plus review.
+    notes: Verification phases benefit from gate plus review. Use all-codex per chain directive.
 
   - label: sprint-12b-optional-cleanup
     idea: /Users/peteromalley/Documents/reigh-workspace/docs/megaplan-vibecomfy-chain/ideas/sprint-12b-optional-cleanup.md
     branch: megaplan/vibecomfy-migration-sprint-12b
-    profile: nancy
+    profile: all-codex
     robustness: light
     phase_model: []
     bakeoff:
       enabled: false
-    notes: Mechanical PRs after Section 8A gate.
+    notes: Mechanical PRs after Section 8A gate. Use all-codex per chain directive.
 
 on_failure:
   abort: stop_chain
