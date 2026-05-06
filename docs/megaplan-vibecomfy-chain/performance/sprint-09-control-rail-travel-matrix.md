@@ -21,12 +21,14 @@ Sprint 09 execute completed all 12 tasks and produced the Section 3A route-key, 
 - Local cloud-chain Vitest commands remain blocked by missing local `vitest`.
 - Worker broad pytest collection remains blocked by local missing runtime dependencies.
 - Initial VibeComfy corpus matrix failed before execution because `runpod_corpus_matrix.py` still called retired `scripts/materialize_ready_templates.py`.
-- A scoped LTX RunPod matrix is required after the VibeComfy runner patch to prove the underlying template family runs, but that is still only template-runtime proof, not Reigh production parity.
+- The follow-up scoped LTX RunPod matrix did not reach green proof. The launched pod disappeared before completion/artifact capture, the local runner had no active TCP connection while waiting between polls, and manual SSH timed out. This leaves LTX template-family proof open.
+- A scoped LTX RunPod matrix is still required after the VibeComfy runner patch to prove the underlying template family runs, but that is only template-runtime proof, not Reigh production parity.
 
 ## Fixes Made During Sense-Check
 
 - VibeComfy `runpod_validate.py` and `runpod_corpus_matrix.py` now implement safe argparse help so `--help` cannot launch paid pods.
 - VibeComfy corpus matrix accepts `--scope` and no longer fails when the retired ready-template materializer is absent.
+- VibeComfy detached RunPod polling now fails after repeated SSH poll failures and still terminates the launched pod through the guard; the CLI wrapper forwards `vibecomfy runpod corpus-matrix --scope ...`.
 - Section 3A rows 7/8 were downgraded from `ADAPT`/VibeComfy selector promotion to `BLOCKED`/WGP fallback until Reigh travel adapter wiring exists.
 
 ## Current Parity Position
