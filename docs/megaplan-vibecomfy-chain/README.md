@@ -7,6 +7,7 @@ Sprint performance reviews are recorded after each milestone under `performance/
 - `performance/sprint-00a-kickoff-contract-freeze.md`
 - `performance/sprint-00b-thresholds-golden-corpus.md`
 - `performance/sprint-06-production-selector-claim-contract.md`
+- `performance/sprint-07-orchestrator-image-pools-artifacts.md`
 
 ## Directive
 
