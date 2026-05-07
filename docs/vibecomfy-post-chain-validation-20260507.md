@@ -44,6 +44,37 @@ Validated route: `z_image_turbo`
 - Output: PNG from the production-shaped Reigh worker queue path.
 - Pod cleanup: terminated by the runner.
 
+### Reigh Queue Proof: Qwen Ready Templates
+
+Validated routes: `qwen_image_2512`, `qwen_image_edit`, `qwen_image_style`,
+`image_inpaint`, `annotated_image_edit`
+
+- Command:
+  `PYENV_VERSION=3.11.11 python -m scripts.live_test.main --variant fresh --backend vibecomfy --ref megaplan/vibecomfy-sprint-09-control-rail-travel-matrix --vibecomfy-ref main --case qwen_image_2512 --case qwen_image_edit --case qwen_image_style --case image_inpaint --case annotated_image_edit`
+- Pod: `v7ozyfck7hqhbb`
+- Report:
+  `reigh-worker/scripts/live_test/runs/20260507T065745Z/report.md`
+- Status: `5/5 passed`
+- Selected templates:
+  - `qwen_image_2512` -> `image/qwen_image_2512`
+  - `qwen_image_edit`, `qwen_image_style`, `image_inpaint`,
+    `annotated_image_edit` -> `edit/qwen_image_edit`
+- Outputs:
+  - `qwen_image_2512`: task `21845d07-f3c8-40ef-bfe8-54832e8dfb96`,
+    generation `face33ec-5c7f-4911-b420-3d57d76e4b19`, PNG output.
+  - `qwen_image_edit`: task `220ee446-3222-4197-936a-efccc1493cc3`,
+    generation `8eb0e64a-4910-4c6c-b865-bce46a4bcac5`, PNG output.
+  - `qwen_image_style`: task `367f7671-ced1-4b41-aec6-6e470c0b002a`,
+    generation `2c5feb25-4bd8-4340-972e-929898ca61df`, PNG output.
+  - `image_inpaint`: task `84a474a4-f6d5-42b1-a355-fc78796a5c7d`,
+    generation `deae6051-d231-4055-b42d-d1dd95e10df2`, PNG output.
+  - `annotated_image_edit`: task `35f55290-a8d9-4687-ad05-24a42326fef2`,
+    generation `91c981c4-79db-49ae-b371-b919884e2f28`, PNG output.
+- Production-path details: the worker generated per-task VibeComfy scratchpads,
+  materialized image inputs into each run workspace, created masked composites
+  for inpaint/annotated edit, waited for worker preflight readiness before
+  inserting tasks, and uploaded outputs through the normal task completion path.
+
 ### WGP Rollback And Baseline Proof
 
 The WGP path was exercised on fresh RunPod pods with production-shaped live
@@ -99,14 +130,18 @@ enabled for the supported route.
 - Reigh Worker live harness, Qwen cleanup, and join regression slice:
   `PYENV_VERSION=3.11.11 python -m pytest tests/test_join_orchestrator_and_registry.py scripts/live_test/tests/test_primitives.py tests/test_qwen_model_selection.py tests/runtime/test_worker_preflight.py tests/test_template_routing.py -q`
   - Result: `166 passed, 2 warnings`.
+- Reigh Worker Qwen VibeComfy promotion slice:
+  `PYENV_VERSION=3.11.11 python -m pytest scripts/live_test/tests/test_primitives.py tests/test_vibecomfy_adapter.py tests/test_template_routing.py tests/test_vibecomfy_backend_selection.py -q`
+  - Result: `157 passed, 2 warnings`.
 - Reigh App create-task route contract:
   `npm exec -- vitest run --config config/testing/vitest.edge.config.ts supabase/functions/_shared/selectedRoute.test.ts supabase/functions/create-task/routeContract.test.ts`
   - Result: `2 files, 14 tests passed`.
 
 ## App Endpoint Parity Ledger
 
-Only `z_image_turbo` currently has live VibeComfy production-route proof.
-Everything else remains WGP-only or explicit fail-close until it receives:
+Only `z_image_turbo` and the Qwen ready-template group currently have live
+VibeComfy production-route proof. Everything else remains WGP-only or explicit
+fail-close until it receives:
 
 - selected-template mapping,
 - production-shaped fixture,
@@ -118,12 +153,12 @@ Everything else remains WGP-only or explicit fail-close until it receives:
 | App-used endpoint family | Route key | Current VibeComfy state | Post-chain validation result |
 | --- | --- | --- | --- |
 | Text-to-image with `model: z-image` | `z_image_turbo` | `vibecomfy_supported` | Live RunPod pass; app/worker route contracts pass |
-| Qwen image generation | `qwen_image`, `qwen_image_2512`, `qwen_image_style` | WGP-only | Live WGP matrix covered; no VibeComfy parity claim |
+| Qwen image generation | `qwen_image`, `qwen_image_2512`, `qwen_image_style` | `qwen_image` WGP-only; `qwen_image_2512` and `qwen_image_style` VibeComfy-supported | `qwen_image_2512` and `qwen_image_style` live RunPod worker pass; plain `qwen_image` has no VibeComfy template and must not alias to 2512 |
 | WAN image generation | `wan_2_2_t2i` | WGP-only | Live WGP pass; no VibeComfy parity claim |
 | Z image image-to-image | `z_image_turbo_i2i` | WGP-only | Live WGP pass; no VibeComfy parity claim |
-| Magic edit / Qwen edit | `qwen_image_edit` | WGP-only | Live WGP pass; no VibeComfy parity claim |
+| Magic edit / Qwen edit | `qwen_image_edit` | `vibecomfy_supported` | Live RunPod worker pass via `edit/qwen_image_edit` |
 | Klein edit | `flux_klein_edit` | unsupported | Explicit VibeComfy selection must fail closed; no parity claim |
-| Inpaint / annotated edit | `image_inpaint`, `annotated_image_edit` | WGP-only | Live WGP pass; no VibeComfy parity claim |
+| Inpaint / annotated edit | `image_inpaint`, `annotated_image_edit` | `vibecomfy_supported` | Live RunPod worker pass via masked/annotated composite into `edit/qwen_image_edit` |
 | Image upscale | `image-upscale` | unsupported | Explicit VibeComfy selection must fail closed; no parity claim |
 | Video enhance | `video_enhance` | unsupported | Explicit VibeComfy selection must fail closed; no parity claim |
 | Character animate | `animate_character` | unsupported | Explicit VibeComfy selection must fail closed; no parity claim |
@@ -133,10 +168,12 @@ Everything else remains WGP-only or explicit fail-close until it receives:
 
 ## Bottom Line
 
-The chain delivered the migration scaffolding and one production-supported
-VibeComfy route. It does not yet provide complete feature parity with the prior
-1.2GP/WGP surface. The correct production stance is:
+The chain delivered the migration scaffolding plus production-supported
+VibeComfy routes for `z_image_turbo`, `qwen_image_2512`,
+`qwen_image_edit`, `qwen_image_style`, `image_inpaint`, and
+`annotated_image_edit`. It does not yet provide complete feature parity with
+the prior 1.2GP/WGP surface. The correct production stance is:
 
-- allow VibeComfy only for `z_image_turbo` after selector promotion,
+- allow VibeComfy only for routes with live worker proof listed above,
 - keep every other app-used endpoint on WGP or fail-closed,
 - promote additional routes one at a time only after the full proof set above.
