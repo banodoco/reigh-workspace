@@ -10,6 +10,9 @@ non-RayWorker fixture metadata.
 | Route key | WGP | VibeComfy | Template | Evidence |
 | --- | --- | --- | --- | --- |
 | `z_image_turbo` | supported | supported | `image/z_image` | `SPRINT_2_SELECTOR_MAP`; Python route tests; app selected-route fixture |
+| `z_image_turbo_i2i` | supported | supported | `image/z_image_img2img` | `SPRINT_2_SELECTOR_MAP`; Wan2GP img2img defaults; VibeComfy template tests |
+| `wan_2_2_t2i` | supported | supported | `video/wanvideo_wrapper_22_14b_t2i` | `SPRINT_2_SELECTOR_MAP`; Wan2GP T2I defaults; VibeComfy template tests |
+| Wan 2.2 VACE travel/join rows | supported | supported | `video/wanvideo_wrapper_22_14b_vace_cocktail` | `SECTION3A_ROUTE_SUPPORT_MAP`; Wan2GP VACE 3-phase defaults; WanVideoWrapper VACE nodes |
 
 ## VibeComfy-Only Routes
 
@@ -17,23 +20,24 @@ None. Sprint 12 does not close any route as VibeComfy-only; WGP remains intact.
 
 ## WGP-Only RayWorker Routes
 
-`z_image_turbo_i2i`, `qwen_image_2512`, `qwen_image`, `qwen_image_edit`,
+`qwen_image_2512`, `qwen_image`, `qwen_image_edit`,
 `qwen_image_style`, `image_inpaint`, `annotated_image_edit`,
 `travel_orchestrator`, `join_clips_orchestrator`, `edit_video_orchestrator`,
-`travel_stitch`, `join_final_stitch`, and `wan_2_2_t2i` are WGP-only by current
+`travel_stitch`, and `join_final_stitch` are WGP-only by current
 selector evidence.
 
 ## Unsupported-Pending RayWorker Routes
 
 `travel_segment`, `individual_travel_segment`, and `join_clips_segment` are
 dimensional route families that remain `vibecomfy_unsupported` unless a specific
-Section 3A row is promoted with implementation and proof. Current Section 3A
-rows are all unsupported-pending and retain their individual `NEW` or `BLOCKED`
-fixture disposition plus blocker reason.
+Section 3A row is promoted with implementation and proof. Wan 2.2 VACE
+flow/canny/depth/raw plus join bridge are promoted through the VACE cocktail
+template; LTX and Wan I2V rows remain unsupported-pending and retain their
+individual `NEW` or `BLOCKED` fixture disposition plus blocker reason.
 
 Unsupported-pending Section 3A examples include:
 
-- Wan 2.2 I2V/VACE rows waiting on the new Wan 2.2 VACE cocktail template and guide preprocessing.
+- Wan 2.2 I2V and Uni3C rows waiting on the relevant template/preprocessing path.
 - LTX first/last rows waiting on travel child adapter wiring.
 - LTX control rows waiting on proven control-capable templates and preprocessing.
 
@@ -58,4 +62,3 @@ Before any route moves to `dual_supported`:
 8. Verify dashboard/alert surfaces for route totals, selected pool totals, route worker health, missing runtime evidence, smoke failure, and completion/billing failure where applicable.
 
 No unsupported route is promoted by this document.
-

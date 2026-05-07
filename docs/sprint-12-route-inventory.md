@@ -26,7 +26,7 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | Route key | Classification | Support state | Template | Notes |
 | --- | --- | --- | --- | --- |
 | `z_image_turbo` | `dual_supported` | `vibecomfy_supported` | `image/z_image` | Direct aliases: `z_image`, `z_image_turbo`. Default resolution `1024x1024`. |
-| `z_image_turbo_i2i` | `wgp_only` | `wgp_only` |  | Direct alias: `z_image_turbo_i2i`. |
+| `z_image_turbo_i2i` | `wgp_only` | `vibecomfy_supported` | `image/z_image_img2img` | Direct alias: `z_image_turbo_i2i`. |
 | `qwen_image_2512` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_2512`. |
 | `qwen_image` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image`. |
 | `qwen_image_edit` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_edit`. |
@@ -41,7 +41,7 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | `join_clips_segment` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | Dimensional child route family. |
 | `travel_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
 | `join_final_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
-| `wan_2_2_t2i` | `wgp_only` | `wgp_only` |  | Direct aliases: `optimised_t2i`, `wan_2_2_t2i`. |
+| `wan_2_2_t2i` | `wgp_only` | `vibecomfy_supported` | `video/wanvideo_wrapper_22_14b_t2i` | Direct aliases: `optimised_t2i`, `wan_2_2_t2i`. |
 
 ## Section 3A Dimensional Route Surface
 
@@ -51,11 +51,15 @@ metadata without extending the runtime support-state enum.
 | Row | Route key | Classification | Disposition | Blocker |
 | --- | --- | --- | --- | --- |
 | 1 | `travel_segment__model-wan22_i2v__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template before Wan-family travel rows can be promoted. |
-| 2 | `travel_segment__model-wan22_vace__guidance-vace_flow__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and optical-flow guide preprocessing before promotion. |
-| 3 | `travel_segment__model-wan22_vace__guidance-vace_canny__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and Canny guide preprocessing before promotion. |
-| 4 | `travel_segment__model-wan22_vace__guidance-vace_depth__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and depth guide handling before promotion. |
-| 5 | `travel_segment__model-wan22_vace__guidance-vace_raw__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and raw guide-video passthrough before promotion. |
+| 2 | `travel_segment__model-wan22_vace__guidance-vace_flow__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 3 | `travel_segment__model-wan22_vace__guidance-vace_canny__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 4 | `travel_segment__model-wan22_vace__guidance-vace_depth__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 5 | `travel_segment__model-wan22_vace__guidance-vace_raw__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
 | 6 | `travel_segment__model-wan22_vace__guidance-uni3c__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and Uni3C patch before promotion. |
+| 6a | `travel_segment__model-wan22_vace__guidance-vace__continuity-video_source__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6b | `individual_travel_segment__model-wan22_vace__guidance-vace__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6c | `individual_travel_segment__model-wan22_vace__guidance-vace_raw__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6d | `join_clips_segment__model-wan22_vace__guidance-vace__continuity-join_bridge__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
 | 7 | `travel_segment__model-ltx2__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The LTX first/last ready template is not yet wired through the Reigh travel child adapter with first/last image inputs and completion semantics. |
 | 8 | `travel_segment__model-ltx2_distilled__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The LTX first/last ready template is not yet wired through the Reigh travel child adapter with first/last image inputs and completion semantics. |
 | 9 | `travel_segment__model-ltx2_distilled__guidance-ltx_control_video__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The pinned LTX first/last template is not yet proven control-capable for a full-length control guide. |
@@ -74,7 +78,7 @@ The app fixture snapshot currently covers:
 | Fixture | Route key | Classification | Backend |
 | --- | --- | --- | --- |
 | vibecomfy z-image direct route | `z_image_turbo` | `dual_supported` | `vibecomfy` |
-| wgp join child dimensional route | `join_clips_segment__model-wan22_vace__guidance-vace__continuity-join_bridge__profile-default` | `vibecomfy_unsupported` | `wgp` |
+| wgp join child dimensional route | `join_clips_segment__model-wan22_vace__guidance-vace__continuity-join_bridge__profile-default` | `vibecomfy_supported` | `wgp` |
 | legacy unknown route defaults | `legacy_custom_task` | `vibecomfy_unsupported` | `wgp` |
 
 Section 3A blocker detail is preserved in the worker map and fixture matrix
