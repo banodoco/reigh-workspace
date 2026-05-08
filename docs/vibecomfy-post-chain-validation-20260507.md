@@ -218,6 +218,9 @@ enabled for the supported route.
 - Reigh App app-active unported route fail-close contract:
   `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/shared/routeKeys.test.ts supabase/functions/create-task/vibecomfyProductionRouteSeed.test.ts supabase/functions/create-task/section3aRouteMetadata.test.ts supabase/functions/claim-next-task/index.test.ts`
   - Result: `4 files, 30 tests passed`.
+- Reigh App turbo travel guard:
+  `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/__tests__/placement.test.ts supabase/functions/create-task/resolvers/shared/routeKeys.test.ts supabase/functions/create-task/vibecomfyProductionRouteSeed.test.ts supabase/functions/create-task/section3aRouteMetadata.test.ts supabase/functions/claim-next-task/index.test.ts`
+  - Result: `5 files, 44 tests passed`.
 - VibeComfy full focused suite after WanVideo and model-asset fixes:
   `PYENV_VERSION=3.11.11 python -m pytest -q`
   - Result: `425 passed, 4 skipped, 5 deselected`.
@@ -265,3 +268,10 @@ correct production stance is:
 - allow VibeComfy only for routes with live worker proof listed above,
 - keep every other app-used endpoint on WGP or fail-closed,
 - promote additional routes one at a time only after the full proof set above.
+
+Direct `wan_2_2_i2v` remains intentionally unpromoted. The app previously could
+emit it through `turbo_mode: true`, but the Ray worker dispatch catalog does not
+own that task type and VibeComfy does not yet have a Wan 2.2 14B Lightning I2V
+template equivalent. The app now keeps turbo travel requests on the owned
+`travel_orchestrator` route until direct I2V has a real runtime owner, selector
+seed, and live proof.
