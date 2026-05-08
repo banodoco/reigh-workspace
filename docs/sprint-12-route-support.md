@@ -18,21 +18,21 @@ and non-RayWorker fixture metadata.
 | `image_inpaint` | supported | supported | `edit/qwen_image_edit` | Live RunPod worker proof with masked composite |
 | `annotated_image_edit` | supported | supported | `edit/qwen_image_edit` | Live RunPod worker proof with masked composite |
 | `wan_2_2_t2i` | supported | supported | `video/wanvideo_wrapper_22_14b_t2i` | Live RunPod worker proof |
+| `wan_2_2_i2v` | supported | supported | `video/wanvideo_wrapper_22_14b_i2v_kijai` | Live RunPod worker proof: `reigh-worker/scripts/live_test/runs/20260508T113336Z/report.md` |
 | Wan 2.2 VACE travel/join rows | supported | supported | `video/wanvideo_wrapper_22_14b_vace_cocktail` | Live RunPod worker proof for promoted VACE rows |
 
-## Code-Wired, Pending Live Proof
+## Live-Proven App-Active Direct Routes
 
-These app-active routes now have VibeComfy selector rows and worker scratchpad
-writers, but still require live RunPod generation proof before production canary
-promotion.
+These app-active direct routes have VibeComfy selector rows, worker scratchpad
+writers, app route snapshots, local regression coverage, and live RunPod
+generation proof through the Reigh worker.
 
-| Route key | VibeComfy template | Current caveat |
-| --- | --- | --- |
-| `wan_2_2_i2v` | `video/wanvideo_wrapper_22_14b_i2v_kijai` | Kijai A14B I2V template locally validates; needs live worker generation |
-| `animate_character` | `video/wanvideo_wrapper_22_wan_animate_preprocess_kijai` | Kijai WanAnimate preprocessing template locally validates; needs live worker generation |
-| `image-upscale`, `image_upscale` | `image/basic_image_upscale` | Contract parity only; currently Lanczos scaling, not model-quality external upscaler parity |
-| `video_enhance` | `video/basic_video_enhance` | GIMM-VFI/interpolation/upscale candidate; needs live proof and artifact parity |
-| `flux_klein_edit` | `edit/flux2_klein_4b_image_edit_distilled` | 4B expanded template path only; 9B Klein edit parity remains unresolved |
+| Route key | VibeComfy template | Evidence | Current caveat |
+| --- | --- | --- | --- |
+| `animate_character` | `video/wan22_animate_native_first_stage` | Live RunPod worker proof: `reigh-worker/scripts/live_test/runs/20260508T174952Z/report.md`, task `f61d68f5-37d7-49c4-8bda-ac55ff0ce3c5`, output `Wanimate_00001_.mp4` | Native WanAnimate first-stage route. `num_frames` is now bound into the template and app resolver; full long-form quality grading remains separate from completion proof. |
+| `image-upscale`, `image_upscale` | `image/basic_image_upscale` | Live RunPod worker proof: `reigh-worker/scripts/live_test/runs/20260508T084407Z/report.md` | Contract parity only; currently Lanczos scaling, not model-quality external upscaler parity. |
+| `video_enhance` | `video/basic_video_enhance` | Live RunPod worker proof: `reigh-worker/scripts/live_test/runs/20260508T090727Z/report.md` | Public baseline route. Frame interpolation/model-quality enhancement still needs a non-gated asset path. |
+| `flux_klein_edit` | `edit/flux2_klein_4b_image_edit_distilled` | Live RunPod worker proof: `reigh-worker/scripts/live_test/runs/20260508T085430Z/report.md` | 4B expanded template path only; 9B Klein edit parity remains unresolved. |
 
 ## WGP-Only RayWorker Routes
 
