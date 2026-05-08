@@ -240,7 +240,7 @@ receives:
 | Text-to-image with `model: z-image` | `z_image_turbo` | `vibecomfy_supported` | Live RunPod pass; app/worker route contracts pass |
 | Qwen image generation | `qwen_image`, `qwen_image_2512`, `qwen_image_style` | `vibecomfy_supported` for validated Qwen template routes | Live RunPod worker pass; production selector seed deployed for `qwen_image` aliasing to `image/qwen_image_2512` |
 | WAN image generation | `wan_2_2_t2i` | `vibecomfy_supported` | Live RunPod worker pass; production selector seed deployed for `video/wanvideo_wrapper_22_14b_t2i` |
-| Z image image-to-image | `z_image_turbo_i2i` | WGP-only | Live mixed smoke pass; no production VibeComfy selector claim yet |
+| Z image image-to-image | `z_image_turbo_i2i` | `vibecomfy_supported` | Live RunPod worker pass; production selector seed deployed for `image/z_image_img2img` |
 | Magic edit / Qwen edit | `qwen_image_edit` | `vibecomfy_supported` | Live RunPod worker pass via `edit/qwen_image_edit` |
 | Klein edit | `flux_klein_edit` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; no parity claim |
 | Inpaint / annotated edit | `image_inpaint`, `annotated_image_edit` | `vibecomfy_supported` | Live RunPod worker pass via masked/annotated composite into `edit/qwen_image_edit` |

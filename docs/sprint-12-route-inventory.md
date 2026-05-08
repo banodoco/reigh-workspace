@@ -26,7 +26,7 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | Route key | Classification | Support state | Template | Notes |
 | --- | --- | --- | --- | --- |
 | `z_image_turbo` | `dual_supported` | `vibecomfy_supported` | `image/z_image` | Direct aliases: `z_image`, `z_image_turbo`. Default resolution `1024x1024`. |
-| `z_image_turbo_i2i` | `wgp_only` | `vibecomfy_supported` | `image/z_image_img2img` | Direct alias: `z_image_turbo_i2i`. |
+| `z_image_turbo_i2i` | `dual_supported` | `vibecomfy_supported` | `image/z_image_img2img` | Direct alias: `z_image_turbo_i2i`. |
 | `qwen_image_2512` | `dual_supported` | `vibecomfy_supported` | `image/qwen_image_2512` | Direct alias: `qwen_image_2512`. |
 | `qwen_image` | `dual_supported` | `vibecomfy_supported` | `image/qwen_image_2512` | Direct alias: `qwen_image`. |
 | `qwen_image_edit` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `qwen_image_edit`. |
@@ -41,7 +41,7 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | `join_clips_segment` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | Dimensional child route family. |
 | `travel_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
 | `join_final_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
-| `wan_2_2_t2i` | `wgp_only` | `vibecomfy_supported` | `video/wanvideo_wrapper_22_14b_t2i` | Direct aliases: `optimised_t2i`, `wan_2_2_t2i`. |
+| `wan_2_2_t2i` | `dual_supported` | `vibecomfy_supported` | `video/wanvideo_wrapper_22_14b_t2i` | Direct aliases: `optimised_t2i`, `wan_2_2_t2i`. |
 | `wan_2_2_i2v` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active travel turbo route. Blocked until an explicit VibeComfy I2V route/template and worker dispatch proof exist. |
 | `image-upscale` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
 | `image_upscale` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | Legacy underscore variant for image upscale; not ported to VibeComfy. |
