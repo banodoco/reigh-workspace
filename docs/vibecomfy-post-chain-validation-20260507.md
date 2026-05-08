@@ -227,6 +227,15 @@ enabled for the supported route.
   - Covers both hyphenated agent task types and snake_case resolver-family
     aliases so legacy `create_generation_task` calls cannot degrade into
     default image generation before they reach the route selector.
+- Reigh App active-family route inventory gate:
+  `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/__tests__/activeAppFamilies.test.ts`
+  - Result: `1 file, 16 tests passed`.
+  - Instantiates every app-active create-task family and verifies the emitted
+    task type has an explicit route support state: VibeComfy-supported,
+    WGP-only, or VibeComfy-unsupported.
+- Reigh App full active-route contract slice:
+  `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/__tests__/activeAppFamilies.test.ts supabase/functions/ai-timeline-agent/tools/generation.test.ts supabase/functions/ai-timeline-agent/tools/create-task.test.ts supabase/functions/create-task/resolvers/__tests__/placement.test.ts supabase/functions/create-task/resolvers/__tests__/dispatch.test.ts supabase/functions/create-task/resolvers/shared/routeKeys.test.ts supabase/functions/create-task/vibecomfyProductionRouteSeed.test.ts supabase/functions/create-task/section3aRouteMetadata.test.ts supabase/functions/claim-next-task/index.test.ts`
+  - Result: `9 files, 91 tests passed`.
 - Reigh Worker non-RayWorker active-route preservation/readiness:
   `PYENV_VERSION=3.11.11 python -m pytest scripts/dual_run_compare/tests/test_non_rayworker_fixtures.py scripts/canary_readiness/tests/test_non_rayworker.py -q`
   - Result: `9 passed`.
