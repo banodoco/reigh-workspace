@@ -27,12 +27,12 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | --- | --- | --- | --- | --- |
 | `z_image_turbo` | `dual_supported` | `vibecomfy_supported` | `image/z_image` | Direct aliases: `z_image`, `z_image_turbo`. Default resolution `1024x1024`. |
 | `z_image_turbo_i2i` | `wgp_only` | `vibecomfy_supported` | `image/z_image_img2img` | Direct alias: `z_image_turbo_i2i`. |
-| `qwen_image_2512` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_2512`. |
-| `qwen_image` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image`. |
-| `qwen_image_edit` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_edit`. |
-| `qwen_image_style` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_style`. |
-| `image_inpaint` | `wgp_only` | `wgp_only` |  | Direct alias: `image_inpaint`. |
-| `annotated_image_edit` | `wgp_only` | `wgp_only` |  | Direct alias: `annotated_image_edit`. |
+| `qwen_image_2512` | `dual_supported` | `vibecomfy_supported` | `image/qwen_image_2512` | Direct alias: `qwen_image_2512`. |
+| `qwen_image` | `dual_supported` | `vibecomfy_supported` | `image/qwen_image_2512` | Direct alias: `qwen_image`. |
+| `qwen_image_edit` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `qwen_image_edit`. |
+| `qwen_image_style` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `qwen_image_style`. |
+| `image_inpaint` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `image_inpaint`. |
+| `annotated_image_edit` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `annotated_image_edit`. |
 | `travel_orchestrator` | `wgp_only` | `wgp_only` |  | Parent route; app requirements include travel child, stitch control, and nested join parent. |
 | `join_clips_orchestrator` | `wgp_only` | `wgp_only` |  | Parent route; app requirements include join child and final stitch control. |
 | `edit_video_orchestrator` | `wgp_only` | `wgp_only` |  | Parent route; app requirements include join child and final stitch control. |
@@ -42,6 +42,12 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | `travel_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
 | `join_final_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
 | `wan_2_2_t2i` | `wgp_only` | `vibecomfy_supported` | `video/wanvideo_wrapper_22_14b_t2i` | Direct aliases: `optimised_t2i`, `wan_2_2_t2i`. |
+| `wan_2_2_i2v` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active travel turbo route. Blocked until an explicit VibeComfy I2V route/template and worker dispatch proof exist. |
+| `image-upscale` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
+| `image_upscale` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | Legacy underscore variant for image upscale; not ported to VibeComfy. |
+| `video_enhance` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
+| `animate_character` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
+| `flux_klein_edit` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
 
 ## Section 3A Dimensional Route Surface
 

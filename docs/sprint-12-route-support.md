@@ -11,6 +11,12 @@ non-RayWorker fixture metadata.
 | --- | --- | --- | --- | --- |
 | `z_image_turbo` | supported | supported | `image/z_image` | `SPRINT_2_SELECTOR_MAP`; Python route tests; app selected-route fixture |
 | `z_image_turbo_i2i` | supported | supported | `image/z_image_img2img` | `SPRINT_2_SELECTOR_MAP`; Wan2GP img2img defaults; VibeComfy template tests |
+| `qwen_image_2512` | supported | supported | `image/qwen_image_2512` | `SPRINT_2_SELECTOR_MAP`; app route metadata seed; VibeComfy live proof |
+| `qwen_image` | supported | supported | `image/qwen_image_2512` | `SPRINT_2_SELECTOR_MAP`; app route metadata seed; VibeComfy live proof |
+| `qwen_image_edit` | supported | supported | `edit/qwen_image_edit` | `SPRINT_2_SELECTOR_MAP`; app route metadata seed; VibeComfy live proof |
+| `qwen_image_style` | supported | supported | `edit/qwen_image_edit` | `SPRINT_2_SELECTOR_MAP`; app route metadata seed; VibeComfy live proof |
+| `image_inpaint` | supported | supported | `edit/qwen_image_edit` | `SPRINT_2_SELECTOR_MAP`; app route metadata seed; VibeComfy live proof |
+| `annotated_image_edit` | supported | supported | `edit/qwen_image_edit` | `SPRINT_2_SELECTOR_MAP`; app route metadata seed; VibeComfy live proof |
 | `wan_2_2_t2i` | supported | supported | `video/wanvideo_wrapper_22_14b_t2i` | `SPRINT_2_SELECTOR_MAP`; Wan2GP T2I defaults; VibeComfy template tests |
 | Wan 2.2 VACE travel/join rows | supported | supported | `video/wanvideo_wrapper_22_14b_vace_cocktail` | `SECTION3A_ROUTE_SUPPORT_MAP`; Wan2GP VACE 3-phase defaults; WanVideoWrapper VACE nodes |
 
@@ -20,11 +26,9 @@ None. Sprint 12 does not close any route as VibeComfy-only; WGP remains intact.
 
 ## WGP-Only RayWorker Routes
 
-`qwen_image_2512`, `qwen_image`, `qwen_image_edit`,
-`qwen_image_style`, `image_inpaint`, `annotated_image_edit`,
 `travel_orchestrator`, `join_clips_orchestrator`, `edit_video_orchestrator`,
-`travel_stitch`, and `join_final_stitch` are WGP-only by current
-selector evidence.
+`travel_stitch`, and `join_final_stitch` are WGP-only by current selector
+evidence.
 
 ## Unsupported-Pending RayWorker Routes
 
@@ -40,13 +44,17 @@ Unsupported-pending Section 3A examples include:
 - Wan 2.2 I2V and Uni3C rows waiting on the relevant template/preprocessing path.
 - LTX first/last rows waiting on travel child adapter wiring.
 - LTX control rows waiting on proven control-capable templates and preprocessing.
+- App-active direct routes `wan_2_2_i2v`, `image-upscale`, `image_upscale`,
+  `video_enhance`, `animate_character`, and `flux_klein_edit` are explicit
+  fail-closed VibeComfy rows until each has a real VibeComfy implementation or
+  remains intentionally API-owned.
 
 ## Non-RayWorker API-Owned Routes
 
 The following active routes are outside the RayWorker backend selector and keep
 API-orchestrator ownership: `video_enhance`, `image-upscale`,
-`animate_character`, `flux_klein_edit`, plus the other API-orchestrator rows
-listed in `docs/sprint-12-route-inventory.md`.
+`image_upscale`, `animate_character`, `flux_klein_edit`, plus the other
+API-orchestrator rows listed in `docs/sprint-12-route-inventory.md`.
 
 ## Route Promotion Checklist
 
