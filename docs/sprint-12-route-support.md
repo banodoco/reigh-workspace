@@ -56,6 +56,13 @@ API-orchestrator ownership: `video_enhance`, `image-upscale`,
 `image_upscale`, `animate_character`, `flux_klein_edit`, plus the other
 API-orchestrator rows listed in `docs/sprint-12-route-inventory.md`.
 
+The AI timeline agent is part of the active app surface. Its preferred
+`create_task` tool emits canonical hyphenated task types, while the older
+`create_generation_task` helper may receive snake_case resolver-family aliases.
+Both forms must resolve through the same create-task resolver registry before
+selector lookup; otherwise an alias can bypass the intended route contract and
+fall back to image generation.
+
 ## Route Promotion Checklist
 
 Before any route moves to `dual_supported`:

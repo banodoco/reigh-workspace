@@ -221,6 +221,12 @@ enabled for the supported route.
 - Reigh App turbo travel guard:
   `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/__tests__/placement.test.ts supabase/functions/create-task/resolvers/shared/routeKeys.test.ts supabase/functions/create-task/vibecomfyProductionRouteSeed.test.ts supabase/functions/create-task/section3aRouteMetadata.test.ts supabase/functions/claim-next-task/index.test.ts`
   - Result: `5 files, 44 tests passed`.
+- Reigh App AI timeline agent route-family alias guard:
+  `npm run test:edge:unit -- --run supabase/functions/ai-timeline-agent/tools/generation.test.ts supabase/functions/ai-timeline-agent/tools/create-task.test.ts supabase/functions/create-task/resolvers/__tests__/placement.test.ts supabase/functions/create-task/resolvers/shared/routeKeys.test.ts`
+  - Result: `4 files, 59 tests passed`.
+  - Covers both hyphenated agent task types and snake_case resolver-family
+    aliases so legacy `create_generation_task` calls cannot degrade into
+    default image generation before they reach the route selector.
 - Reigh Worker non-RayWorker active-route preservation/readiness:
   `PYENV_VERSION=3.11.11 python -m pytest scripts/dual_run_compare/tests/test_non_rayworker_fixtures.py scripts/canary_readiness/tests/test_non_rayworker.py -q`
   - Result: `9 passed`.
@@ -257,6 +263,15 @@ receives:
 | Individual travel segment | `individual_travel_segment` VACE raw/flow/canny/depth first/last route keys | VibeComfy-supported for validated VACE route keys | Live worker proof for raw plus flow/canny/depth; production selector seed deployed for flow/canny/depth, raw was already in the existing selector path |
 | Join clips parent/children | `join_clips_orchestrator`, dimensional `join_clips_segment`, `join_final_stitch` | VibeComfy-supported for the Wan 2.2 VACE `join_clips_segment` join-bridge route key; parent/final stitch remain WGP-only | Live worker proof for direct VACE join-bridge child route after fixing worker dispatch; live WGP orchestrator proof remains the parent/final-stitch baseline |
 | Edit video orchestrator | `edit_video_orchestrator` | WGP-only parent with blocked child/control routes | Live WGP orchestrator proof after join bug fix; no VibeComfy parity claim |
+
+AI timeline agent generation tools are included in this app-active surface.
+The canonical `create_task` tool emits hyphenated task types such as
+`image-to-video` and `image-upscale`; the legacy `create_generation_task`
+helper also accepts snake_case resolver-family aliases such as
+`travel_between_images`, `image_upscale`, `video_enhance`, and
+`character_animate`. The alias guard above proves both forms reach the same
+registered create-task resolvers and therefore the same route selector/fail-
+closed contracts.
 
 ## Bottom Line
 
