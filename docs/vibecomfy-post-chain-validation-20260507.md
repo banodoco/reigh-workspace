@@ -221,6 +221,9 @@ enabled for the supported route.
 - Reigh App turbo travel guard:
   `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/__tests__/placement.test.ts supabase/functions/create-task/resolvers/shared/routeKeys.test.ts supabase/functions/create-task/vibecomfyProductionRouteSeed.test.ts supabase/functions/create-task/section3aRouteMetadata.test.ts supabase/functions/claim-next-task/index.test.ts`
   - Result: `5 files, 44 tests passed`.
+- Reigh Worker non-RayWorker active-route preservation/readiness:
+  `PYENV_VERSION=3.11.11 python -m pytest scripts/dual_run_compare/tests/test_non_rayworker_fixtures.py scripts/canary_readiness/tests/test_non_rayworker.py -q`
+  - Result: `9 passed`.
 - VibeComfy full focused suite after WanVideo and model-asset fixes:
   `PYENV_VERSION=3.11.11 python -m pytest -q`
   - Result: `425 passed, 4 skipped, 5 deselected`.
@@ -245,11 +248,11 @@ receives:
 | WAN image generation | `wan_2_2_t2i` | `vibecomfy_supported` | Live RunPod worker pass; production selector seed deployed for `video/wanvideo_wrapper_22_14b_t2i` |
 | Z image image-to-image | `z_image_turbo_i2i` | `vibecomfy_supported` | Live RunPod worker pass; production selector seed deployed for `image/z_image_img2img` |
 | Magic edit / Qwen edit | `qwen_image_edit` | `vibecomfy_supported` | Live RunPod worker pass via `edit/qwen_image_edit` |
-| Klein edit | `flux_klein_edit` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; no parity claim |
+| Klein edit | `flux_klein_edit` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; non-RayWorker preservation/readiness fixtures pass |
 | Inpaint / annotated edit | `image_inpaint`, `annotated_image_edit` | `vibecomfy_supported` | Live RunPod worker pass via masked/annotated composite into `edit/qwen_image_edit` |
-| Image upscale | `image-upscale`, `image_upscale` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; no parity claim |
-| Video enhance | `video_enhance` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; no parity claim |
-| Character animate | `animate_character` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; no parity claim |
+| Image upscale | `image-upscale`, `image_upscale` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; non-RayWorker preservation/readiness fixtures pass |
+| Video enhance | `video_enhance` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; non-RayWorker preservation/readiness fixtures pass |
+| Character animate | `animate_character` | `vibecomfy_unsupported` | Explicit app/worker VibeComfy selection fails closed; non-RayWorker preservation/readiness fixtures pass |
 | Travel Between Images parent/children | `travel_orchestrator`, dimensional `travel_segment`, `travel_stitch` | VibeComfy-supported for VACE raw/flow/canny/depth `travel_segment` video-source route keys; parent/stitch remain WGP-only | Live worker proof for all four production-shaped VACE video-source child route keys; production selector seed deployed for those child routes |
 | Individual travel segment | `individual_travel_segment` VACE raw/flow/canny/depth first/last route keys | VibeComfy-supported for validated VACE route keys | Live worker proof for raw plus flow/canny/depth; production selector seed deployed for flow/canny/depth, raw was already in the existing selector path |
 | Join clips parent/children | `join_clips_orchestrator`, dimensional `join_clips_segment`, `join_final_stitch` | VibeComfy-supported for the Wan 2.2 VACE `join_clips_segment` join-bridge route key; parent/final stitch remain WGP-only | Live worker proof for direct VACE join-bridge child route after fixing worker dispatch; live WGP orchestrator proof remains the parent/final-stitch baseline |
