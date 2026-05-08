@@ -196,6 +196,9 @@ enabled for the supported route.
 - Reigh App VibeComfy production route seed and claim namespace slice:
   `npm run test:edge:unit -- --run supabase/functions/create-task/vibecomfyProductionRouteSeed.test.ts supabase/functions/create-task/section3aRouteMetadata.test.ts supabase/functions/claim-next-task/index.test.ts`
   - Result: `3 files, 12 tests passed`.
+- Reigh App route metadata consistency after promoting `qwen_image`:
+  `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/shared/routeKeys.test.ts supabase/functions/create-task/vibecomfyProductionRouteSeed.test.ts supabase/functions/create-task/section3aRouteMetadata.test.ts supabase/functions/claim-next-task/index.test.ts`
+  - Result: `4 files, 24 tests passed`.
 - VibeComfy full focused suite after WanVideo and model-asset fixes:
   `PYENV_VERSION=3.11.11 python -m pytest -q`
   - Result: `425 passed, 4 skipped, 5 deselected`.
