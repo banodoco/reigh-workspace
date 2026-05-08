@@ -302,3 +302,69 @@ own that task type and VibeComfy does not yet have a Wan 2.2 14B Lightning I2V
 template equivalent. The app now keeps turbo travel requests on the owned
 `travel_orchestrator` route until direct I2V has a real runtime owner, selector
 seed, and live proof.
+
+## Post-Chain Active App Route Port Slice: 2026-05-08
+
+After the active-family inventory showed five app-active VibeComfy gaps, the
+worker/app route maps were changed from explicit fail-closed placeholders to
+code-wired VibeComfy candidates for all five direct families.
+
+Commits pushed:
+
+- VibeComfy `2812469` `Add Kijai WanVideoWrapper ready templates`
+  - Added `video/wanvideo_wrapper_22_14b_i2v_kijai` from Kijai's current
+    `ComfyUI-WanVideoWrapper` Wan 2.2 A14B I2V example.
+  - Added `video/wanvideo_wrapper_22_wan_animate_preprocess_kijai` from Kijai's
+    current WanAnimate preprocessing example.
+  - Fixed the VibeComfy UI-to-API fallback so dict-shaped `widgets_values` are
+    preserved. This matters for custom nodes such as `VHS_LoadVideo` and
+    `VHS_VideoCombine`, where the video path and `save_output` can live in the
+    widget dict rather than a positional list.
+- VibeComfy `46053dd` `Add basic upscale and video enhance templates`
+  - Added `image/basic_image_upscale` using core `LoadImage -> ImageScaleBy -> SaveImage`.
+  - Added `video/basic_video_enhance` using `VHS_LoadVideo`, Kijai's GIMM-VFI
+    interpolation pattern, optional `ImageScaleBy`, and `VHS_VideoCombine`.
+- Reigh Worker `ccdebed9` `Route Wan I2V and character animation through VibeComfy`
+  - Promoted `wan_2_2_i2v` and `animate_character` to VibeComfy selector rows.
+  - Added scratchpad writers that materialize app inputs and patch Kijai node ids.
+- Reigh Worker `6b6c1566` `Route remaining app active tasks through VibeComfy`
+  - Promoted `image-upscale`, `image_upscale`, `video_enhance`, and
+    `flux_klein_edit` to VibeComfy selector rows.
+  - Added scratchpad writers for image upscale, video enhance, and Klein edit.
+- Reigh App `3525712b2` `Mark active VibeComfy routes supported`
+  - Mirrored app route snapshots for all five families.
+  - Updated the active-family inventory expectations.
+
+Local validation run after these changes:
+
+- VibeComfy harness/template validation:
+  `PYENV_VERSION=3.11.11 python -m pytest tests/test_schema.py::test_normalize_to_api_preserves_dict_widget_values tests/test_ready_templates.py::test_all_ready_templates_load_and_validate -q`
+  - Result: `2 passed`.
+- VibeComfy new template load/validate gate:
+  `PYENV_VERSION=3.11.11 python -m pytest tests/test_ready_templates.py::test_all_ready_templates_load_and_validate -q`
+  - Result: `1 passed`.
+- Reigh Worker route/scratchpad gate:
+  `PYENV_VERSION=3.11.11 python -m pytest tests/test_template_routing.py::test_qwen_ready_template_routes_are_vibecomfy_supported tests/test_vibecomfy_scratchpads.py -q`
+  - Result: `19 passed, 1 warning`.
+- Reigh App active route snapshot gate:
+  `npm run test:edge:unit -- --run supabase/functions/create-task/resolvers/shared/routeKeys.test.ts supabase/functions/create-task/resolvers/__tests__/activeAppFamilies.test.ts`
+  - Result: `2 files, 34 tests passed`.
+
+Important production caveat: these five rows are now code-wired and locally
+validated, but they have not yet completed live RunPod generation through the
+Reigh worker. They must not be treated as production-proven until each route has
+at least one real RunPod output, artifact validation, completion/billing check,
+and rollback proof. Two of the candidates are intentionally lower-confidence
+than the existing WGP/API behavior:
+
+- `image-upscale` currently uses core Comfy Lanczos scaling. This preserves the
+  Reigh task contract but is not model-quality parity with the previous external
+  upscaler.
+- `flux_klein_edit` currently uses the expanded 4B distilled Flux.2 Klein edit
+  template. The local 9B edit templates remain opaque subgraph wrappers, so
+  `klein_model: flux-klein-9b` is not yet true 9B parity in the VibeComfy path.
+
+The next required step is live worker validation for:
+`wan_2_2_i2v`, `animate_character`, `image-upscale`, `video_enhance`, and
+`flux_klein_edit` on the VibeComfy branch `megaplan/production-parity-templates`
+and worker/app branch `megaplan/vibecomfy-sprint-09-control-rail-travel-matrix`.
