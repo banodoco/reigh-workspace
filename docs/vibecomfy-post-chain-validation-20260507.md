@@ -108,6 +108,13 @@ Supabase project and the VibeComfy branch
   `travel_segment_wan22_vace_flow_video_source`,
   `travel_segment_wan22_vace_canny_video_source`, and
   `travel_segment_wan22_vace_depth_video_source`.
+- Join-clips VACE bridge segment:
+  `reigh-worker/scripts/live_test/runs/20260508T013338Z/report.md`,
+  `1/1 passed` for `join_clips_segment_wan22_vace` through route key
+  `join_clips_segment__model-wan22_vace__guidance-vace__continuity-join_bridge__profile-default`.
+  Task `3aecdcbb-0321-4084-81c5-073acf8c235f`, generation
+  `44fac44b-7018-406d-8d02-065271e06b09`, output
+  `Wan-2-2-VACE_00001.mp4`, duration `675.255s`.
 
 Travel-segment proof rows:
 
@@ -190,6 +197,12 @@ enabled for the supported route.
 - Reigh Worker VACE/Qwen parity slice after video-source additions:
   `PYENV_VERSION=3.11.11 python -m pytest scripts/live_test/tests/test_primitives.py tests/test_template_routing.py tests/test_vibecomfy_adapter.py -q`
   - Result: `180 passed, 2 warnings`.
+- Reigh Worker join VACE dispatch and live-matrix regression slice:
+  `PYENV_VERSION=3.11.11 python -m pytest tests/test_vibecomfy_backend_selection.py scripts/live_test/tests/test_primitives.py tests/test_template_routing.py tests/test_vibecomfy_adapter.py -q`
+  - Result: `204 passed, 2 warnings`.
+- Reigh Worker live launcher cleanup regression:
+  `PYENV_VERSION=3.11.11 python -m pytest scripts/live_test/tests/test_primitives.py -q`
+  - Result: `84 passed, 1 warning`.
 - Reigh App create-task route contract:
   `npm exec -- vitest run --config config/testing/vitest.edge.config.ts supabase/functions/_shared/selectedRoute.test.ts supabase/functions/create-task/routeContract.test.ts`
   - Result: `2 files, 14 tests passed`.
@@ -230,7 +243,7 @@ receives:
 | Character animate | `animate_character` | unsupported | Explicit VibeComfy selection must fail closed; no parity claim |
 | Travel Between Images parent/children | `travel_orchestrator`, dimensional `travel_segment`, `travel_stitch` | VibeComfy-supported for VACE raw/flow/canny/depth `travel_segment` video-source route keys; parent/stitch remain WGP-only | Live worker proof for all four production-shaped VACE video-source child route keys; production selector seed deployed for those child routes |
 | Individual travel segment | `individual_travel_segment` VACE raw/flow/canny/depth first/last route keys | VibeComfy-supported for validated VACE route keys | Live worker proof for raw plus flow/canny/depth; production selector seed deployed for flow/canny/depth, raw was already in the existing selector path |
-| Join clips parent/children | `join_clips_orchestrator`, dimensional `join_clips_segment`, `join_final_stitch` | WGP-only / unsupported children | Live WGP orchestrator proof after join bug fix; no VibeComfy parity claim |
+| Join clips parent/children | `join_clips_orchestrator`, dimensional `join_clips_segment`, `join_final_stitch` | VibeComfy-supported for the Wan 2.2 VACE `join_clips_segment` join-bridge route key; parent/final stitch remain WGP-only | Live worker proof for direct VACE join-bridge child route after fixing worker dispatch; live WGP orchestrator proof remains the parent/final-stitch baseline |
 | Edit video orchestrator | `edit_video_orchestrator` | WGP-only parent with blocked child/control routes | Live WGP orchestrator proof after join bug fix; no VibeComfy parity claim |
 
 ## Bottom Line
@@ -238,8 +251,9 @@ receives:
 The chain plus post-chain repair delivered production-supported VibeComfy routes
 for `z_image_turbo`, Qwen ready-template image/edit routes, promoted
 `qwen_image`, Qwen inpaint/annotated edit routes, individual VACE
-travel-segment modes, and VACE `travel_segment` video-source modes. It does not
-yet provide complete feature parity with the prior 1.2GP/WGP surface. The
+travel-segment modes, VACE `travel_segment` video-source modes, and the VACE
+`join_clips_segment` join-bridge child route. It does not yet provide complete
+feature parity with the prior 1.2GP/WGP surface. The
 correct production stance is:
 
 - allow VibeComfy only for routes with live worker proof listed above,
