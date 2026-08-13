@@ -58,7 +58,7 @@ Each production row must report the ready-template id, Python source path, `READ
 - Prove each production-used task type can run through the VibeComfy backend on real RunPod hardware.
 - Reuse VibeComfy's existing cloud/RunPod mode for template and workflow execution validation instead of duplicating pod lifecycle code in `reigh-worker`.
 - Preserve `reigh-worker` live-test coverage for Supabase queue behavior, task claiming, completion, generation linking, output shape, logs, and rollback.
-- Add semantic media grading through ArtAgents `builtin.understand` so live tests check whether outputs are coherent and intent-preserving, not only whether files exist.
+- Add semantic media grading through Astrid `builtin.understand` so live tests check whether outputs are coherent and intent-preserving, not only whether files exist.
 - Produce a durable evidence bundle per run: task payload, backend, template id, RunPod pod id, worker id, output paths, timings, failure class, media descriptions, rubric scores, and final gate decision.
 
 ## Non-Goals
@@ -113,18 +113,18 @@ This should be the foundation for template execution, model staging, custom-node
 
 This should remain the authority for queue contract validation. It should not grow a second full VibeComfy cloud runner.
 
-### ArtAgents Media Understanding
+### Astrid Media Understanding
 
-ArtAgents has the pieces needed for semantic validation:
+Astrid has the pieces needed for semantic validation:
 
-- `ArtAgents/artagents/packs/builtin/generate_image/run.py`
+- `Astrid/astrid/packs/builtin/generate_image/run.py`
   - Generates fixture and reference images through GPT Image models.
-- `ArtAgents/artagents/packs/builtin/understand/run.py`
+- `Astrid/astrid/packs/builtin/understand/run.py`
   - Dispatcher for modality-specific understanding.
-- `ArtAgents/artagents/packs/builtin/visual_understand/run.py`
+- `Astrid/astrid/packs/builtin/visual_understand/run.py`
   - Calls OpenAI Responses API with image inputs, supports contact sheets, crop variants, `fast` and `best` modes, and writes JSON output.
 
-Use ArtAgents after live output artifacts are available. It should not run inside the GPU worker process.
+Use Astrid after live output artifacts are available. It should not run inside the GPU worker process.
 
 ## Architecture
 
@@ -160,7 +160,7 @@ Gate:
 - Template executes on RunPod.
 - Output files exist, are non-empty, have expected modality and dimensions/duration.
 - No OOM, missing-node, model-missing, prompt-queue, or output-missing errors.
-- For migration cohorts, ArtAgents semantic score meets the task-specific threshold.
+- For migration cohorts, Astrid semantic score meets the task-specific threshold.
 
 ### Layer 2: reigh-worker Live Queue Validation
 
@@ -205,7 +205,7 @@ The migration scope follows `migration-vibecomfy.md` §0A. Start with only produ
 
 | Cohort | Task types | Primary validation |
 | --- | --- | --- |
-| A: image generation | `qwen_image`, `qwen_image_2512`, `z_image_turbo`, `wan_2_2_t2i` | VibeComfy template run + worker queue live test + ArtAgents image rubric |
+| A: image generation | `qwen_image`, `qwen_image_2512`, `z_image_turbo`, `wan_2_2_t2i` | VibeComfy template run + worker queue live test + Astrid image rubric |
 | B: image edit/reference | `qwen_image_style`, `qwen_image_edit`, `image_inpaint`, `annotated_image_edit`, `z_image_turbo_i2i` | Reference/input preservation rubric, mask/annotation checks, queue live test |
 | C: travel generation | `travel_orchestrator`, `travel_segment`, `individual_travel_segment`, `travel_stitch` | Segment motion/endpoint consistency rubric, child-task tracking, stitch output |
 | D: join/edit video | `join_clips_orchestrator`, `join_clips_segment`, `join_final_stitch`, `edit_video_orchestrator` | Clip-order, transition coherence, final stitch duration, child-task tracking |
@@ -221,7 +221,7 @@ Use deterministic, versioned fixtures for every task type.
 - Existing `reigh-worker/scripts/worker_matrix_cases.json` and `worker_matrix_db_snapshots.json`.
 - Existing worker live-test anchor images from `scripts/live_test/config.py`.
 - VibeComfy `workflow_corpus/input/` fixtures where they already match the target template.
-- New ArtAgents-generated reference images where the current fixture is too ambiguous for semantic grading.
+- New Astrid-generated reference images where the current fixture is too ambiguous for semantic grading.
 
 ### Fixture Generation
 
@@ -234,17 +234,17 @@ For semantic tests, each fixture should carry:
 - `output_modality`: `image` or `video`.
 - `rubric`: task-specific scoring instructions.
 
-Use ArtAgents `builtin.generate_image` only for missing or weak fixtures. Prefer stable committed fixtures when they already exercise the production path.
+Use Astrid `builtin.generate_image` only for missing or weak fixtures. Prefer stable committed fixtures when they already exercise the production path.
 
 ## Semantic Validation
 
 ### Image Outputs
 
-After output download, call ArtAgents visual understanding:
+After output download, call Astrid visual understanding:
 
 ```bash
-cd ArtAgents
-python3 -m artagents.packs.builtin.visual_understand.run \
+cd Astrid
+python3 -m astrid.packs.builtin.visual_understand.run \
   --image /path/to/output.png \
   --query "$(cat /path/to/rubric.txt)" \
   --mode best \
@@ -278,7 +278,7 @@ Sample frames before calling visual understanding:
 - final frame
 - additional frames around stitch boundaries for travel/join outputs
 
-Use one contact sheet per video so the model can judge temporal coherence cheaply. The ArtAgents visual understand tool already supports multiple images/contact sheets and timestamp labels.
+Use one contact sheet per video so the model can judge temporal coherence cheaply. The Astrid visual understand tool already supports multiple images/contact sheets and timestamp labels.
 
 Required video checks:
 
@@ -384,7 +384,7 @@ The worker harness should:
 
 ### Step 3: Add Artifact Fetch/Resolve
 
-Layer 2 currently records `output_location` and linked generation ids. Add a helper that resolves each generation location to a local media file for ArtAgents validation.
+Layer 2 currently records `output_location` and linked generation ids. Add a helper that resolves each generation location to a local media file for Astrid validation.
 
 Resolution order:
 
@@ -392,7 +392,7 @@ Resolution order:
 2. Worker pod artifact fetch for local-only outputs.
 3. VibeComfy artifact directory from `--validation-artifacts`, for dual-run comparisons.
 
-### Step 4: Add ArtAgents Semantic Scorer
+### Step 4: Add Astrid Semantic Scorer
 
 Add a small scorer module, preferably outside the worker runtime path:
 
@@ -400,7 +400,7 @@ Add a small scorer module, preferably outside the worker runtime path:
 reigh-worker/scripts/live_test/semantic_validation.py
 ```
 
-It should shell out to ArtAgents, never import ArtAgents into the worker server. The scorer takes local media paths and a rubric JSON, writes raw ArtAgents output, parses the structured JSON answer, and returns `pass`, `human_review_required`, or `fail`.
+It should shell out to Astrid, never import Astrid into the worker server. The scorer takes local media paths and a rubric JSON, writes raw Astrid output, parses the structured JSON answer, and returns `pass`, `human_review_required`, or `fail`.
 
 ### Step 5: Dual-Run Comparison
 
@@ -408,7 +408,7 @@ For high-risk cohorts, run `--backend dual`:
 
 - WGP output remains the control.
 - VibeComfy output is the candidate.
-- ArtAgents describes both outputs with the same rubric.
+- Astrid describes both outputs with the same rubric.
 - The comparison prompt asks whether both satisfy the same intent, not whether they are pixel-identical.
 
 Dual-run pass means both outputs are structurally valid and semantically acceptable, and VibeComfy is not materially worse on required elements, reference preservation, or motion coherence.
@@ -505,14 +505,14 @@ Canary promotion should be cohort-scoped, not all-or-nothing across every produc
 ## Open Questions
 
 - Should `runpod_reigh_matrix.py` live in `vibecomfy/scripts/` or be a `vibecomfy runpod reigh-matrix` subcommand from day one?
-- Should semantic validation call ArtAgents directly from VibeComfy Layer 1, or only from the worker Layer 2 report after artifacts are downloaded?
+- Should semantic validation call Astrid directly from VibeComfy Layer 1, or only from the worker Layer 2 report after artifacts are downloaded?
 - Which Supabase storage download helper is safest for private generation outputs in live tests?
 - What is the minimum human-review sample size per cohort before production canary?
 - Should dual-run create separate task rows or one task row with two backend attempts recorded in test-only metadata?
 
 ## Recommended Default
 
-Use VibeComfy cloud mode for every template/runtime proof. Use the worker live harness only after VibeComfy has produced a green cloud result for that task family. Then run worker live tests with `REIGH_BACKEND=vibecomfy` to prove queue semantics, telemetry, and production output contracts. Finally, run ArtAgents semantic validation on the combined artifact bundle and require the evidence JSON before canary.
+Use VibeComfy cloud mode for every template/runtime proof. Use the worker live harness only after VibeComfy has produced a green cloud result for that task family. Then run worker live tests with `REIGH_BACKEND=vibecomfy` to prove queue semantics, telemetry, and production output contracts. Finally, run Astrid semantic validation on the combined artifact bundle and require the evidence JSON before canary.
 
 ## 2026-05-05 Pilot Result
 
@@ -558,7 +558,7 @@ empty_image_red	ok	91	1	493
 1. **Default SFTP upload mode is too silent.** Running `scripts/runpod_validate.py` directly launched pod `pn3g89l2a1wqsa` and reached SSH/GPU discovery, then appeared hung during recursive SFTP upload. Root cause: `runpod_runner.upload_dir()` performs synchronous Paramiko SFTP recursion with no per-file or heartbeat logging.
 2. **Ctrl-C handling is brittle during upload.** Interrupting the silent run raised `KeyboardInterrupt` from the event-loop signal handler and cancelled the task before the runner reported a clean `finally` termination. The pod was then terminated manually through `vibecomfy runpod terminate pn3g89l2a1wqsa --yes`.
 3. **Tarball upload needs a tight exclude set.** The first tarball attempt launched pod `9tkw15j5d9156x`, then failed locally with `OSError: [Errno 28] No space left on device` while archiving the default repo payload. The failed temp archive consumed ~2.8GB. Excluding `.git`, `.venv`, `out`, `output`, `vendor`, `workflow_corpus`, `custom_nodes`, `input`, and cache directories made the tarball path work.
-4. **ArtAgents semantic validation reached the right API path but was blocked by quota.** The command wrote `vibecomfy/out/runpod_artifacts/1777991492/semantic_red_square.json`, but OpenAI returned HTTP 429 `insufficient_quota` for `gpt-4o-mini`. This is an account/billing blocker, not a harness-shape failure.
+4. **Astrid semantic validation reached the right API path but was blocked by quota.** The command wrote `vibecomfy/out/runpod_artifacts/1777991492/semantic_red_square.json`, but OpenAI returned HTTP 429 `insufficient_quota` for `gpt-4o-mini`. This is an account/billing blocker, not a harness-shape failure.
 5. **Watchdog classification is noisy for successful tiny runs.** `out/runs/run-1777991482/watchdog.json` reports `diagnosis=crashed` because `/system_stats` stopped responding, while metadata and output show the prompt completed successfully. The validation harness should treat this as a warning when output exists and `stop_reason="completed"`, and should file/fix the watchdog diagnosis separately.
 
 ### Pilot Conclusion
@@ -569,7 +569,7 @@ The core approach is valid: VibeComfy cloud mode can be used as the Layer 1 RunP
 - Use a small, explicit upload payload or remote git install; do not archive old `out/`, `.venv`, `.git`, `vendor`, or corpus artifacts.
 - Add upload progress/heartbeat logs to both SFTP and tarball modes.
 - Make signal handling cancel-safe enough that `finally` visibly terminates the pod.
-- Keep ArtAgents semantic scoring in the pipeline, but mark it `blocked_external_quota` when the OpenAI API key cannot run vision calls.
+- Keep Astrid semantic scoring in the pipeline, but mark it `blocked_external_quota` when the OpenAI API key cannot run vision calls.
 
 ## 2026-05-05 Ready-Template Smoke Result
 
@@ -588,3 +588,136 @@ After correcting `scripts/runpod_validate.py`, we reran the live cloud smoke wit
 - Independent pod check after termination: `pod l91mkxuh582ros not found`.
 
 This is now the baseline launch/artifact/termination smoke. It still does not prove production model coverage; production gates must use model-backed ready templates such as `image/qwen_image_2512`, `edit/qwen_image_edit`, `image/z_image`, and the selected Wan/LTX templates.
+
+## 2026-05-13 Prebuilt Validation Environment (v1)
+
+The cold fresh path spends ~46 minutes in reigh-worker `uv sync --extra cuda124`
+and ~21 minutes installing VibeComfy/ComfyUI/custom nodes before any workflow
+can run. The **prebuilt validation environment** bakes both stacks onto a
+RunPod network volume so live tests reach `launch_worker` materially faster
+while staying branch-flexible enough to test arbitrary worker and VibeComfy
+refs.
+
+### Bundle architecture
+
+- **Network volume** (`/workspace/reigh-livetest-prebuilt/`) holds the
+  long-lived artifacts produced by `rl prebuilt build`. The volume itself is
+  region-pinned (volumes don't cross datacenters on RunPod).
+- **Container disk** (`/opt/…`) holds the *extracted* runtime trees for the
+  specific consumer pod. Extraction happens on every consumer bootstrap so
+  internal symlinks resolve and the venv's absolute paths stay valid.
+- Two bundles only, ordered by their cache_root entries:
+  - `venv.cuda124.tar.zst` — full venv from `_uv_sync_shell(extras=('cuda124',))`.
+    **ComfyUI is captured inside `site-packages`** via the
+    `comfyui@git+https://github.com/peteromallet/ComfyUI.git@…` pip install
+    line, so there is intentionally **no separate `comfyui.tar.zst`**.
+  - `vibecomfy.tar.zst` — VibeComfy install tree from
+    `_vibecomfy_install_shell(run_nodes_restore=True)`.
+- The reigh-worker tree is **not** bundled. Each consumer run does
+  `ensure_git_ref_synced(force_clone=True)` on `/opt/reigh-livetest-prebuilt/worker`
+  to materialize the operator's chosen `--ref` (default `main`). On the first
+  consumer run this is a full clone; on subsequent runs against the same pod
+  it's a `git fetch && reset --hard && clean -ffd`.
+- `models/` and `build.lock` live alongside the bundles on the volume and are
+  **never** removed by `rl prebuilt invalidate`.
+
+### Invalidation rules
+
+Drift between the consumer's resolved inputs and the manifest falls into
+three buckets. **HARD-FAIL** drift aborts the consumer with the
+`rl prebuilt build` rebuild command quoted in the error message; delta-sync
+drift is reconciled with a small follow-up command on top of the extracted
+bundle.
+
+| Field | Bucket | Recovery |
+|---|---|---|
+| `schema_version` | HARD-FAIL | `rl prebuilt build …` |
+| `bundle_format_version` | HARD-FAIL | `rl prebuilt build …` |
+| `python_version` | HARD-FAIL | `rl prebuilt build …` |
+| `cuda_extra` | HARD-FAIL | `rl prebuilt build …` |
+| `pyproject_hash` | delta-sync | `_uv_sync_shell(extras=('cuda124',))` on the worker tree |
+| `custom_nodes_lock_hash` | delta-sync | `_vibecomfy_install_shell(run_nodes_restore=True)` |
+| `comfyui_pin` | delta-sync | pinned via the `pip install 'comfyui@git+…'` rerun in the install shell |
+| `vibecomfy_commit` | delta-sync | `ensure_git_ref_synced` + `pip install -e .` (no nodes restore unless lockfile also drifted) |
+| `reigh_worker_commit` | delta-sync | `ensure_git_ref_synced(force_clone=True)` on the worker tree |
+
+The manifest is **not** rewritten on a successful delta sync unless the
+operator passes `--update-manifest-on-sync`. `--strict-prebuilt` upgrades any
+delta drift to a hard abort.
+
+### Region-pinned volume naming
+
+Volume names follow `reigh-livetest-prebuilt-{profile}-{datacenterid-lowercased}`,
+where `profile` is one of `portable`/`sage` and the suffix is the lowercased
+`dataCenterId` from the RunPod API (e.g. `eu-no-1`). Consumer pods use
+`scripts.live_test._shared.select_network_volume()` at launch time to discover
+the volume by prefix and read the `dataCenterId` from the same record; the
+data center is **not** derived from `RUNPOD_STORAGE_VOLUMES` and the pod-create
+call enforces region implicitly via the attached volume's `dataCenterId`.
+
+### Model-cache layout (v1 first-run cold-download caveat)
+
+The volume's `models/` directory is bound at consumer launch time:
+
+- `HF_HOME = {models_path}/huggingface`
+- `HF_HUB_CACHE = {models_path}/huggingface/hub`
+- `COMFYUI_EXTRA_MODEL_PATHS_PATH = {models_path}`
+
+`{runtime_vibecomfy_path}/extra_model_paths.yaml` is **clobbered** on every
+consumer bootstrap (no merge with whatever the bundle baked in). These three
+env keys are added to the `worker_env` dict that flows into `export_env` and
+`launch_worker_detached` so the worker subprocess inherits them.
+
+**v1 caveat:** model warming is explicitly out of scope. The first time a
+workflow runs against a fresh volume it still cold-downloads 10–50 GB of HF
+weights. Subsequent runs reuse those weights via `HF_HOME` on the volume, so
+the "materially faster" claim covers deps install (67 min → ~10 min for the
+extract+sync path) **plus** steady-state model reuse — but a first-encounter
+workflow on a brand-new volume will still incur the HF download.
+
+### Partial-state diagnostics
+
+`verify_extracted_env(ssh, contract, manifest)` runs four probes after the
+extract+sync phases, each via `_execute(check=False)` so non-zero exit codes
+never raise from inside the probe. Probes that fail accumulate diagnostic
+strings, and the consumer joins **all** of them (newline-separated, numbered)
+into a single `RuntimeError` containing the literal `rl prebuilt invalidate`
+and `rl prebuilt build` recovery commands. The four probes are:
+
+1. `torch CUDA import` — expects `12.4` (for `cuda_extra=cuda124`).
+2. `test -f` for `template_index.json` and `workflow_corpus/manifests/coverage.json`.
+3. `du -sb {runtime_venv_path}/lib` — issues a diagnostic when the observed
+   size is < 80 % of `manifest.venv_size_bytes` (truncated bundle).
+4. `vibecomfy.cli nodes verify --lockfile custom_nodes.lock` — **always runs**
+   regardless of any earlier drift.
+
+### Concurrent-builder lock
+
+`{cache_root}/build.lock` is held via `set -C` (noclobber) + `printf >`
+to get O_EXCL semantics over SSH. Lock payload is JSON: `{holder_id,
+acquired_at, ttl_sec}`. A second builder within `ttl_sec` (default 7200)
+fails with `LOCK_BUSY <payload>` quoted in the error. After `ttl_sec` the
+second builder takes over the stale lock and records its own holder_id.
+
+### `variant_update` coexistence guard
+
+`scripts.live_test.variant_update.run()` aborts with the literal substring
+`Prebuilt cache present` when `/workspace/reigh-livetest-prebuilt/env.manifest.json`
+exists. The guard fires immediately after `open_session(...)` and **before**
+any `uv sync`; it applies to both `--pod-id` (attach to existing pod) and
+`--spawn-takeover` (orchestrator-spawned takeover pod). To intentionally
+update on a prebuilt-cached pod, operators must first run
+`rl prebuilt invalidate --volume-name <name>` to remove the cache.
+
+### `--variant auto` opt-in (recommended)
+
+The argparse default for `--variant` **remains `fresh`**. Future agents
+SHOULD pass `--variant auto`, which preflights
+`select_network_volume(name_prefix=PREBUILT_VOLUME_NAME_PREFIX)`. On a hit
+the harness emits a structured `prebuilt_available` JSON log line and
+dispatches to the prebuilt variant; on a miss it emits `prebuilt_unavailable`
+with a reason and falls back to the fresh variant. This keeps existing
+`--variant fresh` automation working unchanged.
+
+See [`reigh-worker/.claude/skills/live-test/SKILL.md`](../reigh-worker/.claude/skills/live-test/SKILL.md)
+for the canonical agent invocation guidance.

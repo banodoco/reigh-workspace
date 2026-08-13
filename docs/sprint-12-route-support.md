@@ -20,6 +20,8 @@ and non-RayWorker fixture metadata.
 | `wan_2_2_t2i` | supported | supported | `video/wanvideo_wrapper_22_14b_t2i` | Live RunPod worker proof |
 | `wan_2_2_i2v` | supported | supported | `video/wanvideo_wrapper_22_14b_i2v_kijai` | Live RunPod worker proof: `reigh-worker/scripts/live_test/runs/20260508T113336Z/report.md` |
 | Wan 2.2 VACE travel/join rows | supported | supported | `video/wanvideo_wrapper_22_14b_vace_cocktail` | Live RunPod worker proof for promoted VACE rows |
+| LTX 2.3 first/last no-control (`ltx2`) | supported | supported | `video/ltx2_3_lightricks_first_last_parity` | Local contract (`ltx-first-last-two-stage`) passed; lens/contract tests pass; route tests pass; adapter scratchpad uses named inputs via `workflow.set_input(...)`; RunPod live validation pending (orchestrator-owned, T13 not yet executed) |
+| LTX 2.3 distilled first/last no-control (`ltx2_distilled`) | supported | supported | `video/ltx2_3_lightricks_first_last_parity` | Same as `ltx2` no-control row above; shared parity template; RunPod live validation pending |
 
 ## Live-Proven App-Active Direct Routes
 
@@ -46,7 +48,13 @@ evidence.
 dimensional route families that remain `vibecomfy_unsupported` unless a specific
 Section 3A row is promoted with implementation and proof. Wan 2.2 VACE
 flow/canny/depth/raw plus join bridge are promoted through the VACE cocktail
-template; LTX and remaining Wan I2V dimensional rows require separate proof.
+template. LTX 2.3 no-control first/last (`ltx2` and `ltx2_distilled`) is now
+routed to `video/ltx2_3_lightricks_first_last_parity` (local contract passed,
+code-wired, adapter uses named inputs); RunPod live validation is pending.
+LTX IC-LoRA control rows (`pose/depth/canny/cameraman`) remain on
+`video/ltx2_3_first_last_frame_travel_iclora_control` and raw-video guide on
+`video/ltx2_3_runexx_first_last_raw_video_guide`. Remaining Wan I2V dimensional
+rows require separate proof.
 
 ## Route Promotion Checklist
 

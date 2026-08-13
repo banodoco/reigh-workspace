@@ -7,12 +7,16 @@ Usage:
     ./debug status                          What's happening right now? Workers, queue, recent failures
     ./debug kill <worker_id>                Kill a worker's RunPod pod and reset its tasks
     ./debug reset <task_id>                 Reset a failed/stuck task back to Queued
+    ./debug worker <worker_id>              Single-command worker doctor: lifecycle, liveness, drift, kill analysis
+    ./debug deployment-drift                Deployment doctor: local vs origin vs Railway vs live pod
 
 Examples:
     ./debug why ba7980f3-6daa-49ea-9a98-a293d19710e6
     ./debug why ba7980f3-6daa-49ea-9a98-a293d19710e6 6f12abc4-2a90-441d-bc87-3792178cdd03
     ./debug status
     ./debug kill gpu-20260331_114521-93d6ed5f
+    ./debug worker gpu-20260513_103608-dff57a7c
+    ./debug deployment-drift
 
 For deeper investigation, use the per-repo tools:
     cd reigh-app && python scripts/debug.py task <id>       Full task timeline
@@ -31,14 +35,52 @@ APP_DIR = os.path.join(WORKSPACE, "reigh-app")
 APP_DEBUG = os.path.join(APP_DIR, "scripts", "debug.py")
 ORCH_DIR = os.path.join(WORKSPACE, "reigh-worker-orchestrator")
 
+# The per-repo debug scripts' shebang pins pyenv 3.8.10 which isn't installed
+# on this workstation. Force 3.11.11 (where all deps live) for every child
+# invocation — the single biggest papercut in the existing CLI.
+_REQUIRED_PYENV = "3.11.11"
+_PYENV_PY = f"/Users/peteromalley/.pyenv/versions/{_REQUIRED_PYENV}/bin/python"
+
+
+def _child_python() -> str:
+    """Return the python binary subprocesses should use."""
+    if os.path.exists(_PYENV_PY):
+        return _PYENV_PY
+    # Fall back to current interpreter, but warn — deps probably won't resolve.
+    print(
+        f"⚠️  pyenv {_REQUIRED_PYENV} not found at {_PYENV_PY}; falling back to "
+        f"{sys.executable}. Install with `pyenv install {_REQUIRED_PYENV}` "
+        f"if you see ModuleNotFoundError.",
+        file=sys.stderr,
+    )
+    return sys.executable
+
+
+def _child_env() -> dict:
+    return {**os.environ, "PYENV_VERSION": _REQUIRED_PYENV}
+
 
 def run_app_debug(args: list[str], capture=True) -> str:
     """Run reigh-app debug.py with args, return stdout."""
     result = subprocess.run(
-        [sys.executable, APP_DEBUG] + args,
-        capture_output=capture, text=True, cwd=APP_DIR
+        [_child_python(), APP_DEBUG] + args,
+        capture_output=capture, text=True, cwd=APP_DIR, env=_child_env(),
     )
     return result.stdout if capture else ""
+
+
+def run_orch_script(script_name: str, args: list[str], capture=False) -> int:
+    """Run an orchestrator-side script (under reigh-worker-orchestrator/scripts/)."""
+    script = os.path.join(ORCH_DIR, "scripts", script_name)
+    result = subprocess.run(
+        [_child_python(), script] + args,
+        capture_output=capture, text=True, cwd=ORCH_DIR, env=_child_env(),
+    )
+    if capture:
+        print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, file=sys.stderr, end="")
+    return result.returncode
 
 
 def run_sql(query: str) -> str:
@@ -225,6 +267,13 @@ def main():
             print("Usage: ./debug reset <task_id>")
             sys.exit(1)
         cmd_reset(sys.argv[2])
+    elif cmd == "worker":
+        if len(sys.argv) < 3:
+            print("Usage: ./debug worker <worker_id>")
+            sys.exit(1)
+        sys.exit(run_orch_script("worker_doctor.py", [sys.argv[2]]))
+    elif cmd == "deployment-drift":
+        sys.exit(run_orch_script("deployment_drift.py", []))
     else:
         print(f"Unknown command: {cmd}")
         print(__doc__)
