@@ -1,0 +1,69 @@
+# Astrid Migration Context — Dossier Index
+
+Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker pipeline) onto Astrid's SQLite store. All docs were produced 2026-08-21 from repo files plus a read-only live-prod probe. **13-migration-context.md is the synthesis; the docs below are the evidence.**
+
+## Table of Contents
+
+| # | Doc | One-line summary |
+|---|---|---|
+| 01 | `01-reigh-postgres-schema.md` | Full Reigh Postgres schema from the 466-file migration chain, cross-checked against the live prod dump: 42 migration-defined tables (+1 dropped), 10 live-only tables, enums, RLS, storage buckets, project ref, and migration-vs-live drift (4 prod-applied migrations missing from repo). |
+| 02 | `02-reigh-task-pipeline.md` | End-to-end task lifecycle: poll/claim pull model, status transition allowlist, attempts cap 3, billing at completion, pg_cron dead-letter sweeps, realtime publication, retry/lease parameters with exact values. |
+| 03 | `03-reigh-worker-execution.md` | GPU worker process model: single-process + heartbeat guardian, claim loop, per-task_type pipelines (WGP in-process / VibeComfy subprocess), artifact upload modes, failure/retry classification, RunPod deployment. |
+| 04 | `04-astrid-sqlite-schema.md` | Astrid v10 kernel: 20-table SQLite (14 kernel + timeline/shots/references packs), ULIDs, hash-chained events, command receipts, SHA-256 managed media tree, single-writer architecture, file-store layout. |
+| 05 | `05-astrid-package-semantics.md` | Astrid CLI/SDK surface (8 CLI families, 7 SDK services), implemented vs DESIGN/PLANNED unified model, "no data migration" posture, deferred items (cloud, RunPod, billing, sessions). |
+| 06 | `06-reigh-app-data-usage.md` | Frontend contract surface: Vite React SPA, ~30 tables read via PostgREST, ~20 RPCs, 41 edge functions (12 frontend-called), 2 realtime channels, append-service timeline writes, full A–G replacement contract. |
+| 07 | `07-live-db-schema.md` | Live prod ground truth from pg_catalog: 51 tables / 547 cols / 20 views / 6 enums / 42 triggers / 243 indexes / 150 RLS policies / 202 functions; full drift ledger (4 missing, 2 `_applied_`, 3 `_hold_` migrations). |
+| 08 | `08-unified-model-prior-art.md` | v2→v10 decision history: final posture is **no Postgres migration** — fresh SQLite, delete legacy authorities, import media bytes only; Reigh stays as editor over the preserved bridge. |
+| 09 | `09-astrid-bridge.md` | The frozen HTTP wire contract between the Reigh editor and `astrid serve`: timeline read/write with CAS + 409, discovery, Range/ETag asset serving, hidden idempotency keys, polling; deliberately no tasks/credits/generations routes. |
+| 10 | `10-reigh-edge-functions.md` | All 41 edge functions: auth (SR/JWT/PAT), `create-task` as the sole tasks INSERT path (13 family resolvers, idempotency dedupe), claim/completion/cost contracts, 9 task-type payload shapes, credits billing model, RPC + pg_cron inventory. |
+| 11 | `11-astrid-v10-migration.md` | The only existing migration machinery: SDK-only idempotent replay of legacy files into the kernel (receipt keys, SHA-256 media import, fence/zero-child run fidelity, dry-run + backup + verify); **no Postgres reader exists**; resolution of the plan-vs-scripts contradiction. |
+| 12 | `12-reigh-task-internals.md` | Claim/lease machinery deep-dive: live 7-param claim RPC (prod reverted route gating), `attempts` TABLE (slot-first media attempts) vs `tasks.attempts` (retry counter), sentinel_ticks (144k rows, 65% UNCLAIMABLE_WORK, scaling paused), capacity reconciler (never deployed). |
+| 13 | `13-migration-context.md` | **This dossier** — consolidated synthesis: exec summary, source inventories, entity mapping, task/queue mapping, identity/typing diffs, security, bridge-first strategy, migration machinery, risks, open questions, next steps. |
+| 14 | `14-codex-migration-design.md` | Codex (GPT-5.6 Sol) consultation on the owner's new goal (full Reigh on Astrid SQLite, credits cut, local-only): bridge-extension architecture, task admission via ported family resolvers, fenced worker claim protocol, full build checklist, phase plan, risks, 7 owner questions. |
+
+## Top 15 Key Facts
+
+1. **Reigh is Supabase Postgres + a poll-based GPU fleet.** 51 live tables / 547 columns / 202 functions / 150 RLS policies / 6 enums / 6 storage buckets on project `wczysqzxlwdndgxitrvc` (PostgreSQL 17.4); the worker pipeline (`reigh-worker`, `reigh-worker-orchestrator`) has **zero Astrid references** and stays Supabase-side today. [01, 03, 07, 09]
+2. **Live prod ≠ repo migrations.** 4 prod-applied migrations are missing from the repo (claim-overload drop, PostgREST reload, route-gating revert, `tasks_assert_claimable` trigger drop); the slot system (`attempts`, `shot_slots`, `slot_first_*`, 4 enums) has **no repo migration and no `schema_migrations` entry**; `types.ts` (2026-05-19) is stale. Any migration must read the **live** DB, not the repo. [01 §12, 07 §4, 12 §3.1/§5.2]
+3. **Task queue = status-machine lease, not a lock.** The claim RPC atomically flips `tasks.status` Queued→In Progress and stamps `worker_id`; there is no lease-TTL column. Liveness is inferred from timestamps and recovered by three independent sweeps (heartbeat crash recovery, orchestrator orphan resets, 5-min `auto_fail_stale_tasks` cron). [02, 12]
+4. **`tasks.attempts` (int, cap 3) is the retry counter; the `attempts` TABLE (84k rows) is slot-first media-attempt history.** They are different things and must not be conflated during design. [12 §3.1 vs §3.2]
+5. **Billing: gate at claim, deduct at completion.** Claim eligibility requires `credits > 0` and <5 in-progress per user; `calculate-task-cost` inserts a single negative `credits_ledger` `spend` row; `users.credits` is a trigger-recomputed balance. No automatic refunds exist (`refund` enum value has no writer). [02 §7, 10 §4]
+6. **`create-task` is the ONLY INSERT path into `tasks`** (41 edge functions total; 13 family resolvers + worker passthrough); claims go through `claim-next-task` → SQL RPC. All task rows are created this way. [10 §3]
+7. **Astrid target is a 20-table v10 kernel**: 14 kernel tables (projects, event_streams, events, command_receipts, runs, tasks, task_dependencies, execution_attempts, task_outputs, media, media_locations, media_relations, evidence_items, schema_migrations) + timeline/shots/references packs. One SQLite DB (WAL), one writer thread, `BEGIN IMMEDIATE` per command, hash-chained events, receipt-keyed idempotency, SHA-256 content-addressed media. [04, 05, 08]
+8. **The plan's final posture is NO Postgres migration**: v10 says fresh SQLite, delete legacy authorities, import "useful media bytes only"; Reigh survives as the editor over the preserved bridge. **However**, `Astrid/scripts/migrations/v10/` exists (2026-08-21) as operator scripts that replay legacy files through the SDK — resolving the contradiction: "no migration" is a product-surface commitment, scripts are out-of-product data rescue. No Postgres reader exists anywhere in Astrid. [08, 11]
+9. **The bridge (doc 09) is the only implemented Reigh↔Astrid transfer path**: frozen HTTP contract carrying the timeline document (`config` + `registry.assets` + numeric CAS `config_version`), discovery routes, and Range/ETag asset serving. Save = whole-document CAS with `expected_version` → `409 timeline_version_conflict`; hidden derived idempotency key; polling only; no auth (localhost + CORS allowlist). It deliberately has **no tasks, credits, generations, or auth routes**. [09]
+10. **Timeline CAS already aligns**: Reigh's `timelines.config_version` + append-service `expected_version` + 409 matches Astrid's `config_version` = timeline stream head + 409 exactly; the editor-side bridge provider is implemented and tested (22 tests + real-bridge e2e lane). [06 §6.2, 09]
+11. **Identity differs across the board**: Reigh uses UUIDv4 (`gen_random_uuid()`) for every row plus ULID `event_id`s in `timeline_events`; Astrid uses 26-char lowercase Crockford ULIDs for aggregates, `uuid4().hex` for event/txn ids, `<project_id>:<stream_type>` stream ids, UUIDv5 deterministic ids in migrations, and **SHA-256 of bytes as media identity**. No UUIDv7 evidence appears in any doc. [01, 04, 07, 11]
+12. **Typing conventions differ**: Postgres ENUMs (capitalized `task_status`, lowercase `attempt_status`/`attempt_type`/`shot_slot_kind` — two conventions side-by-side) vs Astrid's frozen DDL CHECKs and repository-enforced closed vocabularies; `timestamptz` columns vs ISO-8601-UTC TEXT; free-form JSONB `params` vs canonical sorted-key JSON with bounded size. [01 §2, 04 §7, 05 §5]
+13. **Realtime UX is a gap**: the app drives React Query invalidation from `supabase_realtime` postgres_changes on 5+ tables; the Astrid bridge is polling-only (30 s timeline, 3 s discovery, ≤15 s smart-poll fallback). A migration must either add push or accept degraded freshness. [06 §3.10, 09]
+14. **Row scale**: tasks ~46k, generations ~38k, generation_variants ~40k, attempts 84k, shot_slots ~38k, credits_ledger ~21k, shot_generations ~12k, sentinel_ticks 144k, slot_first_migration_map 121k; workers ~7k (2 active). Media volume in `image_uploads` is unmeasured; the legacy-file analog was ~8.5 GB unreferenced. [07 §3.13, 11, 12]
+15. **Most Reigh domain concepts have no Astrid counterpart.** Honest mapping (doc 13 §3): only `projects` and `timelines` map to existing kernel/pack tables; shots are PARTIAL; tasks/attempts PARTIAL (different semantics); everything else — credits_ledger, payments, generations, variants, referrals, agent_nodes, external_api_keys, sync_bookmarks, checkpoints, workers, task_types — is GAP or DESIGN-NEEDED. [13]
+
+## Contradictions & Open Questions (short list)
+
+1. **`attempts` TABLE vs `tasks.attempts`**: the 84k-row `attempts` table is slot-first *media* attempt history (lineage, `primary_attempt_id`), NOT task retries; `tasks.attempts` (int, cap 3) is the retry counter. Conflating them is the most common design error. [12 §3.1 vs §3.2]
+2. **Claim RPC drift, repo vs prod**: repo's final claim/count functions are route-gated (May 6–13) with a `tasks_assert_claimable` trigger; **prod reverted all of it** (May 24, 4 prod-only migrations). A fresh replay of repo migrations reproduces the state prod deliberately left. [07 §4.1, 12 §5.2, 03 gaps]
+3. **"No reverse drift" claim**: doc 07 §1/§4.4 says every live object maps to an applied migration; doc 12 §3.1 and doc 01 §12.4 show the slot system has no migration and no `schema_migrations` entry. Doc 07's ledger needs correcting. [07 vs 01/12]
+4. **Plan "no data migration" vs existing v10 scripts**: doc 08 records v10's decisive "no legacy migration"; doc 11 documents `scripts/migrations/v10/` that migrate legacy projects/timelines/media/runs. Resolved: product-surface commitment vs operator scripts; the plan was never revoked. [08 §3, 11 §8]
+5. **Frontend framework**: doc 02 calls reigh-app "Next.js"; doc 06 (dedicated app-data doc) proves it is a **Vite + React SPA** (vite.config, railway.toml, no SSR). Doc 06 wins. [02 vs 06]
+6. **`credits_ledger.amount`**: docs 02/10 say integer cents; live schema and doc 01/07 say `numeric(10,3)` (widened 2025-01-15). Fractional-cent math is the live reality. [02 §7.6 vs 01/07]
+7. **Edge-function count**: 41 deployable functions (docs 06/10) vs "46 in `functions/`" (doc 01) — directory count vs deployable count. [01 vs 06/10]
+8. **Generation creation path**: DB trigger `create_generation_on_task_complete` vs edge-side `createGenerationFromTask` (env `CREATE_GENERATION_IN_EDGE`); deployed value unverified. [02 gaps]
+9. **Realtime publication membership**: doc 02 lists 4 tables, doc 06 lists 5 client-subscribed; publication vs subscription lists differ. [02 §8 vs 06 §3.10]
+10. **`types.ts` freshness**: doc 01 calls the 2026-05-19 snapshot stale; doc 06 worked from it as "appears current". Treat live DB (doc 07) as ground truth. [01 vs 06]
+
+Full open-questions list (numbered, decision-worthy): see **13-migration-context.md §10**.
+
+## Where the Deep-Dives Live
+
+- **Bridge wire contract (frozen, implemented)** → `09-astrid-bridge.md` (+ `Astrid/docs/contracts/astrid-bridge-v10.md`, `reigh-app/src/tools/video-editor/data/bridgeContract.ts`)
+- **Task creation (sole INSERT path, 13 resolvers, payload shapes)** → `10-reigh-edge-functions.md` §2.1/§3
+- **Claim/lease/retry machinery (live vs repo)** → `12-reigh-task-internals.md`
+- **Migration machinery (SDK replay, receipt keys, fidelity paths)** → `11-astrid-v10-migration.md`
+- **Live prod schema (ground truth)** → `07-live-db-schema.md` (§3 dumps, §4 drift)
+- **Astrid store semantics** → `04-astrid-sqlite-schema.md` (tables) + `05-astrid-package-semantics.md` (CLI/SDK/behavior)
+- **Frontend contract surface (everything a replacement must serve)** → `06-reigh-app-data-usage.md` §8
+- **Plan posture & decision history (why "no migration")** → `08-unified-model-prior-art.md`
+- **Worker execution detail** → `03-reigh-worker-execution.md`
+- **Postgres schema inventory** → `01-reigh-postgres-schema.md`
+- **Codex design for full Reigh-on-Astrid (new goal, credits cut)** → `14-codex-migration-design.md`
