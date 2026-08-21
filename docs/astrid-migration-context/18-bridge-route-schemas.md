@@ -12,6 +12,7 @@ This doc extends the frozen bridge (`astrid serve`, one SQLite store, one writer
 Key facts:
 
 - **Admission** (`POST /projects/:slug/tasks`) ports the retained generation resolver registry from `reigh-app/supabase/functions/create-task/resolvers/registry.ts` and adds the local render capability; request body `{family, input, materialized_inputs?}`; **`Idempotency-Key` header required**; `201` first insert, `200` idempotent replay, `409 idempotency_mismatch` on key reuse with different bytes (doc 14 §2). Batches commit atomically as a `run` (doc 14 §2; `runs.create` fan-out via a `[BUILD]` `RunsService.create` facade). **Amended (doc 24 Q4):** `/projects/:slug/renders` is the typed render wrapper over this same kernel admission path.
+- **Child-admission hard gate.** Child capabilities such as `reigh.travel_segment`, `reigh.join_clips_segment`, and `reigh.join_final_stitch` are executor/internal-only. R1 requires a deterministic orchestrator idempotency key plus a live parent fence whose `executor_id` matches the executor that claimed the still-`running` parent; browser/user origins are rejected. Unknown, inactive, and dead capabilities are rejected rather than passed through or aliased. **(Amended doc 26/Grok: child-admission gate)**
 - **Kernel mapping** (doc 14 §2): retained generation tasks use normalized `reigh.<task_type>` (e.g. `image-upscale` → `reigh.image_upscale`), while render uses the native `rendering.timeline_visualize` capability; `spec_json` = `{schema_version:1, family, source_task_type, params, output_policy}`; `input_manifest_json` = `[{role, media_id}]` (media resolved at admission); `priority`, `available_at=now`, `max_attempts=3`, `status=queued|blocked`; hard `task_dependencies` edges. **Amended (doc 24 Q4).**
 - **Fenced executor protocol** (doc 14 §3): `POST /queue/claim` (global, capability allowlist), then per-attempt `start` → `heartbeat` → `outputs` (attempt/lease-scoped quarantine) → `complete`|`fail`. Every state-changing request **except heartbeat** carries an `Idempotency-Key`; every attempt mutation carries `lease_id` + latest `status_version`; kernel fence violations map to typed `409` codes with a current-state `attempt` extra. Leases default 300 s (`DEFAULT_LEASE_SECONDS`, `astrid/core/repositories/tasks.py:118`); heartbeat every 30 s increments `status_version` and extends the lease (doc 14 §3).
 - **Completion is atomic** (doc 14 §3): one writer transaction verifies/prepares staged bytes, completes the task, inserts `task_outputs` + `media` + `media_locations` + relations, and creates/updates the generation projection when requested. It replaces Reigh's multi-step `complete_task` sequence; credits/billing are **cut** (doc 15 Q5). **Amended (doc 24 Q1):** completion does not insert relational placement rows; pool/clip membership and registry references are timeline-document commands committed through the existing save CAS.
@@ -60,6 +61,7 @@ New codes this spec adds (same envelope shape, status-specific extras):
 | 400 | `invalid_staged_outputs` | — | a `staging_key` references no quarantined file (complete-side) |
 | 400 | `invalid_error` | — | `error` missing / not an object / `message` > 4000 chars (`MAX_ERROR_PAYLOAD_CHARS`) on fail |
 | 400 | `invalid_render` | — | render body, output settings, or timeline reference is malformed |
+| 403 | `child_admission_forbidden` | — | a browser/user origin requests an internal child family, or the executor child envelope/key is absent or malformed |
 | 404 | `task_not_found` | — | no `tasks` row for `:task_id` |
 | 404 | `attempt_not_found` | — | no `execution_attempts` row for the route's task+attempt_no (or the attempt belongs to another task) |
 | 404 | `media_not_found` | — | no `media` row for `:media_id` in the route project, or no verified local bytes |
@@ -71,11 +73,15 @@ New codes this spec adds (same envelope shape, status-specific extras):
 | 409 | `lease_expired` | `"attempt": {…}` | attempt live but `lease_expires_at` passed (kernel `_iso_gt` check) |
 | 409 | `task_terminal` | `"attempt": {…}` | task already in a terminal status; fence command rejected before mutation |
 | 409 | `attempt_budget_exhausted` | `"attempt": {…}` | `max_attempts` reached; no requeue possible |
+| 409 | `parent_fence_invalid` | `"attempt": {…current…}` | child admission references a non-running parent or mismatches its live executor/attempt/lease/status-version fence |
 | 413 | `payload_too_large` | `"limit_bytes": <int>` | request body exceeds the route's byte limit before it is read |
 | 422 | `unsupported_family` | `"issues": [{"pointer": "/family", "code": "unsupported_family", "message": …}]` | family not in the allowlist (distinct from a malformed request) |
 | 422 | `capability_unavailable` | `"capability": <string>, "missing_prerequisites": [<string>], "setup_hint": <string>` | the required fully-local capability, model, node, Node, or ffmpeg prerequisite is unavailable |
+| 422 | `unsupported_capability` | `"capability": <string>` | a derived capability is unknown, inactive, dead, or absent from the exact shipped/internal allowlist |
 
 **Amended (doc 24 Q3/Q4):** `capability_unavailable` is a local setup failure, never a signal to fall back to an outbound provider; render admission uses it when the same-machine Remotion path is not runnable.
+
+**(Amended doc 26/Grok: child-admission gate)** `child_admission_forbidden`, `parent_fence_invalid`, and `unsupported_capability` fail before any child task row, dependency edge, run projection, or receipt is created.
 
 Fence `409` extras: every fence code adds `"attempt": {"attempt_id", "attempt_no", "status", "status_version", "lease_id", "lease_expires_at", "heartbeat_counter", "last_heartbeat_at"}` (the **current** attempt read model) so the client can resync/retry without a second round trip — the same "re-read current head on conflict" pattern as `timeline_version_conflict`'s `config_version` (contract §6.2). `attempt_budget_exhausted` additionally carries `"max_attempts": <int>`.
 
@@ -87,6 +93,7 @@ Fence `409` extras: every fence code adds `"attempt": {"attempt_id", "attempt_no
 - **Proposed key namespaces** (caller-chosen; documented for cross-client discipline, not enforced): admission `reigh.admit:{uuid}`, claim `reigh.claim:{uuid}`, attempt `reigh.attempt:{attempt_id}:{verb}:{uuid}`.
 - **Receipt secrecy unchanged** (§7): keys, hashes, `txn_id`, sequences, `event_ids_json`, `result_json` never appear in any response or header. Replay responses expose only the frozen DTO shape.
 - **Claim special case:** a claim that finds no work returns `204` with **no receipt**; a replayed key therefore re-queries the queue. A claim that won a task is receipted under the **claimed task's project**, so the cross-project claim service (doc 14 §3 `[BUILD]`) must scope receipt lookups by resolved project. [INFERENCE — receipt-on-no-work behavior follows from kernel `claim` returning `None` without a receipt row; verify in implementation.]
+- **Child-admission replay special case:** first admission validates the live parent fence and receipts the stable child plan. Its request hash covers the deterministic key inputs and immutable child plan (`parent_task_id`, plan version, role/index, run membership/ordinal, family, input, dependencies) but excludes ephemeral reclaim-fence fields (`parent_attempt_id`, `executor_id`, `lease_id`, `status_version`). A crash replay must present the same key and stable plan plus the *current* valid parent fence; after that fence check, the stored child result is returned. A stable-plan mismatch remains `409 idempotency_mismatch`. This lets a reclaimed parent reconstruct receipted children without duplicating them or weakening the live-fence gate. **(Amended doc 26/Grok: child-admission gate)**
 
 ### 2.5 CORS and auth posture
 
@@ -118,7 +125,7 @@ Fence `409` extras: every fence code adds `"attempt": {"attempt_id", "attempt_no
 
 | # | Route | Methods | Purpose | Success | Key errors |
 |---|---|---|---|---|---|
-| R1 | `/projects/:slug/tasks` | `POST` | task admission (retained generation families + local render) | `201` new, `200` replay | 400 family/input, 404 project, 409 idempotency_mismatch, 413 size |
+| R1 | `/projects/:slug/tasks` | `POST` | UI-family admission + executor/internal child admission | `201` new, `200` replay | 400 family/input, 403 child gate, 404 project, 409 idempotency/parent fence, 413 size, 422 capability **(Amended doc 26/Grok: child-admission gate)** |
 | R2 | `/projects/:slug/tasks` | `GET` | task reads (list, status filter, cursor) | `200` | 400 invalid_project, 404 project_not_found |
 | R3 | `/queue/claim` | `POST` | fenced global claim by capability | `200` claimed, `204` no work | 400 executor/capabilities/lease, 409 idempotency_mismatch |
 | R4 | `/tasks/:task_id/attempts/:attempt_no/start` | `POST` | claimed→running; allocate staging | `200` | 404 task/attempt, 409 fences |
@@ -151,6 +158,8 @@ Header: **`Idempotency-Key` (required)**. Body (JSON object, ≤ 1 MiB):
 | `priority` | integer | – | maps to `tasks.priority` (default 0; higher claimed first) |
 | `available_at` | string | – | ISO-8601 UTC gate (default `now`); claim gate |
 | `dependant_on` | array<string> | – | Reigh-compat dependency ids → hard `task_dependencies` edges (same project, acyclic — kernel validates) |
+
+Executor/internal child admission adds `child_admission: {parent_task_id, parent_attempt_id, run_id, run_ordinal, executor_id, lease_id, status_version}`. It is valid only with `Idempotency-Key: reigh.orch:v1:<parent-ulid>:<plan-version>:<role>:<index>` and only when the referenced parent is in the same project, `running`, its attempt/fence is live, and the fence's claiming `executor_id`, `lease_id`, and `status_version` match the envelope. The server derives the child capability from the internal child family and code allowlist; request-supplied capability strings are never accepted. Any request with a browser/user `Origin`, a missing or stale parent fence, a nondeterministic key, or an unknown/inactive/dead child capability is rejected before task creation. `executor_id` remains audit attribution rather than a credential; the hard gate is the conjunction of internal origin, exact allowlist, and live parent state/fence. **(Amended doc 26/Grok: child-admission gate)**
 
 Example (doc 14 §2):
 
@@ -205,15 +214,15 @@ Example (doc 14 §2):
 | `z_image_turbo_i2i` | `z_image_turbo_i2i` | `reigh.z_image_turbo_i2i` | `numImages` — batch |
 | `magic_edit` | `qwen_image_edit` | `reigh.qwen_image_edit` | `numImages` (1–16) — batch |
 | `masked_edit` | `image_inpaint` | `reigh.image_inpaint` | 1 |
-| `travel_between_images` | `travel_between_images` | `reigh.travel_between_images` | 1 (orchestrator) |
+| `travel_between_images` | `travel_orchestrator` / `wan_2_2_i2v` (turbo) | `reigh.travel_orchestrator` / `reigh.wan_2_2_i2v` | 1 (orchestrator or turbo direct) |
 | `crossfade_join` | `travel_stitch` | `reigh.travel_stitch` | 1 |
 | `edit_video_orchestrator` | `edit_video_orchestrator` | `reigh.edit_video_orchestrator` | 1 |
 | `character_animate` | `animate_character` | `reigh.animate_character` | 1 |
 | `klein_edit` | `flux_klein_edit` | `reigh.flux_klein_edit` | `numImages` (1–4) — batch |
 | `render_export` | `timeline_visualize` | `rendering.timeline_visualize` | 1 |
 
-- Normalization rule for Reigh generation families: `capability = "reigh." + task_type` verbatim (hyphens preserved, e.g. `image-upscale` → `reigh.image_upscale`, doc 14 §2); original `task_type` string retained in `spec_json.source_task_type`. **Amended (doc 24 Q4):** `render_export` is the explicit exception and admits the already-existing Astrid task capability `rendering.timeline_visualize`, which reaches the `rendering.render`/`RenderService` Remotion implementation.
-- **No unknown-family passthrough.** The old `task_types`-row lookup and `createWorkerPassthroughResolver` (doc 10 §2.1/§3.3) are replaced by this code-declared allowlist (doc 14 §2). Worker-created child tasks are admitted through the same route with an explicit `family` (doc 14 keeps orchestrator contracts in specs; structural `runs.create` fan-out is the later redesign).
+- Normalization rule for Reigh generation families: `capability = "reigh." + normalized_task_type` (the one hyphenated source, `image-upscale`, becomes `reigh.image_upscale`, doc 14 §2); original `task_type` string is retained only in `spec_json.source_task_type`. **Amended (doc 24 Q4):** `render_export` is the explicit exception and admits the already-existing Astrid task capability `rendering.timeline_visualize`, which reaches the `rendering.render`/`RenderService` Remotion implementation.
+- **No unknown-family passthrough.** The old `task_types`-row lookup and `createWorkerPassthroughResolver` (doc 10 §2.1/§3.3) are replaced by code-declared UI-family and internal-child allowlists (doc 14 §2). UI families remain browser-facing admission keys. Child families—including the child use of otherwise UI-reachable `travel_stitch` and `join_clips_orchestrator`—are accepted only through the executor/internal envelope in §4.1 with a live parent fence and deterministic key; browser/user origins cannot select them directly. `edit_video_segment` and every unknown/inactive/dead type are rejected and absent from the child allowlist. Structural `runs.create` fan-out remains the later redesign. **(Amended doc 26/Grok: child-admission gate)**
 - **Fully local only. Amended (doc 24 Q3):** admission never resolves a generation or render family to Fal, Wavespeed, or any other outbound executor. A family whose local model/nodes/runtime are unavailable is hidden in the client and rejected with `422 capability_unavailable` if called directly.
 
 ### 4.4 Kernel landing shape (doc 14 §2)
@@ -224,7 +233,7 @@ For `render_export`, `spec_json.params` records the immutable source timeline id
 
 ### 4.5 Errors
 
-`400 invalid_body/invalid_family/invalid_input/invalid_materialized_inputs`; `400 invalid_project` (slug grammar); `404 project_not_found`; `409 idempotency_mismatch`; `413 payload_too_large`; `422 schema_incompatible` (non-canonicalizable payload, unknown media reference), `422 unsupported_family`, and `422 capability_unavailable`; `500 internal` (defensive only). **Amended (doc 24 Q3/Q4):** missing local render/model prerequisites are reported as setup work, never retried through an outbound provider.
+`400 invalid_body/invalid_family/invalid_input/invalid_materialized_inputs`; `400 invalid_project` (slug grammar); `403 child_admission_forbidden` (browser/user origin, missing internal envelope, or child family requested through the UI path); `404 project_not_found`; `409 idempotency_mismatch` or `parent_fence_invalid` (parent not `running`, executor/attempt/lease/version mismatch, or expired fence); `413 payload_too_large`; `422 schema_incompatible` (non-canonicalizable payload, unknown media reference), `422 unsupported_family`, `422 unsupported_capability` (unknown/inactive/dead derived capability), and `422 capability_unavailable`; `500 internal` (defensive only). **Amended (doc 24 Q3/Q4):** missing local render/model prerequisites are reported as setup work, never retried through an outbound provider. **(Amended doc 26/Grok: child-admission gate)**
 
 ## 5. R2 — Task reads: `GET /projects/:slug/tasks`
 
@@ -583,7 +592,8 @@ Add to `reigh-app/src/tools/video-editor/data/bridgeContract.ts` (and mirror in 
 
 | Schema | Route(s) | Fields (zod) |
 |---|---|---|
-| `bridgeCreateTaskRequestSchema` | R1 | `family: z.string()`, `input: jsonObject`, `materialized_inputs: z.array(z.looseObject({ media_id: z.string().optional(), generation_id: z.string().optional(), kind: z.string(), target: z.string(), url: z.string().optional() })).optional()`, `priority: z.number().optional()`, `available_at: z.string().optional()`, `dependant_on: z.array(z.string()).optional()` |
+| `bridgeChildAdmissionSchema` | R1 internal only | `parent_task_id: z.string()`, `parent_attempt_id: z.string()`, `run_id: z.string()`, `run_ordinal: z.number()`, `executor_id: z.string()`, `lease_id: z.string()`, `status_version: z.number()` **(Amended doc 26/Grok: child-admission gate)** |
+| `bridgeCreateTaskRequestSchema` | R1 | `family: z.string()`, `input: jsonObject`, `materialized_inputs: z.array(z.looseObject({ media_id: z.string().optional(), generation_id: z.string().optional(), kind: z.string(), target: z.string(), url: z.string().optional() })).optional()`, `priority: z.number().optional()`, `available_at: z.string().optional()`, `dependant_on: z.array(z.string()).optional()`, `child_admission: bridgeChildAdmissionSchema.optional()` **(Amended doc 26/Grok: child-admission gate)** |
 | `bridgeTaskCreatedSchema` | R1 | `task_id: z.string().optional()`, `run_id: z.string().optional()`, `task_ids: z.array(z.string()).optional()`, `project_id: z.string().optional()`, `capability: z.string().optional()`, `status: z.string().optional()`, `run_ordinal: z.number().nullable().optional()`, `deduplicated: z.boolean().optional()` |
 | `bridgeTaskRowSchema` / `bridgeTaskListSchema` | R2 | task row per §5; list `{tasks: array, next_cursor: z.string().nullable().optional()}` |
 | `bridgeClaimRequestSchema` / `bridgeClaimResponseSchema` | R3 | request `{executor_id, capabilities: z.array(z.string()), lease_seconds: z.number().optional(), max_task_wait_minutes: z.number().optional()}`; response `{task: bridgeTaskRowSchema, attempt: bridgeAttemptSchema, media: z.record(jsonObject).optional()}` |
@@ -603,7 +613,7 @@ Add to `reigh-app/src/tools/video-editor/data/bridgeContract.ts` (and mirror in 
 
 **Amended (doc 24 Q1/Q4):** no `bridgeShotsSchema`/`bridgeShotSchema` additions are made; R11 reuses the existing timeline payload/save schemas, while R13 adds only render admission/status DTOs over kernel tasks.
 
-Constants to add: `BRIDGE_IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key'`; `BRIDGE_STAGING_TIMEOUT_MS` (proposal 120 000 for `/outputs`; JSON routes keep `BRIDGE_REQUEST_TIMEOUT_MS = 10_000`); fence code constants (`BRIDGE_STALE_STATUS_VERSION_CODE = 'stale_status_version'`, `BRIDGE_LEASE_MISMATCH_CODE = 'lease_mismatch'`, `BRIDGE_LEASE_EXPIRED_CODE = 'lease_expired'`, `BRIDGE_ATTEMPT_NOT_LIVE_CODE = 'attempt_not_live'`, `BRIDGE_TASK_TERMINAL_CODE = 'task_terminal'`, `BRIDGE_BUDGET_EXHAUSTED_CODE = 'attempt_budget_exhausted'`, `BRIDGE_IDEMPOTENCY_MISMATCH_CODE = 'idempotency_mismatch'`, `BRIDGE_PAYLOAD_TOO_LARGE_CODE = 'payload_too_large'`). `parseBridgePayload` reuse is mandatory (rule: never coerce a malformed payload; the editor's poll-adoption gating must treat a fence 409 as "in-flight resync", not data).
+Constants to add: `BRIDGE_IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key'`; `BRIDGE_STAGING_TIMEOUT_MS` (proposal 120 000 for `/outputs`; JSON routes keep `BRIDGE_REQUEST_TIMEOUT_MS = 10_000`); fence/admission code constants (`BRIDGE_STALE_STATUS_VERSION_CODE = 'stale_status_version'`, `BRIDGE_LEASE_MISMATCH_CODE = 'lease_mismatch'`, `BRIDGE_LEASE_EXPIRED_CODE = 'lease_expired'`, `BRIDGE_ATTEMPT_NOT_LIVE_CODE = 'attempt_not_live'`, `BRIDGE_TASK_TERMINAL_CODE = 'task_terminal'`, `BRIDGE_BUDGET_EXHAUSTED_CODE = 'attempt_budget_exhausted'`, `BRIDGE_IDEMPOTENCY_MISMATCH_CODE = 'idempotency_mismatch'`, `BRIDGE_PAYLOAD_TOO_LARGE_CODE = 'payload_too_large'`, `BRIDGE_CHILD_ADMISSION_FORBIDDEN_CODE = 'child_admission_forbidden'`, `BRIDGE_PARENT_FENCE_INVALID_CODE = 'parent_fence_invalid'`, `BRIDGE_UNSUPPORTED_CAPABILITY_CODE = 'unsupported_capability'`). **(Amended doc 26/Grok: child-admission gate)** `parseBridgePayload` reuse is mandatory (rule: never coerce a malformed payload; the editor's poll-adoption gating must treat a fence 409 as "in-flight resync", not data).
 
 ## 18. Open questions
 

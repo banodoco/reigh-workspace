@@ -305,6 +305,8 @@ Serialization rules (kernel conventions, doc 04 §2/§3):
   in-flight generation (no partial output is staged), never calls complete/fail, and lets
   `expire_overdue` requeue the task for another attempt.
 
+**(Amended doc 26/Grok)** For an orchestrator, heartbeat is also the parent-visibility contract: the parent remains `running` under a long-lived fence while its coordinator waits, but it does not occupy a GPU execution slot. R5's bounded `progress_json` is therefore load-bearing progress, not optional telemetry; the keeper must continue heartbeating for the entire orchestration lifetime.
+
 ### 5.3 `LeaseKeeper` (serializes heartbeat vs complete/fail)
 
 ```python
@@ -333,6 +335,8 @@ so completion cannot submit a stale fence"):
   aborts execution and skips staging.
 - The guardian owns the keeper for its 30 s heartbeat cadence; `server.py`'s task thread owns
   it for the terminal op. Both share the same keeper instance (created per claimed attempt).
+
+**(Amended doc 26/Grok)** Orchestrator recovery is a cutover requirement, not follow-up polish. Every accepted child R1 call has a deterministic key and receipt. After coordinator/worker crash and parent reclaim, the coordinator must replay each identical stable child plan and key with the current live reclaim fence (doc 18 §2.4), rebuild the logical-child→kernel-ULID map from replay responses, and only then resume aggregation; it must never guess that an unacknowledged child was absent or create a replacement under a new key. The long-lived parent keeper plus this crash-replay path is the real orchestrator cutover risk and must be designed now.
 
 ### 5.4 Staging flow (worker side)
 

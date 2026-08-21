@@ -1,5 +1,7 @@
 # 16 — Reigh Task Capability Map (for `ReighTaskBridgeAdapter`)
 
+**(Amended doc 26/Grok)** Naming ratified: flat `reigh.<normalized>` IDs are final; semantic taxonomy as capability naming is rejected and remains catalog metadata only per Grok's second opinion and doc 26.
+
 **Phase-1 design spec — READ-ONLY research; no implementation. Prepared 2026-08-21.**
 
 **Summary.** This is the complete capability map for the bridge's `ReighTaskBridgeAdapter` (doc 14 §2): every one of the 13 resolver families in `reigh-app/supabase/functions/create-task/resolvers/` is enumerated with its source `task_type` strings (including the `image-upscale` hyphenation oddity), its canonical kernel `capability` name (`reigh.<normalized>`), its full input payload contract (field / type / required), its kernel `output_policy`, its dependency edges, priority, batch/orchestrator shape, and the worker pipeline it maps to (doc 03). Also included: the live `task_types` DB ↔ resolver gap table (37 live rows, 8 inactive, probed 2026-08-21), a code-declared passthrough allowlist proposal replacing the `task_types` lookup, a golden-test fixture list (one per payload shape, with expected kernel rows), and open questions. An engineer can implement the adapter resolver layer from this document alone.
@@ -85,7 +87,7 @@ Request body (unchanged contract, doc 14 §2):
 ]
 ```
 
-Admission rules carried over from `create-task/index.ts`: unknown family → allowlist lookup (was `task_types` + `createWorkerPassthroughResolver`, §6 below); resolver output must be a non-empty task array; failure → `400 unknown_task_family` / `400 validation_error` (ported `TaskValidationError`). Batch idempotency recovery returns the existing ids with `deduplicated: true` for singles / `task_ids[]` for batches.
+Admission rules carried over from `create-task/index.ts`: unknown family → allowlist lookup (was `task_types` + `createWorkerPassthroughResolver`, §6 below); resolver output must be a non-empty task array. The legacy path returned `400 unknown_task_family` / `400 validation_error`; the ratified bridge returns `422 unsupported_family` for unknown UI families and `422 unsupported_capability` for unknown/inactive/dead derived children (doc 18 §2.3/R1). Batch idempotency recovery returns the existing ids with `deduplicated: true` for singles / `task_ids[]` for batches. **(Amended doc 26/Grok)**
 
 **Priority:** every resolver writes no priority; kernel default `0` everywhere (`join_clips` has an input `priority` that only lands in `params`). [resolver files, doc 04 §3.7]
 
@@ -112,7 +114,7 @@ Columns: resolver file | source `task_type`(s) | capability | tasks/request | ba
 | `edit_video_orchestrator` | `resolvers/editVideoOrchestrator.ts` | `edit_video_orchestrator` | `reigh.edit_video_orchestrator` | 1 | **orchestrator** (reuses join chain: `join_clips_segment` + `join_final_stitch`) | false | null | WGP — `edit_video_orchestrator` handler |
 | `character_animate` | `resolvers/characterAnimate.ts` | `animate_character` | `reigh.animate_character` | 1 | single | true | null | VibeComfy (`animate_character` scratchpad); api |
 | `klein_edit` | `resolvers/kleinEdit.ts` | `flux_klein_edit` | `reigh.flux_klein_edit` | `numImages` (1–4) | **batch** (run fan-out) | from `create_as_generation` | null | VibeComfy (`flux_klein_edit` scratchpad); api |
-| *(passthrough)* | `resolvers/workerPassthrough.ts` | allowlist entry name (e.g. `join_clips_segment`, `travel_segment`, `join_final_stitch`, `edit_video_segment`, `travel_stitch`) | `reigh.<normalized name>` | 1 | single (worker child) | category-driven (§6) | lifts `input.dependant_on` | per-entry specialized handler (doc 03 §3.1) |
+| *(passthrough)* | `resolvers/workerPassthrough.ts` | allowlist entry name (e.g. `join_clips_segment`, `travel_segment`, `join_final_stitch`, `travel_stitch`) | `reigh.<normalized name>` | 1 | single (worker child) | category-driven (§6) | lifts `input.dependant_on` | per-entry specialized handler (doc 03 §3.1). **(Amended doc 26/Grok: dead `edit_video_segment` removed.)** |
 
 ---
 
@@ -373,28 +375,28 @@ Live probe 2026-08-21 (`SELECT name, run_type, category, is_active, tool_type FR
 | `annotated_image_edit` | api | generation | t | `masked_edit` (task_type override) | `reigh.annotated_image_edit` | ported |
 | `api_query` | api | generation | f | — | — | inactive → reject |
 | `different_perspective_orchestrator` | api | generation | f | — | — | inactive → reject |
-| `edit_travel_flux` | gpu | generation | t | — | — | legacy active, no resolver → **decision** |
+| `edit_travel_flux` | gpu | generation | t | — | — | reject; dead type, no alias **(Amended doc 26/Grok)** |
 | `edit_video_orchestrator` | gpu | orchestration | t | `edit_video_orchestrator` | `reigh.edit_video_orchestrator` | ported |
-| `edit_video_segment` | gpu | processing | t | passthrough (worker child) | `reigh.edit_video_segment` | allowlist candidate (legacy worker child) |
+| `edit_video_segment` | gpu | processing | t | — (no current writer) | — | reject; absent from child allowlist **(Amended doc 26/Grok)** |
 | `extract_frame` | api | generation | f | — | — | inactive → reject |
 | `flux_klein_edit` | api | generation | t | `klein_edit` | `reigh.flux_klein_edit` | ported |
 | `generate_openpose` | api | generation | f | — | — | inactive → reject |
 | `i2v_22` | api | generation | f | — | — | inactive → reject |
-| `image_edit` | gpu | generation | t | — (legacy; superseded by `qwen_image_edit`) | — | **decision** (admit as passthrough or reject) |
+| `image_edit` | gpu | generation | t | — (legacy; superseded by `qwen_image_edit`) | — | reject; dead type, no alias **(Amended doc 26/Grok)** |
 | `image_inpaint` | api | generation | t | `masked_edit` | `reigh.image_inpaint` | ported |
-| `image_upscale` | gpu | generation | t | — (legacy underscore row; resolver writes `image-upscale`) | — | **decision** (admit as passthrough or reject) |
+| `image_upscale` | gpu | generation | t | — (legacy underscore row; resolver writes `image-upscale`) | — | reject; dead type, no alias **(Amended doc 26/Grok)** |
 | `image-upscale` | api | upscale | t | `image_upscale` (hyphen) | `reigh.image_upscale` | ported — hyphen row is the FK target |
 | `individual_travel_segment` | gpu | generation | t | `individual_travel_segment` | `reigh.individual_travel_segment` | ported |
 | `join_clips_orchestrator` | gpu | orchestration | t | `join_clips` | `reigh.join_clips_orchestrator` | ported |
 | `join_clips_segment` | gpu | processing | t | passthrough (worker child) | `reigh.join_clips_segment` | allowlist (worker-created) |
 | `join_final_stitch` | gpu | generation | t | passthrough (worker child) | `reigh.join_final_stitch` | allowlist (worker-created) |
-| `magic_edit` | gpu | generation | t | — (legacy row; current resolver writes `qwen_image_edit`) | — | **decision** (admit as passthrough or reject) |
+| `magic_edit` | gpu | generation | t | — (legacy row; current resolver writes `qwen_image_edit`) | — | reject; dead type, no alias **(Amended doc 26/Grok)** |
 | `qwen_image` | api | generation | t | `image_generation` (model_name=`qwen-image`) | `reigh.qwen_image` | ported |
 | `qwen_image_2512` | api | generation | t | `image_generation` (model_name=`qwen-image-2512`) | `reigh.qwen_image_2512` | ported |
 | `qwen_image_edit` | api | generation | t | `magic_edit` | `reigh.qwen_image_edit` | ported |
 | `qwen_image_style` | api | generation | t | `image_generation` (model_name=`qwen-image` + style ref) | `reigh.qwen_image_style` | ported |
 | `rife_interpolate_images` | api | generation | f | — | — | inactive → reject |
-| `single_image` | gpu | generation | t | — (legacy direct-queue) | — | **decision** (admit as passthrough or reject) |
+| `single_image` | gpu | generation | t | — (legacy direct-queue) | — | reject; dead type, no alias **(Amended doc 26/Grok)** |
 | `test` | api | generation | f | — | — | inactive → reject (dev artifact) |
 | `travel_orchestrator` | gpu | orchestration | t | `travel_between_images` | `reigh.travel_orchestrator` | ported |
 | `travel_segment` | gpu | processing | t | passthrough (worker child) | `reigh.travel_segment` | allowlist (worker-created) |
@@ -409,7 +411,7 @@ Live probe 2026-08-21 (`SELECT name, run_type, category, is_active, tool_type FR
 
 **Repo↔live drift:** repo-seeded but **not live**: `edit_travel_kontext`, `lora_training` (replaced live by `wan_lora_training`). Live but no repo seed found (out-of-band): `image-upscale`, `magic_edit`, `qwen_image_edit`, `wan_2_2_t2i`, `wan_lora_training`, `api_query`, `different_perspective_orchestrator`, `extract_frame`, `generate_openpose`, `i2v_22`, `rife_interpolate_images`, `test`, `wgp`. [grep of 466 migrations vs probe]
 
-**Decision rows** (active, resolver-less): `edit_travel_flux`, `image_edit`, `image_upscale` (underscore), `magic_edit`, `single_image` — recommend **reject** (no frontend writer; historical rows only, doc 15 Q2 latest-state import), or admit via allowlist if the migration needs task-type parity. `wan_lora_training` → reject per doc 15 Q5.
+**Ratified disposition (Amended doc 26/Grok):** active resolver-less types `edit_travel_flux`, `image_edit`, `image_upscale` (underscore), `magic_edit`, `single_image`, and unwritten `edit_video_segment` are rejected outright—no aliases and no child-allowlist entries. `wan_lora_training` remains rejected per doc 15 Q5.
 
 ---
 
@@ -424,9 +426,8 @@ Doc 14 §2: "Unknown-family passthrough becomes a code-declared capability allow
 | `travel_segment` | `reigh.travel_segment` | processing | `reigh-worker/source/task_handlers/travel/orchestrator.py` |
 | `travel_stitch` | `reigh.travel_stitch` | generation | same file (also covered by `crossfade_join` when frontend-created) |
 | `join_clips_orchestrator` | `reigh.join_clips_orchestrator` | orchestration | same file (travel orchestrator spawns it) |
-| `edit_video_segment` | `reigh.edit_video_segment` | processing | legacy worker child (live row; no current repo writer — doc 03 §3.1 shows edit_video reuses join chain) `[INFERENCE]` |
 
-All five worker-created child types observed live in `add_task_to_db` calls: `join_clips_segment`, `join_final_stitch`, `travel_segment`, `travel_stitch`, `join_clips_orchestrator` (grep of reigh-worker/source). `edit_video_segment` kept for historical parity `[INFERENCE]`. Behavior on admission: honor `input.task_id` as logical id (map to the kernel task ULID for dependency edges), lift `input.dependant_on` → hard edges, dump input into `params`, category drives `output_policy.create_generation`. Reject anything not in {13 families} ∪ allowlist with `400 unknown_task_family` (same code path as today). Inactive live rows (`is_active=false`) are **not** allowlisted.
+All five worker-created child types observed live in `add_task_to_db` calls: `join_clips_segment`, `join_final_stitch`, `travel_segment`, `travel_stitch`, `join_clips_orchestrator` (grep of reigh-worker/source). `edit_video_segment` is rejected because it has no current writer. Behavior on admission: honor `input.task_id` as logical id (map to the kernel task ULID for dependency edges), lift `input.dependant_on` → hard edges, dump input into `params`, category drives `output_policy.create_generation`. Reject an unknown UI family with `422 unsupported_family`; reject an unknown/inactive/dead derived child capability with `422 unsupported_capability` (doc 18 §2.3/R1). Inactive live rows (`is_active=false`) are **not** allowlisted. **(Amended doc 26/Grok)**
 
 ---
 
@@ -472,13 +473,13 @@ Fixture harness expectations: each fixture runs the ported resolver against a mo
 
 ## 9. Open questions
 
-1. **Legacy active task_types** (`single_image`, `image_edit`, `magic_edit`, `edit_travel_flux`, `image_upscale` underscore row): admit via allowlist for historical parity, or reject (recommended — no current frontend/worker writer creates them; doc 15 Q2 imports latest-state only)?
+1. **RESOLVED (doc 26/Grok):** legacy active task types (`single_image`, `image_edit`, `magic_edit`, `edit_travel_flux`, `image_upscale` underscore row) and unwritten `edit_video_segment` are rejected outright; no alias admission and nothing dead on the child allowlist.
 2. **`ensure_shot_parent_generation` port**: the content pack v2 DDL (doc 14 §4) has `generations.parent_generation_id` but no ensure-parent RPC; should the adapter auto-create a parent generation row (as Reigh does) or require the caller to supply `parent_generation_id`?
 3. **Worker-supplied `task_id`**: kernel ids are ULIDs, worker passthrough pre-generates UUIDs for sibling `dependant_on` references. Adapter maps logical id → ULID and rewrites dependency edges; must the claim adapter also expose the mapping (so worker logs keep the original id), or is the ULID authoritative end-to-end?
 4. **`masked_edit` identical batch rows**: port faithfully (N identical specs in one run) or per-index seed variation (behavior change)?
-5. **`travel_between_images.turbo_mode`** writes `wan_2_2_i2v` with `tool_type:"travel-between-images"` — capability `reigh.wan_2_2_i2v` collides with the WGP `i2v` model family naming; confirm the capability string is stable or namespace as `reigh.travel_between_images_turbo`?
+5. **RESOLVED (doc 26/Grok):** `travel_between_images.turbo_mode` retains the ratified flat capability `reigh.wan_2_2_i2v`; semantic taxonomy is catalog metadata, not an ID rewrite.
 6. **`input_manifest_json` coverage**: resolve only `materialized_inputs` to media_ids, or also generation-backed params (`based_on`, `style_reference_image`, `clip_urls`...) when their media rows exist? Doc 14 says "Input media should resolve to Astrid media_ids during admission" — exact rule needed.
-7. **Orchestrator child admission**: children (`join_clips_segment`, `travel_segment`, …) are created by the *worker* via the passthrough path today. In Astrid, should the completion service (doc 14 §3) fan out children structurally inside the parent's run (removing the worker's `add_task_to_db`), or keep worker-created admission (allowlist) for v1? Doc 14: "keeping dynamic worker-created orchestration … is a later redesign" — confirm allowlist-passthrough is the v1 choice.
+7. **RESOLVED (doc 26/Grok):** retain worker-created child admission for v1 behind the hard internal R1 gate (live parent fence + matching executor + deterministic key); structural fan-out remains deferred.
 8. **Run scoping**: are batch families (A/F/H/K/L) the only run fan-outs, or should orchestrator parents also open a run so children inherit `run_id`?
 9. **`priority`**: all families write 0; `join_clips` has a `priority` input that only reaches `params`. Should the adapter promote `params.priority` to kernel `tasks.priority` (behavior change)?
 10. **Live task_types drift**: 13 live rows have no repo seed and `image-upscale` (hyphen) is the real FK target while `image_upscale` (underscore) is legacy-active. Confirmed by probe; no further action unless decision rows in §5 are admitted.
