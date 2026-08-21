@@ -24,13 +24,13 @@
 
 11. **Q:** CLI/bridge mount ownership? **Recommendation:** Composition-owned mounts; preserve eight CLI families and use explicit Reigh domain routes. **Rationale:** This avoids generic table APIs and preserves frozen timeline routes [08 §2; 14 §1]. **Affects:** Routing, contracts. **Confidence:** High.
 
-12. **Q:** Cross-pack dependencies? **Recommendation:** Permit manifest ordering, but exchange through kernel IDs; avoid cross-pack foreign keys. **Rationale:** That is a plugin law. Keeping generation and placement tables together avoids violating it [08 §2.3]. **Affects:** Doc-17 DDL. **Confidence:** High.
+12. **Amended (doc 24 Q1).** **Q:** Cross-pack dependencies? **Recommendation:** Permit manifest ordering, but exchange through kernel IDs; avoid cross-pack foreign keys. **Rationale:** That is a plugin law. Generation/variant tables stay together in the shots pack, while document-native placement uses referenced kernel IDs without a placement-table dependency [08 §2.3; 24 Q1]. **Affects:** Doc-17 DDL and timeline document references. **Confidence:** Ratified.
 
 13. **Q:** When may the kernel evolve? **Recommendation:** Only for a primitive shared by two real compositions. **Rationale:** Reigh generations and gallery state belong in packs. Kernel additions would be speculative generalization [08 §5; 14 §4]. **Affects:** Kernel stability. **Confidence:** High.
 
 ### v10 implementation choices
 
-14. **Q:** Media-root/staging policy? **Recommendation:** `.astrid/media`, managed copies by default, explicit `external_local` opt-in, attempt quarantine before completion. **Rationale:** Generated outputs must remain authoritative if source paths disappear. Staging enables atomic verification [04 §5; 14 §3]. **Affects:** Import, uploads, backup. **Confidence:** High.
+14. **Amended (doc 24 Q5): SUPERSEDED for link-in-place.** **Q:** Media-root/staging policy? **Recommendation:** `.astrid/media`, always-managed copies in v1, and attempt quarantine before completion; do not expose an `external_local` opt-in. **Rationale:** Generated and imported bytes remain authoritative if source paths disappear, and staging enables atomic verification [04 §5; 14 §3; 24 Q5]. **Affects:** Import, uploads, backup. **Confidence:** Ratified.
 
 15. **Q:** Fan-out bound? **Recommendation:** Kernel ceiling 256 children per command with receipt-linked continuation; resolver limits remain ≤16. **Rationale:** Doc 13 already maps the kernel envelope to 256. Reigh’s narrower limits remain enforced at admission [13 §4.3; 16 §1]. **Affects:** RunsService, receipts. **Confidence:** Medium.
 
@@ -128,7 +128,7 @@
 
 1. **Q:** `shots` v2 or new `content` pack? **Recommendation:** Keep `shots` and ship v2 there. **Rationale:** The tables share the shot/composition lifecycle. A new pack adds dependency complexity without an independent lifecycle [17 §1]. **Affects:** Manifest, repositories. **Confidence:** High.
 
-2. **Q:** Model paired shot generations? **Recommendation:** Add nullable `shot_generation_items.pair_item_id` now, with same-shot/distinct-item guards. **Rationale:** Travel and pair operations actively depend on it [06 §3.2; 16 §3.3]. **Affects:** DDL, importer, resolver parity. **Confidence:** High.
+2. **Amended (doc 24 Q1): SUPERSEDED.** **Q:** Model paired shot generations? **Recommendation:** Do not add `shot_generation_items.pair_item_id` or any relational placement/pair-item row. Pair and boundary relationships are document-native timeline state; `generations` and `generation_variants` remain relational. **Rationale:** One timeline document now owns shot grouping, timing, ordering, pools, and boundary overrides. **Affects:** Timeline document commands and editor state, not pack DDL. **Confidence:** Ratified.
 
 3. **Q:** One generation task or join table? **Recommendation:** Keep one producing `task_id`; archive anomalous legacy arrays. **Rationale:** Current completion is singular, while runs/dependencies model orchestration [10 §3; 14 §2]. **Affects:** Provenance queries. **Confidence:** Medium-high.
 
@@ -136,9 +136,9 @@
 
 5. **Q:** Deletion semantics? **Recommendation:** Soft-delete only; no hard delete or media GC in v1. **Rationale:** Astrid lacks safe GC precedent, and variants RESTRICT-pin bytes [17 §2]. **Affects:** Reads, retention. **Confidence:** High.
 
-6. **Q:** Whole-shot reorder? **Recommendation:** Add one atomic permutation command. **Rationale:** Reigh actively uses normalized full-list reorder. Multiple position writes expose intermediate invalid order [06 §3.2; 17 §4]. **Affects:** SDK, bridge, events. **Confidence:** High.
+6. **Amended (doc 24 Q1): SUPERSEDED for relational placement.** **Q:** Whole-shot reorder? **Recommendation:** Reorder a shot group atomically as one timeline-document command and save it through the existing timeline CAS path; do not add a relational permutation command. **Rationale:** Placement, ordering, and boundary overrides are document-native, while generation/variant rows remain outside that reorder. **Affects:** Timeline document command layer and editor CAS, not shots-pack repositories/events. **Confidence:** Ratified.
 
-7. **Q:** Atomic completion or reconciliation? **Recommendation:** One composite receipt and one writer transaction. **Rationale:** Partial task/media/generation/placement success is a critical forbidden state [14 §3; 17 §5]. **Affects:** Completion service, retries. **Confidence:** High.
+7. **Amended (doc 24 Q1).** **Q:** Atomic completion or reconciliation? **Recommendation:** One composite receipt and one writer transaction. **Rationale:** Partial task/media/generation/variant or required timeline-registry visibility is a critical forbidden state; relational placement is no longer part of completion [14 §3; 17 §5; 24 Q1]. **Affects:** Completion service, retries. **Confidence:** Ratified.
 
 8. **Q:** Dedicated variant-star command? **Recommendation:** No; use `update_variant`. **Rationale:** Starring has no unique invariant or lifecycle. A separate verb adds needless surface [17 §4]. **Affects:** API vocabulary. **Confidence:** Medium-high.
 
@@ -152,7 +152,7 @@
 
 4. **Q:** Keep starvation/model-affinity logic? **Recommendation:** No; use kernel priority/availability ordering. **Rationale:** Explicit capabilities replace model affinity. The old escape hatch has no local purpose [13 §4; 16]. **Affects:** Claim schema. **Confidence:** High.
 
-5. **Q:** Timeline registry update during completion? **Recommendation:** Add an internal registry-merge command that reads the current head, appends an event, and advances `config_version` inside the completion UoW. **Rationale:** Public whole-document save risks clobbering; silent mutation breaks CAS visibility [09; 14 §3]. **Affects:** Timeline repository, editor conflicts. **Confidence:** Medium.
+5. **Amended (doc 24 Q1).** **Q:** Timeline registry update during completion? **Recommendation:** Add an internal asset-registry-merge command that reads the current head, appends an event, and advances `config_version` inside the completion UoW without editing shot groups, pools, timing, or boundaries. **Rationale:** Public whole-document save risks clobbering; silent mutation breaks CAS visibility, while placement remains document-command state [09; 14 §3; 24 Q1]. **Affects:** Timeline repository, editor conflicts. **Confidence:** Ratified.
 
 6. **Q:** Freeze cancel and queue-summary routes now? **Recommendation:** Make cancellation normative now; defer queue summary. **Rationale:** Cancellation is functional parity. Summary is an optimization after scaling is cut [14 §4; 18 §15]. **Affects:** App controls, contracts. **Confidence:** High.
 
@@ -170,7 +170,7 @@
 
 3. **Q:** Multi-repository completion UoW? **Recommendation:** Make it mandatory; refactor repositories if necessary. **Rationale:** Follow-on projections violate strict completion atomicity [04 §2.4; 14 §3]. **Affects:** Composition root, tests. **Confidence:** High.
 
-4. **Q:** Worker timeline-registry mutation? **Recommendation:** Use the internal evented registry merge from doc-18 Q5, never public full-document save. **Rationale:** It preserves atomic requested placement without clobbering editor state [09; 19 §6]. **Affects:** Completion B4. **Confidence:** Medium.
+4. **Amended (doc 24 Q1).** **Q:** Worker timeline-registry mutation? **Recommendation:** Use the internal evented asset-registry merge from doc-18 Q5, never public full-document save; do not mutate shot-group placement from the worker. **Rationale:** It preserves atomic output visibility without clobbering editor state, while placement stays in explicit timeline-document commands [09; 19 §6; 24 Q1]. **Affects:** Completion B4. **Confidence:** Ratified.
 
 5. **Q:** Staging transport? **Recommendation:** Streaming `multipart/form-data`, attempt-scoped quotas, GC on terminal/expiry plus periodic orphan cleanup. **Rationale:** It supports metadata and large files while hashing during streaming [18 §9; 19 §5]. **Affects:** Client, disk management. **Confidence:** Medium-high.
 
@@ -182,7 +182,7 @@
 
 9. **Q:** Preserve `max_task_wait_minutes`? **Recommendation:** Drop it. **Rationale:** The removed model-affinity system was its purpose. Kernel ordering plus capabilities is sufficient [13 §4; 18 Q4]. **Affects:** Claim DTO, worker env. **Confidence:** High.
 
-10. **Q:** Keep cloud-API task types? **Recommendation:** Keep active resolver-mapped Fal/Wavespeed capabilities in the local API orchestrator. **Rationale:** Local-only constrains persistence and worker placement, not outbound provider calls; secrets remain external [14 §1, §3; 16 §5]. **Affects:** Allowlist, credentials, tests. **Confidence:** High.
+10. **Amended (doc 24 Q3): SUPERSEDED by doc 24 Q3.** **Q:** Keep cloud-API task types? **Recommendation:** No. V1 generation compute is fully local and makes no outbound generation-provider calls. Capabilities without an installed local model/node stack are hidden or disabled with a setup prompt. **Rationale:** The machine is the complete execution environment; model acquisition, verification, updates, and local availability replace provider credentials and provider routing. **Affects:** Allowlist, executor handlers, setup UX, prerequisites, and tests. **Confidence:** Ratified.
 
 Implementation correction: doc 18’s normative attempt-number routes and opaque `staging_key` should override doc 19’s pseudocode that exposes `attempt_id`/`staging_txn_id`.
 
