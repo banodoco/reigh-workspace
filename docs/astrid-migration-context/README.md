@@ -1,6 +1,8 @@
 # Astrid Migration Context — Dossier Index
 
-Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker pipeline) onto Astrid's SQLite store. All docs were produced 2026-08-21 from repo files plus a read-only live-prod probe. **13-migration-context.md is the synthesis; the docs below are the evidence.**
+Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker pipeline) onto Astrid's SQLite store. All docs were produced 2026-08-21 from repo files plus a read-only live-prod probe. **13-migration-context.md is the synthesis; the docs below are the evidence.** Docs 15–19 are the phase-1 design artifacts for the owner's new goal (full Reigh on Astrid SQLite, credits cut, local-only) — buildable specs, not implementation.
+
+**Reading order:** 01–13 evidence and synthesis → 14 Codex design → 15 owner decisions (vetoable defaults) → 16 capability map → 17 pack v2 DDL → 18 bridge route schemas → 19 worker diff.
 
 ## Table of Contents
 
@@ -20,6 +22,11 @@ Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker
 | 12 | `12-reigh-task-internals.md` | Claim/lease machinery deep-dive: live 7-param claim RPC (prod reverted route gating), `attempts` TABLE (slot-first media attempts) vs `tasks.attempts` (retry counter), sentinel_ticks (144k rows, 65% UNCLAIMABLE_WORK, scaling paused), capacity reconciler (never deployed). |
 | 13 | `13-migration-context.md` | **This dossier** — consolidated synthesis: exec summary, source inventories, entity mapping, task/queue mapping, identity/typing diffs, security, bridge-first strategy, migration machinery, risks, open questions, next steps. |
 | 14 | `14-codex-migration-design.md` | Codex (GPT-5.6 Sol) consultation on the owner's new goal (full Reigh on Astrid SQLite, credits cut, local-only): bridge-extension architecture, task admission via ported family resolvers, fenced worker claim protocol, full build checklist, phase plan, risks, 7 owner questions. |
+| 15 | `15-owner-decisions-defaults.md` | **PROPOSED defaults for Codex's 7 owner questions** (vetoable): archive not import `attempts`/`shot_slots`; current projects + referenced media only; local-only workers; referenced storage objects only; cut sharing/referrals/training/agent-sessions; latest-timeline-state only; polling not SSE. Implied binding decisions + still-open items. |
+| 16 | `16-capability-map.md` | Complete capability map for the task bridge adapter: all 13 resolver families + passthrough (19 canonical `reigh.*` capabilities), full input field tables, output policies, dependency edges, batch→run fan-out, worker-pipeline mapping, live task_types gap table (37 rows), code-declared passthrough allowlist, 14 golden-test fixtures. |
+| 17 | `17-pack-v2-ddl.md` | Shots-pack v2 schema spec: `generations`/`generation_variants`/`shot_generation_items` DDL in kernel conventions (ULIDs, CHECKs, one-primary-per-generation, unique media), repositories + events + registry vocabulary + SDK/CLI additions, Postgres-column parity notes. |
+| 18 | `18-bridge-route-schemas.md` | Normative HTTP schemas for the bridge extension: R1–R12 (task admission, queue/claim, fenced attempt lifecycle, media content Range/ETag, content reads), error vocabulary incl. fence/idempotency codes, zod additions for `bridgeContract.ts`, serve-side lease-expiry loop. |
+| 19 | `19-worker-diff.md` | Exact worker cutover spec: per-file diff (today's transport calls → bridge client calls), BridgeClient + LeaseKeeper design, env changes, keep/delete lists, server-side atomic completion service (single BEGIN IMMEDIATE), T1–T12 test plan. |
 
 ## Top 15 Key Facts
 
@@ -67,3 +74,4 @@ Full open-questions list (numbered, decision-worthy): see **13-migration-context
 - **Worker execution detail** → `03-reigh-worker-execution.md`
 - **Postgres schema inventory** → `01-reigh-postgres-schema.md`
 - **Codex design for full Reigh-on-Astrid (new goal, credits cut)** → `14-codex-migration-design.md`
+- **Buildable specs (phase-1 artifacts)** → `16-capability-map.md`, `17-pack-v2-ddl.md`, `18-bridge-route-schemas.md`, `19-worker-diff.md` (scope set by `15-owner-decisions-defaults.md`)
