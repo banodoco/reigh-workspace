@@ -1,0 +1,21 @@
+{
+  "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e7-test-geography.md",
+  "elapsed_s": 173.521,
+  "error": null,
+  "error_class": null,
+  "finish_reason": null,
+  "finished_at": "2026-08-21T23:04:43Z",
+  "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e7-test-geography.meta.json",
+  "model": "stealth/ox-alpha",
+  "pid": 51636,
+  "raw_result_keys": [
+    "stdout"
+  ],
+  "response_chars": 3266,
+  "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e7-test-geography.txt",
+  "started_at": "2026-08-21T23:01:50Z",
+  "status": "ok",
+  "stem": "e7-test-geography",
+  "task_timeout_s": 1800,
+  "tool_calls": 0
+}

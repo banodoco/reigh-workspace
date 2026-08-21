@@ -1,0 +1,21 @@
+{
+  "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e6-lease-liveness.md",
+  "elapsed_s": 188.848,
+  "error": null,
+  "error_class": null,
+  "finish_reason": null,
+  "finished_at": "2026-08-21T23:04:58Z",
+  "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e6-lease-liveness.meta.json",
+  "model": "stealth/ox-alpha",
+  "pid": 51634,
+  "raw_result_keys": [
+    "stdout"
+  ],
+  "response_chars": 2552,
+  "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e6-lease-liveness.txt",
+  "started_at": "2026-08-21T23:01:50Z",
+  "status": "ok",
+  "stem": "e6-lease-liveness",
+  "task_timeout_s": 1800,
+  "tool_calls": 0
+}

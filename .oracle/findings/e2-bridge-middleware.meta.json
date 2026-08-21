@@ -1,0 +1,21 @@
+{
+  "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e2-bridge-middleware.md",
+  "elapsed_s": 121.172,
+  "error": null,
+  "error_class": null,
+  "finish_reason": null,
+  "finished_at": "2026-08-21T23:03:51Z",
+  "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e2-bridge-middleware.meta.json",
+  "model": "stealth/ox-alpha",
+  "pid": 51631,
+  "raw_result_keys": [
+    "stdout"
+  ],
+  "response_chars": 2487,
+  "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e2-bridge-middleware.txt",
+  "started_at": "2026-08-21T23:01:49Z",
+  "status": "ok",
+  "stem": "e2-bridge-middleware",
+  "task_timeout_s": 1800,
+  "tool_calls": 0
+}

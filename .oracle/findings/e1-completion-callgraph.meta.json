@@ -1,0 +1,21 @@
+{
+  "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e1-completion-callgraph.md",
+  "elapsed_s": 213.499,
+  "error": null,
+  "error_class": null,
+  "finish_reason": null,
+  "finished_at": "2026-08-21T23:05:23Z",
+  "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e1-completion-callgraph.meta.json",
+  "model": "stealth/ox-alpha",
+  "pid": 51632,
+  "raw_result_keys": [
+    "stdout"
+  ],
+  "response_chars": 2449,
+  "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e1-completion-callgraph.txt",
+  "started_at": "2026-08-21T23:01:49Z",
+  "status": "ok",
+  "stem": "e1-completion-callgraph",
+  "task_timeout_s": 1800,
+  "tool_calls": 0
+}

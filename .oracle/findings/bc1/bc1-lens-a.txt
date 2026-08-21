@@ -1,0 +1,13 @@
+DIVERGE
+
+**Blocking issue — task-read routes have no covering task.**
+Doc 27 §4.1 makes `GET /projects/:slug/tasks` and `GET /projects/:slug/tasks/:task_id` binding routes ("Task/progress/output reads used by polling"), and Phase-A exit criterion 11 (§8: "2-second active polling visibility") is observable only through them. No batch builds them: T6 is scoped to claim/heartbeat/cancel, T11 is gallery-only, T12's journey asserts state directly rather than over a read surface, and done criterion 3 omits reads so nothing backdoors coverage. Evidence: `.oracle/tasklist-draft.md` B4/B3 task rows contain no task-read route; doc 29 confirms no task routes exist yet (`local_bridge_server.py` POST 404s at :923, only health/projects/timeline/asset routes frozen). Fix: add task-read routes (bounded task summary + progress/output read) to T6's scope with a route-test acceptance line, and have T12 exercise polling reads over HTTP.
+
+**Minor notes (non-blocking):**
+1. **Media content route ambiguity.** §4.1/§5 require `GET|HEAD /projects/:slug/media/:media_id/content`. B3 acceptance assumes frozen asset routes cover it; confirm the frozen route is media_id-addressable (not timeline-asset-scoped), else assign it. One-line check against `local_bridge_server.py:820-845`.
+2. **§5 step 3 (O(stat) in-lock presence check) is implicit.** T1's reorder implies it but no acceptance asserts in-lock work is stat-only. Cheap addition to T1 or T13 acceptance.
+3. **Retry-budget behavior thin.** §4.5 requires the server (not worker) to apply `max_attempts` returning `requeued` vs terminal `failed`; B4 acceptance #4/#5 test fencing and poison-rejection but never a requeue-vs-terminal transition. Add one named test to T7.
+4. **Setup-guidance payload.** §4.6 requires `capability_unavailable` to carry "a local setup or unsupported hint"; T10 asserts probe-flips-advertisement but not the hint body. Fold into T10 acceptance.
+
+Everything else checks out: §4/§5/§6 otherwise fully covered; T1/T7 correctly order publish-before-`BEGIN IMMEDIATE` with receipt-inside-commit at both seams; T4 registry (19 flat IDs + render, 5-ID child allowlist, dead-type list incl. `wan_lora_training`) matches §3.1 and doc 29 correction #2; T8 gate covers all five §3.5 admission conditions; T9 trust gate covers token/Host/custom-header/0700 with the OPTIONS and `_ALLOWED_HEADERS` details; done criteria 1–7 each map to batch acceptances (B2#1, C5#4, B4#3+B3, B3#3, B3#4, C5#3, C5#5); all validation commands correctly use repo-root `tests/` per the documented erratum.
+0

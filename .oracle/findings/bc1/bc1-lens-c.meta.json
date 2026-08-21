@@ -1,0 +1,21 @@
+{
+  "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/bc1/bc1-lens-c.md",
+  "elapsed_s": 250.6,
+  "error": null,
+  "error_class": null,
+  "finish_reason": null,
+  "finished_at": "2026-08-21T23:31:18Z",
+  "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-c.meta.json",
+  "model": "stealth/ox-alpha",
+  "pid": 64375,
+  "raw_result_keys": [
+    "stdout"
+  ],
+  "response_chars": 3153,
+  "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-c.txt",
+  "started_at": "2026-08-21T23:27:07Z",
+  "status": "ok",
+  "stem": "bc1-lens-c",
+  "task_timeout_s": 1800,
+  "tool_calls": 0
+}

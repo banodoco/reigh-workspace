@@ -1,0 +1,87 @@
+{
+  "briefs_dir": ".oracle/briefs/bc1",
+  "default_model": "stealth/ox-alpha",
+  "failed_count": 0,
+  "isolation": "threads",
+  "max_tokens": 65536,
+  "max_workers": 3,
+  "model_map": [],
+  "output_dir": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1",
+  "project_dir": "/Users/peteromalley/Documents/reigh-workspace-oracle",
+  "stopped_by_signal": false,
+  "succeeded_count": 3,
+  "sum_agent_seconds": 407.933,
+  "task_timeout_s": 1800,
+  "tasks": [
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/bc1/bc1-lens-a.md",
+      "elapsed_s": 103.938,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:28:51Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-a.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 64374,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2550,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-a.txt",
+      "started_at": "2026-08-21T23:27:07Z",
+      "status": "ok",
+      "stem": "bc1-lens-a",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/bc1/bc1-lens-b.md",
+      "elapsed_s": 53.395,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:28:00Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-b.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 64376,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2680,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-b.txt",
+      "started_at": "2026-08-21T23:27:07Z",
+      "status": "ok",
+      "stem": "bc1-lens-b",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/bc1/bc1-lens-c.md",
+      "elapsed_s": 250.6,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:31:18Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-c.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 64375,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 3153,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/bc1/bc1-lens-c.txt",
+      "started_at": "2026-08-21T23:27:07Z",
+      "status": "ok",
+      "stem": "bc1-lens-c",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    }
+  ],
+  "toolsets": [
+    "('file'",
+    "'web'",
+    "'terminal')"
+  ],
+  "total_count": 3,
+  "wall_clock_s": 250.603
+}

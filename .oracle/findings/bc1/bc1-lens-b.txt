@@ -1,0 +1,15 @@
+`CONVERGE`
+
+Checked plan v3 (+deltas) and tasklist-draft batches B1–C5 against all five anti-patterns and four hunting criteria.
+
+**Anti-pattern sweep — clean:**
+- **Ceremony without consumer:** none survives. `timeline.registry_merged` (T3) is one event kind justified by two live consumers — event-log reconstructability and the save-storm conflict proof; generation rows stay event-less per doc 27 §2.3. Sweeper (T6) closes a *found* wedge (`expire_overdue`:2358 has zero callers), not hypothetical liveness. Registry fields capped at the doc 27 §3.2 list explicitly ("nothing more"). Secret-file token handoff, bridge middleware layer, staged-media helper migration all cut with named evidence.
+- **Second authority:** merge mutates `asset_registry_json` inside the completion UoW with head-CAS — not mirrored state; `timeline.saved` reuse correctly rejected. T7 reuses the frozen `.staging/<txn_id>` quarantine rather than adding a parallel dir.
+- **Speculative multi-user/cloud/plugin:** nothing built. TEST executor binding is declared-and-probed, not a silent swap; N2 recorded-deferred instead of building parent-requeue fan-out; N4 deferred.
+- **Cut-product machinery:** none. T8 builds only the *reject* envelope gate (done criterion 4), not orchestrator children; deterministic-key format is data on rejected/admitted envelopes, not Phase-B plumbing.
+- **Over-testing:** fault matrix and journey harness retained as load-bearing (correct). Only soft spot: B1's harness skeleton has no labeled points until C5, ~4 batches later. Defensible — it proves the injection mechanism (observer → re-exec → exit 137) early next to T1's crash lanes and surfaces the N3 wall-clock constraint before [XHARD] T13 scales it; folding it into T13 would hide a CI-budget surprise to the last batch. Keep, but if B1 slips, this skeleton is the first thing to defer, not T1.
+
+**Sequencing:** B1→C5 is dependency-honest and proof-first: highest-risk kernel reorder spikes first, schema/repository precede routes, sweeper precedes the journey/fault tests that prove liveness (T12/T13 both exercise it). Every batch ends in full regression + checkpoint commits — slightly heavy per batch, but that is exactly northstar.md's "aligned progress" definition, so consistent, not ceremonial.
+
+**Minor notes (non-blocking):** (1) B4's sweeper thread must be proven stop-before-writer-close or it becomes its own invisible-failure source — the acceptance list implies it via the named liveness test; make teardown explicit there. (2) T10's unavailability probe "flips advertisement off" should also assert advertisement returns when the probe recovers, else truthful-unavailability is half-tested.
+0

@@ -1,0 +1,16 @@
+Findings verified in `/Users/peteromalley/Documents/Astrid-oracle`. Ranked:
+
+**1. Nothing schedules expiry; claim does NOT lazily sweep (blocking bug).**
+`claim` (tasks.py:1745) scans only `tasks.status IN ('queued','blocked')` (:1837-1843) — same predicate as `list_eligible` (:1703). An expired attempt leaves its task `running`, which claim never selects: a crashed executor wedges the task forever. `expire_overdue` (tasks.py:2358) is the only expiry path; its sole callers are tests (tests/v10/test_task_lifecycle.py:793, test_task_races.py:186). No serve/SDK/executor wiring exists (`sdk/tasks.py` deliberately excludes claim/heartbeat; expiry isn't exposed either).
+
+**2. Kernel support already sufficient.**
+Single `DatabaseWriter` FIFO thread (store/writer.py:5-9,316-321); heartbeat (:2204) and `expire_overdue` both run as `UnitOfWork(writer).run` callbacks — fully serialized, so **expiry-vs-heartbeat has no race**: FIFO order decides; if heartbeat lands first, the lease is extended and expiry's scan (:2446-2448) correctly skips it; if expiry lands first, heartbeat's exact predicates (:2330-2341) reject with `stale_status_version`. Expiry itself is double-fenced (attempt version :2479-2484, task `running` :2495-2504). One expiry per call, per-project (:2442) — a sweep must loop-until-`None` per project.
+
+**3. Critical wiring trap:** expiry is receipt-protected with an *empty* request hash (:2409-2411) — a repeating loop MUST generate a fresh idempotency key per invocation, or every sweep after the first replays the stored receipt and expires nothing new.
+
+**4. Recommended wiring:** daemon maintenance thread started in `compose_standard_bridge` (packs/__init__.py:199) immediately after `run_startup_staging_gc` (:234) — the established serve-side startup-maintenance site; serve root is gateway/dispatch.py:190. Thread ticks (~15s), enumerates projects read-only, submits `expire_overdue` sweeps through `writer.submit` with fresh ULID keys, stops before the caller's `writer.close()`. On-claim lazy sweeps rejected: they'd entangle claim's receipt/request-hash contract (:1807-1810) and only fire under claim load.
+
+**5. Lease default confirmed:** `DEFAULT_LEASE_SECONDS = 300` (tasks.py:118).
+
+**6. Child note:** expiry touches only the attempt+task — no dependency cascade. Parent requeued (budget remains, :2470-2472) → children stay `blocked` until re-claim succeeds; parent `failed` → children `blocked` permanently (hard-dep predicate :1851-1856, never satisfied). Fan-out orphaning needs an explicit decision later.
+0

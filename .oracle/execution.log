@@ -1,0 +1,7 @@
+2026-08-21T22:51:13Z PHASE0 done: worktrees reigh-workspace-oracle@f17dc11 / Astrid-oracle@dd1bbe3a / reigh-worker-oracle@68b70149 (branch oracle-run each); northstar+custody+agent_goal written; model policy=stealth/ox-alpha ALL classes (user-pinned)
+2026-08-21T22:53:34Z USER-DIRECTED: BIG sense-check cadence added to agent_goal (BC1 post-plan ≥3 lens reviews; BC2 every-3-batches/failure; BC3 pre-completion ≥5). All reviewers stealth/ox-alpha.
+2026-08-21T23:01:42Z PHASE1 done: plan v1 (T1-T14, 7 explore areas, 3 open questions) -> plan.md
+2026-08-21T23:04:25Z USER-DIRECTED: BIG sense-checks = multi-pass + multi-ROUND until convergence at sensible spots (BC1 post-plan, BC2 every-3-batches/on-failure, BC3 pre-completion). agent_goal updated.
+2026-08-21T23:10:18Z RUN INVARIANT: every brief (executor/reviewer/revision/planning) opens with inlined North Star principles+anti-patterns + pointer to .oracle/northstar.md
+2026-08-21T23:22:41Z PHASE3 STABLE: revise r1 material (E1-E7 folded), r2 STABLE with N1-N4 folds -> plan.md v3
+2026-08-21T23:36:55Z PHASE4 done: BC1 r1 A/B/C=DIVERGE/CONVERGE/DIVERGE → folded → r2 CONVERGE → tasklist FROZEN (B1-B4+C5, XHARD: T1-spike/T1/T13)

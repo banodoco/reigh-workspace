@@ -1,0 +1,20 @@
+## Verdict: event-less pack v2 is **legal as-is** — no manifest-schema or registry change required. Only frozen-count assertions must bump 20→22.
+
+### Ranked findings
+
+**1. Manifest tolerates empty vocabularies.** All 11 fields are required (`manifest.py:378-389`) but `_validate_string_list` accepts `[]` (`manifest.py:198-210`); `stream_types`/`event_kinds`/`command_kinds` may legitimately be empty. `register_pack()` does collision-checking only — no rule ties tables↔streams or commands↔events (`schema_packs/registry.py:221-294`). Migration runner natively supports multi-version packs, ordered by version, checksummed (`migrations/runner.py:193-200`, `400-447`). Adding `migrations[1]` (v2, `generations`+`generation_variants`) + an empty-vocabulary entry is contract-clean. New tables aren't in `FORBIDDEN_TABLES` (`catalog.py:145-174`). ✓
+
+**2. Frozen "20" lives in exactly five places** (bump to 22):
+- `scripts/reshape/m4_gate.py:583-584` (`if total != 20`) and `:96-102` (`FROZEN_PACK_TABLES["shots"]`)
+- `tests/v10/test_registry.py:63,168,1154` (`STANDARD_TABLE_COUNT … == 20`)
+- `tests/v10/test_m6_gate.py:47` (`EXPECTED_TABLE_COUNT = 20`; asserted `:159,:175`)
+- `tests/v10/test_reference_lifecycle.py:828` (`len(present) == 20`)
+- `tests/v10/test_m8_installed_contract.py:319-324` (migration-row set needs `("shots", 2)`)
+- **Latent bug:** `m4_gate.py:568` reads only `manifest.migrations[0].tables`, so v2-declared tables are invisible to the gate's drift/count checks — fix to iterate all descriptors or the gate silently stays green.
+
+**3. Event-less command legality — yes, structurally.** Vocabulary enforcement fires only at append time; `command_kind` is validated solely inside `validate_event_append` when supplied (`events/registry.py:557-572`); receipts never check `command_kind` against the registry (`receipts/service.py:332-401`). Precedent: heartbeat mutates with no event, no command kind, no receipt (`tasks.py:2202-2226`; `registry.py:20-24`). One structural caveat: `ReceiptService.record` demands positive `first_project_seq` (`receipts/service.py:362-364`), which only appends allocate — event-less mutations must follow the heartbeat pattern (no receipt) unless receipts learn zero-event form.
+
+**4. Conformance tolerates event-less tables but not event-less commands-as-specs.** Dimensions run per `CommandSpec`, never per table; untouched tables only appear in row-count snapshots (`kit.py:121-136`). But `hash_chain` fails on an empty stream (`kit.py:1359-1367`, tamper needs a seq-1 event `:1378-1379`) — so generation commands must simply not be registered as kit specs. Nothing mandates that.
+
+**Side note:** `kit.py:105-108` `NON_EXECUTABLE_COMMAND_KINDS` (`shot.add_item`, `reference.set_primary`) is stale — both are now executable via pack conformance factories (`packs/shots/conformance.py:747-791`).
+0

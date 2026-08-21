@@ -1,0 +1,23 @@
+Findings saved to `.oracle/findings/e3-multipart.md`. Ranked report:
+
+**1. No multipart parsing exists.** Only encoder-side helpers (`astrid/packs/rendering/executors/sprite_sheet/upscale.py:278,295` — `_multipart_field`/`_multipart_file` build *outbound* provider bodies). Not reusable server-side.
+
+**2. No `cgi` usage; `email` usage unrelated.** `local_bridge_server.py:11` imports only `email.utils.formatdate`; `scripts/reshape/installed_artifact.py:30` uses `email.parser` for wheel METADATA. `cgi` is deprecated (3.11) / removed (3.13); `email.parser` buffers whole body — both reject.
+
+**3. Bounded-reader precedent exists.** `astrid/packs/blender/server/blender_render_server.py:63,298-305` — `MAX_BODY_BYTES` cap + Content-Length rejection before read; `:345-349` chunked `_read_exact`. Contrast: bridge JSON reads are unbounded (`local_bridge_server.py:928-955`, `append_service.py:613-615`) — don't copy that.
+
+**4. Streaming-copy idiom:** `shutil.copyfileobj(..., length=1 MiB)` at `core/rendering/assets.py:156,336`, `asset_cache.py:264`.
+
+**5. Hash-while-streaming:** no network-hash helper; file-based 1 MiB-chunk SHA-256 only (`core/foundation/hash.py:9`, `core/io/media_import.py:222`). Fold `digest.update(chunk)` into the receive loop.
+
+**6. Temp-file/staging discipline is strong:** `core/foundation/atomic_io.py:36-58` (mkstemp + fsync + `os.replace` + dir fsync); `media_import.py:506-515` frozen per-txn quarantine `.astrid/media/.staging/<txn_id>` with re-hash-before-publish and startup GC; containment validation in `_shared/result_manifest.py:311-339`.
+
+**7. Python/deps:** `requires-python >=3.11` (`pyproject.toml:9`), py311 lint/typing targets. **No third-party multipart dep** (nothing like python-multipart/werkzeug/starlette in deps).
+
+**Recommendation: hand-roll (~150 lines)** — no reusable parser and no new dep justified for a loopback single-user bridge. Minimal safe shape:
+- Reject bad/absent `Content-Length` against a total cap up front (blender pattern); no chunked transfer-encoding.
+- Single pass over `rfile`: fixed chunks → rolling buffer → split on `--boundary`; headers end at first CRLFCRLF.
+- Text fields (fence, ids) buffered under strict per-field cap; file parts stream to mkstemp files inside `media_import.staging_path` while updating SHA-256 and enforcing per-file cap; abort ⇒ unlink.
+- Max part count, require terminating `--boundary--`, truncated body = failure with cleanup.
+- Publication reuses the existing media-import verify/rename path; parser yields staged paths + digests only.
+0

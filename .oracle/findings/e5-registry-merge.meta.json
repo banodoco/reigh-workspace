@@ -1,0 +1,21 @@
+{
+  "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e5-registry-merge.md",
+  "elapsed_s": 245.204,
+  "error": null,
+  "error_class": null,
+  "finish_reason": null,
+  "finished_at": "2026-08-21T23:05:55Z",
+  "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e5-registry-merge.meta.json",
+  "model": "stealth/ox-alpha",
+  "pid": 51635,
+  "raw_result_keys": [
+    "stdout"
+  ],
+  "response_chars": 2568,
+  "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e5-registry-merge.txt",
+  "started_at": "2026-08-21T23:01:49Z",
+  "status": "ok",
+  "stem": "e5-registry-merge",
+  "task_timeout_s": 1800,
+  "tool_calls": 0
+}

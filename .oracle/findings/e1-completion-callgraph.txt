@@ -1,0 +1,24 @@
+## E1 Findings — publication-helper fan-in
+
+**Production callers (complete list):**
+
+| # | Call site | Publishes | Pre-tx impact | Phase A? |
+|---|---|---|---|---|
+| 1 | `core/repositories/media.py:1795` — `materialize_prepared`, managed_local branch | Task outputs | None — dedupe at :1677 does **not** early-return for duplicates; they fall through to verify-reuse (:908–917), identical outcome either side of `BEGIN IMMEDIATE` | **Must** |
+| 2 | `core/repositories/media.py:2157` — `_insert`, sole caller `import_prepared` (:728→:868) | Interactive/SDK imports | Same neutrality | Should (same seam) |
+
+**Transitive fan-in of `materialize_prepared`:**
+- `tasks.py:3731` — `TaskRepository.complete`, once per ordered output, inside `UnitOfWork(...).run` started by `task_executor/service.py:471-472`. This is the Reigh executor completion path; the §5 target.
+- Duck-type contract checks only: `tasks.py:3597-3599`, `service.py:454-456`.
+- Tests: `tests/v10/test_task_executor.py:520`; direct helper tests `tests/v10/test_media_pipeline.py`.
+
+**Fan-in of `import_prepared` (site 2):** `core/conformance/kit.py:712,732`; `packs/references/conformance.py:158`; `packs/shots/conformance.py:171`; `sdk/media.py:134,195`. No packs/experiments callers of any helper exist.
+
+**`stage_prepared_media` / `publish_staged_media`:** zero production callers beyond the composition at `media_import.py:949`; tests only. No migration needed.
+
+**Durability pattern verified:** `_fsync_file`:746 (open-rb + `os.fsync`) after `os.replace`:920, then shard-dir :922 and staging-dir :923 fsyncs → old-or-complete rename invariant holds independent of transaction timing. Crash between publish and commit yields SQL-old + reusable digest orphan today; hoisting publication above `BEGIN IMMEDIATE` preserves exactly that recovery story. Only delta: write-lock hold shrinks (copy + 2× SHA-256 rehash + 4 fsyncs currently inside the lock — the northstar contention risk row).
+
+## Recommendation
+
+**Clean cutover of both sites (1 and 2).** There are exactly two publication seams covering every caller; both are behavior-neutral under the amendment; `import_prepared`'s five call sites need zero code changes since they pass a UoW handle and don't touch publication ordering themselves. Scoping later would leave two divergent crash-window conventions for no saved work — the cutover is one extraction per site plus the existing `repo.published` crash-point tests re-run.
+0

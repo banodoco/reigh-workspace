@@ -1,0 +1,18 @@
+## E2 findings — bridge middleware surface
+
+**Request lifecycle** (`local_bridge_server.py`): `handle_one_request` :178–186 wraps diagnostics around `super().handle_one_request()`; overridden `parse_request` :188–192 runs `super().parse_request()` then `_diag_begin_request` :206–220, which **already reads `self.headers.get("Origin"/"Range"/"User-Agent")` post-parse**. Body is consumed only later, inside `do_POST` :879 → `_read_request_body` :928–943 (`self.rfile.read(length)`).
+
+**(1) Headers before body: yes.** After `super().parse_request()` returns True, request line + all headers are parsed (`self.command`, `self.path`, `self.headers` incl. `Host`); zero body bytes are read. Returning `False` from `parse_request` closes the connection cleanly — that's the stdlib gate contract.
+
+**(2) Minimal rejection hook:** one guard at the top of the overridden `parse_request` (:188–192), after `super()` succeeds:
+- fail-closed checks: `self.headers.get("Host")` loopback-only, boot-token match (`hmac.compare_digest`), required custom header present.
+- reject via existing `self._send_error(403, "forbidden", …)` (used at :881/:923) then `return False`.
+- exempt `self.command == "OPTIONS"` (:856–860 preflight carries no custom headers).
+- token injection mirrors the existing closure pattern: add a keyword arg to `make_local_bridge_handler(*, projects_root=…)` :171–174, supplied from the composition root. No file has any auth today (grep: no `Authorization`/`token`).
+
+**(3) Binding & 0700 enforcement:** `astrid serve` → `_dispatch_serve` (`gateway/dispatch.py` :128): argparse defaults `--host 127.0.0.1 --port 0` :156–161; binds via `create_local_bridge_server` :201–213 → `LocalBridgeHTTPServer((host, port))` :162 → `ThreadingHTTPServer.__init__`. Enforce 0700 in `_dispatch_serve` immediately after `compose_standard_bridge(parsed.projects_root)` :190 — chmod `projects_root` (+ media root) to `0o700`, typed failure exit 1, matching the existing fail-closed style :182–198.
+
+**(4) CORS:** static localhost allowlist :243–250, `_set_cors_headers` echoes allowed Origin + `Vary: Origin` :255–263. `_ALLOWED_HEADERS` :252 lists `Content-Type, Range, If-None-Match, If-Modified-Since` — **the new custom header must be appended here** or browsers reject preflight. `do_OPTIONS` :856–860 answers 204 unconditionally.
+
+**Recommendation:** gate in `parse_request`; token+header constants threaded through the handler factory from `_dispatch_serve`; extend `_ALLOWED_HEADERS`.
+0

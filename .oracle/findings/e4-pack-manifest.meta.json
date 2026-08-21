@@ -1,0 +1,21 @@
+{
+  "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e4-pack-manifest.md",
+  "elapsed_s": 480.509,
+  "error": null,
+  "error_class": null,
+  "finish_reason": null,
+  "finished_at": "2026-08-21T23:09:50Z",
+  "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e4-pack-manifest.meta.json",
+  "model": "stealth/ox-alpha",
+  "pid": 51637,
+  "raw_result_keys": [
+    "stdout"
+  ],
+  "response_chars": 2852,
+  "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e4-pack-manifest.txt",
+  "started_at": "2026-08-21T23:01:49Z",
+  "status": "ok",
+  "stem": "e4-pack-manifest",
+  "task_timeout_s": 1800,
+  "tool_calls": 0
+}

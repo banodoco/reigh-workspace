@@ -1,0 +1,21 @@
+DIVERGE
+
+One claim is wrong; the rest of the spot-checks verified against code.
+
+**Wrong claim — T2's "exactly six homes" for the frozen-20 count is incomplete.** Two additional assertion sites break when shots gains `generations`/`generation_variants` (catalog 20→22):
+
+1. `tests/v10/test_shot_repository.py:1849` — `assert len(present) == 20` against a live standard-catalog DB (comment block :1838–1840). Fresh DB applies `migrations[1]` → 22 tables → red.
+2. `tests/v10/test_standard_application.py:67` (`EXPECTED_TABLE_COUNT = 20`) asserted at `:302` against `app.registry.tables` of the composed standard application — same failure.
+
+Also possibly affected: `artifacts/m4/finalizer-admission.json:118` records `"total_table_count": 20`; if any gate/harness compares regenerated evidence against this artifact, it needs a bump too (m4_gate scans m4 evidence artifacts). Correction: T2's edit list should read eight-plus homes (or the plan must justify why these two tests are exempt — I see no exemption; they compose the standard registry).
+
+**Verified correct:**
+- **T1:** publish sites exactly as claimed — `materialize_prepared` media.py:1794–1800, `_insert` :2156–2164 (both `publish_prepared_media` + `media_crash_point("repo.published")`), helper at media_import.py:938–949; `complete` tasks.py:3517, receipt gate :3628–3638; five production `import_prepared` callers confirmed at kit.py:712,732, references/conformance.py:158, shots/conformance.py:171, sdk/media.py:134,195. Note: `scripts/migrations/v10/migrate_media.py:9,117` are two more callers (one-shot script; harmless, but "five callers" is technically incomplete).
+- **T6:** `expire_overdue` defined tasks.py:2358; grep shows only test callers (`test_task_lifecycle.py`, `test_task_races.py`) — zero production callers confirmed. Sweeper site valid: `compose_standard_bridge` packs/__init__.py:199, `run_startup_staging_gc` :234.
+- **T7:** `staging_path` media_import.py:506 with frozen `.astrid/media/.staging/<txn_id>` layout; blender Content-Length pre-read precedent exactly at blender_render_server.py:298–305. Minor drift: plan's "`media_import.py:506-515`" for startup GC points at `staging_path`'s def; the GC lives in `run_startup_staging_gc`/collector ~:973–977. Cosmetic.
+- **T9:** `parse_request` override exists at local_bridge_server.py:188–192 (currently diagnostics hook — guard slots in cleanly); `_ALLOWED_HEADERS` :252; OPTIONS :856–860; do_POST :866–923; `make_local_bridge_handler` :171–174; `_dispatch_serve` core/gateway/dispatch.py:128 with `compose_standard_bridge` at :190.
+- **Test layout:** repo-root `tests/` confirmed; `tests/v10/test_crash_atomicity.py` exists with the E7 pattern (`UnitOfWork(..., on_statement=observer)` at :690); `tests/integrations/reigh/conftest.py` `tmp_bridge_root` :101 and `test_local_bridge_server.py` `repository_server` :220.
+- **T3 anchors:** heartbeat non-event precedent tasks.py:2202–2226; timeline `event_kinds` schema-pack.yaml:24–28; `ReceiptService.record` positive-`first_project_seq` requirement at core/receipts/service.py:362.
+
+Fix T2's edit list before tasklist freeze; nothing else blocks implementation.
+0

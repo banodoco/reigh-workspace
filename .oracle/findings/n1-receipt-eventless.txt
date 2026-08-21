@@ -1,0 +1,23 @@
+[launch_hermes_agent] model=stealth/ox-alpha → resolved=stealth/ox-alpha toolsets=['file', 'web', 'terminal'] max_tokens=65536 context_budget_tokens=(auto)
+[launch_hermes_agent] NOTE: omp gives the full toolset (Bash, Read, Edit, web, …); the file/web/terminal subset is a superset here.
+[launch_hermes_agent] cwd=/Users/peteromalley/Documents/reigh-workspace-oracle
+Working...
+## Findings (ranked)
+
+**1. The premise is false against ground truth: a Phase-A completion UoW cannot have zero events.**
+`TaskRepository.complete` (the one receipt-bearing UoW T7 reuses, per plan T7 "one receipt-bearing UoW"; doc 27 §5 steps 4–5, 8 are exactly this method) unconditionally appends:
+- one `core.task.completed` event (`astrid/core/repositories/tasks.py:3872-3885`), and
+- ≥1 hash-chained `core.media.imported` per output — `materialize_prepared` appends even on byte-dedupe/reuse (`astrid/core/repositories/media.py:1877-1898`), and outputs must be non-empty (`tasks.py:3961-3964`).
+Minimum two events; `first_project_seq` comes from `event_head_seq+1` (`tasks.py:3703-3708, 3890-3906`). Plan.md line 40's "exactly one append (`timeline.registry_merged`)" is wrong — E5's merge adds a third append on top of the kernel ones, never the only one.
+
+**2. No zero-event receipt form exists or is reachable.** `record` enforces positive `first/last_project_seq` (`receipts/service.py:362-364`), `CommandReceipt.__post_init__` repeats it (`service.py:172-177`), and `complete` already hard-fails if the transaction appended nothing (`tasks.py:3897-3904`). Heartbeat-style mutation-without-receipt (`tasks.py:2202-2226`) is the only event-less precedent and takes no receipt — correct precedent for `record_completion`'s generation rows.
+
+**3. Skipping the merge is legal and safe.** Doc 27 §5 step 7 makes the registry merge explicitly conditional ("when required for addressability"). A gallery-only generation is legal product state (§6: gallery reads `generations`, not the document); `rendering.timeline_visualize` outputs are consumed by media identity, not registry placement. With finding 1, the skipped merge leaves the receipt fully valid.
+
+**4. Requiring mandatory merge would violate the constitution** — ceremony with no consumer, and it couples every completion to one timeline document's head-CAS (contention for no correctness gain).
+
+## Recommendation
+
+No zero-event variant, no mandatory-merge rule: rely on the structural invariant (unconditional `core.task.completed` append + the `tasks.py:3897` guard), correct the wrong "exactly one append" premise in `.oracle/plan.md`, and add one named T12/T13 test proving a completion with `merge_registry` skipped yields a valid replayable receipt.
+[launch_hermes_agent] done in 274.3s (exit=0)
+0

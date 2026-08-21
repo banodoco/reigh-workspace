@@ -1,0 +1,24 @@
+## E7 Findings
+
+**1. Layout confirmed.** Tests live at repo-root `tests/`; nothing references `astrid/tests` (grep across `*.yml/*.toml/Makefile/*.md`: zero hits). Two lanes:
+- `tests/v10/` kernel lane (~60 files): registry/DB fixtures + crash matrix + journey proofs (`test_multi_task_journey.py`, `test_task_lifecycle.py`, `test_task_races.py`).
+- `tests/integrations/reigh/`: HTTP bridge tests only (`conftest.py`, `test_local_bridge_server.py` 2510 ln, `test_local_bridge_helpers.py` 1616 ln, `test_append_service.py`).
+
+**2. Key fixtures to reuse** (ranked):
+- `tests/integrations/reigh/conftest.py:100` `tmp_bridge_root` (tmp_path root); `:110` `seed_bridge_project`; `make_assembly_json`/`make_identity_json`/`make_registry_json` payload factories (`:43–93`); `read_bridge_*` accessors (`:219–239`).
+- In-process boot: `test_local_bridge_server.py:205` `running_server` (plain FS bridge) and **`:219` `repository_server`** — the pattern to copy: `compose_standard_bridge(projects_root)` injected into `create_local_bridge_server(bridge=…, writer=…, database_path=…)`, daemon thread `serve_forever`, port 0, teardown closes writer.
+- Kernel side: `tests/v10/conftest.py:39` `standard_registry`, `:59` `standard_database` (fresh `<tmp>/astrid.sqlite3`), `:73` `task_env` (writer+task repos), `:105` `media_env`.
+- Crash-matrix template: `tests/v10/test_crash_atomicity.py` — parent learns boundary set via `UnitOfWork(writer, on_statement=observer)` (`:690`); child re-executes module with `--child <db> <boundary> …` and `os._exit(137)` at boundary N (`:754–788`); `_crash_matrix` seeds one template DB, crashes a **fresh byte-identical copy per boundary**, asserts old-or-complete + hash-chain verify + `quick_check`/`foreign_key_check` (`:791–900`). This is the exact shape for `test_phase_a_fault_matrix.py`.
+
+**3. Fresh DBs:** two idioms — direct `DatabaseWriter(tmp_path/db.sqlite3, frozen_registry)` (v10 conftest), or bridge path: `compose_standard_bridge(root)` derives `${root}/.astrid/astrid.sqlite3` and runs restore-staging recovery + startup staging GC (`astrid/packs/__init__.py:199–231`). Both fully isolated via tmp_path.
+
+**4. Pytest conventions:** default 120 s/test hard timeout, SIGALRM method (`pyproject.toml:213–214`) — override with `@pytest.mark.timeout(N)` if needed. Registered markers (`:229–243`): `slow`, `integration`, `hermetic`, `opt_in`, etc.; none currently used in `tests/integrations/reigh` or the crash/journey files. CI: focused 120 s lanes then `timeout 900 python3 -m pytest tests/v10 -q` and `timeout 900 python3 -m pytest tests -q` (`.github/workflows/ci.yml:122–133`) — both new files are auto-collected under `testpaths = ["tests"]` (`pyproject.toml:218`). No tox.ini. Crash matrix is subprocess-heavy; budget it inside the 900 s gate (current matrix runs 4 commands × all boundaries within it).
+
+**5. Constraints for new files:** none blocking — just keep each test <120 s (or mark timeout), reuse existing fixtures rather than new conftest state, and match the `running_server` contextmanager style.
+
+**Corrected validation commands for `.oracle/agent_goal.md`:**
+```
+cd /Users/peteromalley/Documents/Astrid-oracle && python3 -m pytest tests -x -q
+python3 -m pytest tests/integrations/reigh -k journey -x -q
+```
+0

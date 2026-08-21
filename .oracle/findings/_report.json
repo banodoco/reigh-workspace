@@ -1,0 +1,171 @@
+{
+  "briefs_dir": ".oracle/briefs/explore",
+  "default_model": "stealth/ox-alpha",
+  "failed_count": 0,
+  "isolation": "threads",
+  "max_tokens": 65536,
+  "max_workers": 7,
+  "model_map": [],
+  "output_dir": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings",
+  "project_dir": "/Users/peteromalley/Documents/reigh-workspace-oracle",
+  "stopped_by_signal": false,
+  "succeeded_count": 7,
+  "sum_agent_seconds": 1639.346,
+  "task_timeout_s": 1800,
+  "tasks": [
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e1-completion-callgraph.md",
+      "elapsed_s": 213.499,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:05:23Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e1-completion-callgraph.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 51632,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2449,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e1-completion-callgraph.txt",
+      "started_at": "2026-08-21T23:01:49Z",
+      "status": "ok",
+      "stem": "e1-completion-callgraph",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e2-bridge-middleware.md",
+      "elapsed_s": 121.172,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:03:51Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e2-bridge-middleware.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 51631,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2487,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e2-bridge-middleware.txt",
+      "started_at": "2026-08-21T23:01:49Z",
+      "status": "ok",
+      "stem": "e2-bridge-middleware",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e3-multipart.md",
+      "elapsed_s": 216.593,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:05:26Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e3-multipart.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 51633,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2548,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e3-multipart.txt",
+      "started_at": "2026-08-21T23:01:49Z",
+      "status": "ok",
+      "stem": "e3-multipart",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e4-pack-manifest.md",
+      "elapsed_s": 480.509,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:09:50Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e4-pack-manifest.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 51637,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2852,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e4-pack-manifest.txt",
+      "started_at": "2026-08-21T23:01:49Z",
+      "status": "ok",
+      "stem": "e4-pack-manifest",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e5-registry-merge.md",
+      "elapsed_s": 245.204,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:05:55Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e5-registry-merge.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 51635,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2568,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e5-registry-merge.txt",
+      "started_at": "2026-08-21T23:01:49Z",
+      "status": "ok",
+      "stem": "e5-registry-merge",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e6-lease-liveness.md",
+      "elapsed_s": 188.848,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:04:58Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e6-lease-liveness.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 51634,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 2552,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e6-lease-liveness.txt",
+      "started_at": "2026-08-21T23:01:50Z",
+      "status": "ok",
+      "stem": "e6-lease-liveness",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    },
+    {
+      "brief": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/briefs/explore/e7-test-geography.md",
+      "elapsed_s": 173.521,
+      "error": null,
+      "error_class": null,
+      "finish_reason": null,
+      "finished_at": "2026-08-21T23:04:43Z",
+      "meta_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e7-test-geography.meta.json",
+      "model": "stealth/ox-alpha",
+      "pid": 51636,
+      "raw_result_keys": [
+        "stdout"
+      ],
+      "response_chars": 3266,
+      "response_file": "/Users/peteromalley/Documents/reigh-workspace-oracle/.oracle/findings/e7-test-geography.txt",
+      "started_at": "2026-08-21T23:01:50Z",
+      "status": "ok",
+      "stem": "e7-test-geography",
+      "task_timeout_s": 1800,
+      "tool_calls": 0
+    }
+  ],
+  "toolsets": [
+    "('file'",
+    "'web'",
+    "'terminal')"
+  ],
+  "total_count": 7,
+  "wall_clock_s": 480.517
+}
