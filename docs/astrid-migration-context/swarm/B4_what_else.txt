@@ -1,0 +1,40 @@
+# B4 — Remaining gaps for a shippable simple local Reigh
+
+**Scope truth:** timeline CAS save/load, discovery, asset serving (Range/ETag), polling, and client undo already work end-to-end against the real bridge. The product-shaped gaps are all in the generation/export/media/ops layers — exactly what the frozen bridge deliberately omits (09 §1/§6; 13 §7.2).
+
+## P0/P1/P2
+
+| # | Gap | Why it matters | Minimal must-do | Capability to reuse | Evidence paths |
+|---|---|---|---|---|---|
+| P0-1 | Local mode is DEV-only; boot hard-requires Supabase env | Prod build is statically dead — no shippable local app exists | Make bridge the only mode; don't throw when `VITE_SUPABASE_URL` absent; gate local session in prod | Bridge provider, discovery, 409 banner (working today) | `VideoEditorPage.tsx:409-423`, `bootstrap.tsx:60-145`, `createSupabaseClient.ts:14-47` |
+| P0-2 | No local generation/task wire: bridge has zero task routes; editor can't enqueue; `expire_overdue` unscheduled | "Local generation/task execution" is the core of the fixed scope — there is no path from editor to a local run | R1 task admission + SDK enqueue, same-host worker loop (claim→ExecutionService→complete), 300s lease sweep | Kernel tasks/attempts/outputs + claim/heartbeat/complete (04 §3.6–3.10; `core/repositories/tasks.py`; `core/task_executor/service.py`) | 18 §1–14, 19 §5–6, 14 §2–3; all [BUILD] |
+| P0-3 | Media ingest/output is cloud: uploads POST Supabase storage; gen outputs materialize via cloud upload | Local user cannot bring media in or keep outputs locally | Bridge media-import route or SDK import path; outputs → media tree via `prepare_media_file` | SHA-256 import/dedupe, copy-CAS, staging→atomic publish (`core/io/media_import.py`) | `imageUploader.ts`, `materializeLocalGeneration.ts`, 05 §3.3 |
+| P0-4 | Local export: `worker-banodoco` path needs JWT+projectId; local mode falls back to browser WebCodecs only | No reliable MP4 export off the cloud path | Wire Render button → Astrid Remotion render (or keep WebCodecs), add progress/cancel | `RenderService` + Remotion backend (`core/rendering/service.py`, `packs/rendering/backends/remotion/run.py`, H.264/ProRes) | `renderRouter.ts:700-784`, `useClientRender.ts` |
+| P0-5 | No one-command install; `dev:editor` runs a stub, injects dummy Supabase | Onboarding story absent; dev/prod divergence hides P0-1 | `astrid serve` + SPA served together; health-gated launcher script | `GET /health`, discovery poll, `real-bridge-serve.mjs`, `astrid-bridge-stub.mjs` | `package.json` scripts 13–14, 87–89 |
+| P1-1 | Secrets UX/redaction: keychain provider default `Null`; no SPA key settings; `explicit_env` unfiltered; ffprobe subprocess unsanitized | Provider keys unusable without env fiddling; `[INFERENCE]` key inheritance into media subprocesses | Enable OSKeychain default; SPA settings for provider keys; scrub child env everywhere | `credentials_scope.py`, `secrets.scrub_secret` (used in `util/http.py`), `subprocess_env.py` allowlist | `core/media.py:_ffprobe_metadata` raw `subprocess.run` |
+| P1-2 | Media metadata/thumbnails: import probe has no duration/dims; no thumbs | Editor needs duration/previews for clips | Wire ffprobe probe into import; generate poster frame | `core/media.py:MediaProbe/ffprobe_metadata` (unused by import) | `media_import.py:probe_media_file` |
+| P1-3 | Client lacks Range/ETag + idempotency | Large-file playback/reloads are unoptimized; duplicate saves unguarded | Add validators + `Idempotency-Key`; contract already has hidden derived key server-side | Server `_serve_resolved_asset` 206/304/416; stub Range | `bridgeContract.ts:1-144`, 09 §4/§5 |
+| P1-4 | Crash/error UX: bridge-down not surfaced (only editor 409 banner); typed error vocab is design-only | Local users need clear "start astrid serve" guidance | Toast bridge-down via discovery poll; map typed errors | 409→`TimelineVersionConflictError` banner; sonner toasts | 18 §2.3, `errorPresentation.ts` |
+| P1-5 | Model/node downloads: catalog is static YAML; no weight download | Local gen (wan_2_2_t2i slice) needs weights/Comfy nodes | Download/install CLI + prerequisite check in doctor | `model_catalog/models.yaml` (z-image/qwen/wan22/ltx local templates), `VibeComfyBackend` | roadmap Phase 2; `models.yaml` Ideogram "later" |
+| P1-6 | Backup exists but isn't exposed; excludes credentials; full-copy only | Users can't back up from the app | Surface `astrid backup` in settings; document credential exclusion | `core/backup/operations.py` (quick_check + atomic swap restore) | 04 §5 |
+| P1-7 | Cloud settings surfaces still mount in local session (Credits/Transactions/Sign-out/onboarding PostgREST) | Local UX shows dead cloud UI | Gate panes on session mode | `isLocalModeSession` exemption | `SettingsModal.tsx:100-143`, `useOnboarding.ts` |
+| P2-1 | Media GC/disk envelope: managed bytes never GC'd; 2 GiB/64 GiB staging limits design-only | Unbounded disk growth on local machines | Startup GC for unreferenced media + disk guard | Staging GC exists; soft-delete only (17 §5; 22 §5 defers hard-delete/GC) | 18 §7/§9/§14, 22 §6 |
+| P2-2 | Concurrency/portability: single-writer flock; concurrent tabs collide; macOS-only tested | Low-severity for single-user local | Document single-writer; second-tab read-only | Kernel exclusive lock, busy_timeout 5000 | 13 §9.8 |
+| P2-3 | Observability/update: no in-app version check/updater; kernel unpublished | Support/debugging weak | Version endpoint + doctor output in UI | `astrid doctor` (quick_check+FK+schema) | 20 08.9–10 |
+
+## Top five sequencing
+
+1. **P0-1 + P0-5**: prod local mode + one-command launch (everything else only testable here).
+2. **P0-2**: minimal task wire + same-host executor loop + `expire_overdue`; one family vertical slice (wan_2_2_t2i, roadmap Phase 2).
+3. **P0-3**: media import/output through the kernel (dedupe, metadata, thumbnails).
+4. **P0-4**: local export with progress/cancel; retire worker-banodoco from local.
+5. **P1-1/P1-4/P1-6**: secrets UX, bridge-down error UX, backup exposure — the "supportable" layer before ship.
+
+## False alarms / already covered
+
+- **Timeline bridge** (save CAS, 409, discovery, asset Range/ETag, polling): implemented + unit + real-bridge e2e (`AstridBridgeDataProvider.ts`, `real-bridge.spec.ts`; 09 §1).
+- **Append-service replacement**: local bridge save *is* the replacement; `append_service.py` stays Supabase-side and is unused locally.
+- **Event history/undo**: hash-chained events + `read_events` implemented (04 §4.1); client `useTimelineHistory.ts` covers single-user undo; kernel compaction not needed for MVP.
+- **Backup/restore, secrets redaction core, health checks, effects/transitions built-ins**: all implemented — only wiring/UX missing (P1 rows). DB-backed effect/sequence catalogs correctly go dark locally (`userId: null`).
+- **Cut scope** (auth/RLS/PATs, credits/Stripe, sharing, training, RunPod, SSE): correctly absent; not gaps.
+0

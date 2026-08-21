@@ -1,0 +1,47 @@
+All evidence gathered. Memo follows.
+
+---
+
+# B1 — Local realtime design for Reigh-on-Astrid (evidence memo)
+
+## Verdict
+
+Replace Supabase Realtime with **adaptive polling**, not SSE/WebSocket. Timeline: keep the existing **fixed 30 s bridge polling + CAS 409** untouched. Tasks/generations/status: **cursor-aware adaptive polling — 2 s while active work exists, 10 s idle, 30 s gallery** (ratified doc 15 Q7, doc 20 §18.8). Reject push: single writer on loopback, no correctness gain, no notify hook exists server-side. Do not build on SDK `subscribe_events` — it is Python-only, poll-based, and reads the legacy file store, not the kernel.
+
+## Current surface table
+
+| Surface | Today | Evidence |
+|---|---|---|
+| Realtime push | 1 channel `task-updates:<projectId>`; postgres_changes on `tasks` (I/U, project filter), `generations` (I/U/D, filter), `shot_generations`/`generation_variants` (I/U/D, no filter), `timelines` (I/U/D, filter); reconnect 1000→10000 ms ×5, subscribe timeout 10 s, batch 100 ms | `reigh-app/src/shared/realtime/RealtimeConnection.ts:195,223-289`; `types.ts:301-306` |
+| Freshness signal | Events → `dataFreshnessManager` marks query keys fresh → smart polling | `DataFreshnessManager.ts` (singleton); `useSmartPolling.ts:35-41` |
+| Smart poll | min 5 min (disabled by default), max **15 s** degraded, freshness 30 s, mobile ×2 | `useSmartPolling.ts:35-41,88-90`; DFM ladder 15/30/45/60 s disconnected |
+| Hard polls | pending generations **5 s**; pending segments **3 s**; active task clips **5 s** (staleTime 0); final-video 3 s; stale variants 15 s; source images 60 s | `usePendingGenerationTasks.ts:113-116`; `usePendingSegmentTasks.ts:113-119`; `useActiveTaskClips.ts:189-192`; doc 06 §3.10 |
+| Smart-polled queries | paginated tasks, status counts, project generations (background refetch on) | `useTasks.ts:181-200`; `useTaskStatusCounts.ts:247-259`; `useProjectGenerations.ts:449-465` |
+| Optimistic placeholders | `IncomingTasksContext`: local-only, 5 s sweep, 90 s TTL — no realtime | `IncomingTasksContext.tsx:119-140` |
+| Video-editor timeline | doc+registry **30 s** poll (`useTimelineQueries.ts:15,22`); discovery **3 s** while down/empty (`BRIDGE_DISCOVERY_POLL_MS=3000`, `useAstridBridgeDiscovery.ts:46`); poll adoption gated on idle/signature (`usePollSync.ts`); save 500 ms debounce, 500→8000 ms backoff, 10 s timeout (`bridgeContract.ts:11`); CAS 409 + lost-ack reload (doc 09 §4) |
+| Sync/divergence | IndexedDB `reigh.sync-ledger` (bookmarks spoke `app|local`, keep-both artifacts) + `reigh.timeline-drafts`; dialog on `both_advanced` (continue vs load-DB); `useEditorSync` gated `provider instanceof SupabaseDataProvider` | `syncLedgerIndexedDb.ts:3-6`; `timelineDraftIndexedDb.ts:16-18`; `TimelineSyncDivergenceDialog.tsx`; `useEditorSync.ts:49-57` |
+| Astrid SDK events | `read_events(project, run_id, …)` / `subscribe_events(…, follow=False, poll_interval=0.1, idle_polls=None)` — synchronous generator | `Astrid/astrid/sdk/events.py:49-56,80-89` |
+| Subscribe internals | `while True: read_event_stream(); yield new; time.sleep(poll_interval)` — **iterator-over-polling, not push**; reads legacy run `events.jsonl` + audit ledger, no cursor/after_seq | `Astrid/astrid/core/events/stream.py:82-110,46-49` |
+| Bridge | `ThreadingHTTPServer`; plain HTTP, polling-only; no SSE/WebSocket/EventSource anywhere; **no task routes** | `local_bridge_server.py:76-77,249-261`; scout grep; doc 09 §1/§6 |
+
+## Recommended mechanism/cadences
+
+**(1) Timeline edits/sync/divergence** — fixed polling, unchanged: 30 s doc+registry (`useTimelineQueries`), 3 s discovery while bridge down (`useAstridBridgeDiscovery`). Conflicts stay CAS 409 → `tryRecoverLostAck` reload-ack; poll adoption already rejects mid-edit/own-echo polls. Cut spoke/hub bookmarks, keep-both artifacts, `app-bookmark`/`app-divergence`, and the divergence dialog — those are multi-device semantics (doc 20 §13.7); a single local writer plus 409+draft-recovery fully covers it. Keep `reigh.timeline-drafts` for crash recovery.
+
+**(2) Tasks/runs/generations/status** — adaptive polling with cursor. Foreground: **2 s** for active-work queries (pending generations/segments, active clips, status counts, run progress — driven by "client has queued/running work"), **10 s** idle, **30 s** gallery/project reads. Background: pause non-active polls (keep `refetchIntervalInBackground` only for active-work), rely on `refetchOnWindowFocus` + 30 s cadence. Reconnect: bridge-down → existing 3 s health poll + smart-poll max 15 s for data; on healthy, full refetch and resume from last `project_seq` cursor. Failure: save backoff 500→8000 ms + watchdog banner (existing). Cursor primitive: kernel `events.project_seq` is gap-free and monotonic (doc 04 §3.4) — a `GET /projects/:slug/events?after_seq=` route would make polling lossless and cheap; **start without it** (pure Q7 polling, reads on read-only connection, doc 04 §2.4) and add it only if load demands. No SSE/WS: new server machinery for zero correctness gain; the cursor feed is the only future push-ish upgrade.
+
+## Reuse vs build
+
+**Reuse:** `DataFreshnessManager` + `useSmartPolling` (transport-agnostic — repoint the health signal), all timeline machinery (`AstridBridgeDataProvider` CAS/lost-ack, `usePollSync` gating, `useTimelinePersistence` backoff, 30 s/3 s cadences), `IncomingTasksContext` sweep, React Query keys, kernel gap-free seqs, R2 task-read contract (doc 18 §5).
+**Build:** a bridge-health → freshness signal replacing `onRealtimeStatusChange`; delete the postgres_changes channel wiring; new task-status read path per R2 (2 s/10 s), optional events-cursor route; adjust hard intervals 3–5 s → 2 s active/10 s idle per Q7.
+**Cut, don't recreate:** bookmarks/keep-both/divergence_log/`timeline_agent_sessions` realtime, cross-device sync — single-writer local makes them dead weight.
+
+## Risks / open facts
+
+- SDK `read_events`/`subscribe_events` are **not a browser surface**: Python-only, file-based legacy store, 0.1 s poll — cannot feed the app [INFERENCE: they read `EVENTS_FILENAME` in the legacy run dir, `sdk/events.py:21-45`, not the kernel `events` table].
+- `DataFreshnessManager` freshness currently keys off realtime events; without a bridge-health signal every smart-polled query parks at permanent 15 s degraded.
+- `EventAppendService` has no post-commit notify hook (`core/events/service.py`) — any push needs new server code.
+- `eventlog/sync_divergence.py` does not exist; the legacy module is `core/timeline/sync_divergence.py`.
+- `config_version` 0→1 first-load edge can trip poll adoption (doc 09 §9).
+- 2 s polling must stay bounded (R2 limit/cursor, read-only connections) to avoid the doc-14 "polling load" risk against the single writer.
+0

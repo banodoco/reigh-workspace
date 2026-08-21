@@ -1,0 +1,41 @@
+# B5 — Adversarial review: slots pack (placement + candidacy)
+
+## Reconstructed proposal
+
+Conversation (`openrouter_chat.txt:5039-5133`): one "slots" pack owning `slots` (typed ordered positions: `container_kind`/`container_id`/`kind`/`sort_key`, per-container unique) + `slot_candidates` (`media_id`, `source_task_id`, `ordinal`, `is_primary`, `starred`, `archived_at`; partial unique index, one primary per slot). Events: `slot.created/reordered`, `candidate.added/promoted/archived`. Editor's asset registry resolves slot → primary, so regenerate→promote updates the timeline for free. Workflow state moves to `runs`/`tasks.spec_json`; lineage to `media_relations`; `pool_id` clips as interim candidacy. The proposal's own closing caution (`:5130`): **don't build it yet**; extract when a second workflow needs project-level, cross-timeline candidacy.
+
+## Evidence test
+
+**Candidacy's lifecycle already exists and is already normalized.** Regeneration changes chosen bytes outside the editor; `useStaleVariants.ts` polls primary-per-generation into `primaryLocationMap`; promotion is generation-shaped (`usePromoteVariantToGeneration`, `loadPrimaryVariantForGeneration` in `useAddVariantAsGeneration.ts`). The ratified home is doc 17 §2/§3: `generation_variants` + `generation_one_primary` + `generation.primary_changed` — the generation family *is* the slot, variants *are* candidates. Pack-normalized candidacy, scoped to the one real composition. Doc 20 §8 Q8: generations earn aggregate streams for "independent primary/star/delete lifecycles"; "other local mutations lack demonstrated concurrency needs."
+
+**`pool_id` + registry cover the editor's actual need.** `pool_id` is "Banodoco-arrangement provenance," not a selection set (`types/index.ts:380`; doc 06 clip shape). But registry entries already carry `generationId`/`variantId`/`media_id` (`types/index.ts:539-559`; doc 09 §5); chosen bytes live in the document; stale-poll covers replacement. Nothing in the editor queries alternatives or crosses timelines today — document state answers everything.
+
+**The slots sketch recreates the monolith.** `slots.sort_key` is `shot_items` generalized — placement in the pack, fused with candidacy. That is precisely prod's `shot_slots`/`attempts`, which doc 15 Q1 archives and doc 17 §8.4 refuses to map. Doc 17 splits correctly: placement = `shot_generation_items` under the shot aggregate; candidacy = `generation_variants` under the generation aggregate. Doc 20 §17 Q1: a new pack "adds dependency complexity without an independent lifecycle." Current pack has no candidacy tables (`schema-pack.yaml`, `0001_initial.sql` — only `shots`/`shot_items`).
+
+**The cut is confirmed in code:** `usePairMetadata.ts`/`useSegmentMutations.ts` write workflow state into `shot_generations.metadata` — the exact fused monolith being deleted. The bridge stays single-document CAS, `bridge_mounts: []` (doc 17 §6.3).
+
+## Verdict
+
+**DEFER PACK.**
+
+## Minimal path
+
+Build the ratified shots v2 per doc 17, unchanged: `generations`, `generation_variants` (one primary, protected `'original'`), `shot_generation_items` (dual `timeline_frame`/`sort_key`), `GenerationRepository`, `generation.record_completion` atomicity (§5), 23-table gate bump. Timeline document (config + registry) stays placement's home via the frozen bridge. MVP data: kernel `media`/`tasks`/`runs`, shots v2 rows, timeline document. Omitted: `slots`/`slot_candidates`, candidate event vocabulary, container-kind generalization, cross-timeline queries, any bridge/registry change.
+
+## Promotion triggers
+
+Any one forces the slots pack:
+1. A second workflow atomically placing worker-completed candidates into a container that is **not** a generation family (rebuilt travel-between-images).
+2. A UI query the document can't serve: "all alternatives for this asset across timelines/project."
+3. A second composition sharing the candidacy primitive (doc 20 §8 Q1: funded owner + two end-to-end journeys).
+
+## Spec impact
+
+**No ratified spec changes.** Doc 17 §2/§3 and doc 20 §17 Q1/§8 Q8 already encode this deferral; the conversation's sketch contradicts them and is rejected. Optional: one line in doc 17 recording "slots generalization deferred + triggers." No change needed: docs 15 (Q1), 20 (Q1/Q8), 04, 09, 18, 19.
+
+## Counterargument / rebuttal
+
+**Counter:** Prod independently converged on slots/attempts — evidence the generalization is real. Candidacy as `generation_variants` bakes the "generation family" assumption in; a second container (board, montage) would fork the pack or force a migration. [INFERENCE: no such container is planned.]
+
+**Rebuttal:** Convergence was on the *shape* (position + alternatives + chosen primary) — satisfied by `generation_variants`. A future slot is a generation family referenced by any container; promotion is a forward-only shots v3, not a redesign [INFERENCE: cost ≈ one migration + one command set, same as doc 17 Q2/Q8 previews]. Doc 20 §8 Q1/Q13 exist precisely to block speculative packs, and Reigh is the first composition. Deferral buys: no unowned tables, no event vocabulary with no consumer, no second authority beside the document — while doc 17's v2 delivers every candidacy invariant the editor polls today.
+0
