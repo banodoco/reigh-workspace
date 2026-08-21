@@ -1,16 +1,17 @@
 # Astrid Migration Context — dossier index
 
-> **(Amended: Grok review — judged ADOPT.)** This directory separates binding decisions and current build authority from historical evidence. The migration is a fresh-start local product journey; legacy production/import material remains useful forensic context but is not implementation work.
+> **(Amended: Grok review — judged ADOPT; Amended: engineering-answers judgment.)** This directory separates binding decisions and current build authority from historical evidence. The migration is a fresh-start local product journey; legacy production/import material remains useful forensic context but is not implementation work.
 
 ## Current authority and reading order
 
-**(Amended: Grok review — judged ADOPT/MODIFY.)** Read in this order:
+**(Amended: Grok review — judged ADOPT/MODIFY; Amended: engineering-answers judgment.)** Read in this order:
 
 1. `15-owner-decisions-defaults.md`, `24-owner-decisions-round2.md`, `25-end-state-bold-statements.md`, and `grok/second-opinion-decisions.md` — the ratified constitution.
 2. `grok/simplicity-review.md` — the over-complication review; its item-by-item judgments are recorded in doc 22.
-3. `27-build-spec.md` — the sole current working build contract.
-4. `22-codex-roadmap.md` — the current A/B/C journey plan and verdict table.
-5. Docs 01–14, 16–21, 23, and 26 only when implementation needs their historical evidence or forensic detail.
+3. `28-engineering-answers-judgment.md` — head-to-head judgment of the two ten-question responses and the adopted `[INFERENCE]` amendments.
+4. `27-build-spec.md` — the sole current working build contract, amended with the adopted mechanisms.
+5. `22-codex-roadmap.md` — the current A/B/C journey plan and verdict tables.
+6. Docs 01–14, 16–21, 23, and 26 only when implementation needs their historical evidence or forensic detail.
 
 No lower-authority document may override the constitution. Where historical specs 16–19 conflict with doc 27, doc 27 controls.
 
@@ -47,12 +48,13 @@ No lower-authority document may override the constitution. Where historical spec
 | 25 | **Binding constitution** | `25-end-state-bold-statements.md` | Ten contradiction-testing end-state claims. |
 | 26 | Historical consultation | `26-task-model-recommendations.md` | Ratified task-model outcomes are carried into doc 27; old dual-ID/staging/phases are not. |
 | 27 | **Current build contract** | `27-build-spec.md` | Consolidated routes, two-table DDL, capability registry, worker client, vertical slice, custom path, and release criteria. |
+| 28 | **Judged engineering consultation** | `28-engineering-answers-judgment.md` | Per-question A/B comparison, decisive winner, adoption decisions, contradictions, and amendments carried into docs 27/22. |
 | G1 | Binding task-model decision | `grok/second-opinion-decisions.md` | Flat names, one binding, snapshots/templates, trimmed definitions, no aliases/plugins, leased parents. |
 | G2 | Judged review | `grok/simplicity-review.md` | Ten-item simplicity review; verdicts are in doc 22 §1. |
 
 ## Current product facts
 
-**(Amended: Grok review — judged ADOPT/MODIFY.)**
+**(Amended: Grok review — judged ADOPT/MODIFY; Amended: engineering-answers judgment.)**
 
 - One Astrid SQLite file is the only structured authority; the managed SHA-256 tree is authoritative for bytes.
 - The browser and one same-host worker use the loopback bridge; workers never open SQLite.
@@ -61,6 +63,11 @@ No lower-authority document may override the constitution. Where historical spec
 - Workers may admit allowlisted children only while holding the live parent fence; kernel ULIDs are the IDs.
 - Generations/variants are relational; placement lives only in the CAS-versioned timeline document.
 - Completion is atomic across task/attempt/output/media and optional generation/variant plus required registry visibility.
+- Verified bytes publish durably into CAS before the receipt-bearing SQLite transaction; Phase A fault-injects every crash window and permits only invisible byte orphans.
 - Render is an Astrid task producing a managed MP4; media is copy-only.
+- Model acquisition uses a separate resumable setup journal and is the only setup-only outbound-network exception; execution remains fully local and network-blocked.
+- Local trust adds a per-boot request capability, Host/custom-header checks, restrictive data permissions, bounded hostile-input handling, and a Comfy node allowlist—without accounts or tenancy.
+- The timeline envelope carries `doc_format`; representation changes and registry pruning remain measurement-gated behind one logical document/version/save route.
+- Capability conformance, Wan rollback, orchestrator interleavings, two hardware tiers, writer occupancy, and `refuse/degrade/queue` are explicit phase gates or measured policies.
 - Polling is 2s active, 10s idle, and 30s timeline; SSE is deferred.
 - The current implementation sequence is Phase A vertical slice, Phase B remaining local capabilities/orchestrators, Phase C app cutover/release.

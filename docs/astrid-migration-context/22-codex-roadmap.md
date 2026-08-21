@@ -1,6 +1,6 @@
 # Reigh + Astrid: one authority, one bridge
 
-> **CURRENT JOURNEY PLAN. (Amended: Grok review — judged ADOPT/MODIFY.)** The ratified constitution is docs 15, 24, 25, and `grok/second-opinion-decisions.md`. `27-build-spec.md` is the sole working build contract; older detailed specs are historical evidence.
+> **CURRENT JOURNEY PLAN. (Amended: Grok review — judged ADOPT/MODIFY; Amended: engineering-answers judgment.)** The ratified constitution is docs 15, 24, 25, and `grok/second-opinion-decisions.md`. `27-build-spec.md` is the sole working build contract; doc 28 records the engineering-answer judgment that amends this journey; older detailed specs are historical evidence.
 
 ## 1. Judgment on Grok's ten items
 
@@ -56,6 +56,15 @@ The browser admits by frontend `family`; the bridge resolves a flat capability w
 - Poll at 2 seconds active, 10 seconds idle, and 30 seconds for timelines. No SSE.
 - Preserve existing kernel events/ULIDs/single-writer mechanics and frozen timeline bridge errors; simplify only the new Reigh task surface.
 
+**(Amended: engineering-answers judgment)**
+
+- Completion durably publishes verified CAS objects before `BEGIN IMMEDIATE`; the receipt-bearing COMMIT is the only irreversible product-state point, and only invisible byte orphans are permissible after a crash.
+- The launcher supplies a boot-scoped local request capability; Host/custom-header checks, restrictive data permissions, path/parser limits, and a reviewed Comfy node allowlist harden loopback without accounts or tenancy.
+- Model acquisition is journaled outside product SQLite and is the sole setup-only outbound-network exception; generation and render never use an outbound fallback.
+- The timeline remains one logical document/version/save route; `doc_format` is a representation seam, and registry pruning or chunking requires measurements.
+- Capability changes use the checked taxonomy and per-capability fixtures in doc 27 §3.6; no plugin ABI, binding selector, or extra version field is implied.
+- Performance is measured on named floor/comfortable tiers; writer occupancy and `refuse/degrade/queue` are explicit release policy.
+
 ## 4. Phase A — vertical slice: local t2i plus render
 
 **(Amended: Grok review — judged ADOPT/MODIFY.)**
@@ -75,9 +84,17 @@ Prove the complete local architecture with the smallest production-shaped path b
 7. Admit `render_export` through R1, execute `rendering.timeline_visualize`, observe through R2, and play the managed MP4 in the browser.
 8. Wire 2-second active polling and immediate invalidation on admission, cancellation, and terminal observation.
 
+**(Amended: engineering-answers judgment)**
+
+9. Implement the pre-transaction durable CAS publication order and labeled crash/IO/full-disk/retry/dedupe invariant checker from doc 27 §5.
+10. Add the separate setup journal/state machine, signed artifact manifest, resumable verified install, doctor repair, and setup interruption fixtures from doc 27 §6.1.
+11. Add the local-trust gate and hostile-page/path/archive/parser/node fixtures from doc 27 §4.7.
+12. Stamp `doc_format: 1`; run the production-shaped document generator/save storm and collect the first floor-tier performance and writer-occupancy baseline. Registry prune remains disabled unless this evidence justifies it.
+13. Land the minimal typed capability registry/change taxonomy and Phase-A capability conformance fixtures; record boot/build manifest provenance on completion.
+
 ### Exit criteria
 
-The slice passes local success plus missing-model/node/ffmpeg, admission replay, changed-payload conflict, complete lost-ack replay, fence rejection, crash/lease expiry/reclaim, poisoned/truncated output, disk failure, queued/running cancel, concurrent editor-save versus registry-merge, and browser MP4 playback. Every atomicity failure yields the whole result or no authoritative result. Supabase and outbound-provider networking are blocked for acceptance.
+The slice passes local success plus missing-model/node/ffmpeg, admission replay, changed-payload conflict, complete lost-ack replay, fence rejection, crash/lease expiry/reclaim, poisoned/truncated output, disk failure, queued/running cancel (including cancel-during-publication), `astrid serve` restart, concurrent editor-save versus registry-merge, local-trust attacks, setup interruption/repair, and browser MP4 playback. The evidence table comes from a declarative fault schedule on the real t2i→gallery→timeline→render→Range journey; a bridge harness does not replace editor/browser acceptance. Every atomicity failure yields a full result or no authoritative result, DB→tree totality holds after recovery/retry, and no stale fence or silent document clobber is accepted. Supabase and task-execution/provider networking are blocked at the OS level. **(Amended: engineering-answers judgment)**
 
 ## 5. Phase B — remaining local capabilities and orchestrator children
 
@@ -96,10 +113,13 @@ Expand only after the Phase-A protocol and completion boundary are trustworthy.
 - Drop unread route-control contract blocks `[INFERENCE]`; retain handler-read `orchestrator_details` and only demonstrably used fallbacks.
 - Add join/travel production-shaped fixtures with the handlers they cover.
 - Add trimmed custom-workflow YAML, immutable snapshots, in-repo `ready_templates`, and one generic VibeComfy handler.
+- Gate Wan2GP changes through hermetic rebase, path/import/config contracts, supported-platform resolution, conversion fixtures, and fixed-seed output-shape/semantic comparison; drain-and-swap one binding and run the bounded N→N+1→N rollback drill. **(Amended: engineering-answers judgment)**
+- Make orchestration identity attempt-independent and plan derivation pure; check in the transition table, key lint, purity test, and deterministic-scheduler adversarial interleavings from doc 27 §9. **(Amended: engineering-answers judgment)**
+- Land each remaining capability with its representative conformance fixture and boot/build-manifest provenance. **(Amended: engineering-answers judgment)**
 
 ### Exit criteria
 
-Every advertised capability executes locally with one binding and truthful setup gating. Orchestrator crash/replay cannot duplicate children, browser callers cannot admit child-only families, parent leases recover, hard dependencies order work, and no handler uses a Supabase or outbound-provider path.
+Every advertised capability executes locally with one binding and truthful setup gating. Orchestrator crash/replay cannot duplicate children across attempt changes, browser callers cannot admit child-only families, parent leases recover, hard dependencies order work, and every scheduler interleaving yields one child per deterministic key plus one parent terminal transition. Wan rollback preserves queue/output/provenance integrity, and no handler uses a Supabase or outbound-provider path. **(Amended: engineering-answers judgment)**
 
 ## 6. Phase C — application cutover and release
 
@@ -117,6 +137,7 @@ Make the supported product bridge-only and retire legacy runtime paths.
 - Keep gallery reads bounded; measure document size and gallery delivery before considering paging or a variants route.
 - Remove account/billing/sharing/training/agent-session, provider, cloud fleet, Supabase, importer, and rollback UI/code paths.
 - Run clean-install and upgrade acceptance with Supabase/provider networking blocked.
+- Prove the SQLite + managed-tree + hash-manifest backup/restore round trip and run calibrated p95/writer-occupancy budgets on both controlled hardware tiers. **(Amended: engineering-answers judgment)**
 
 ### Exit criteria
 
@@ -145,6 +166,16 @@ References, evidence, understanding, existing kernel events, backup/restore, and
 | Timeline JSON or gallery delivery grows poorly | Measure representative projects; add projection/paging only after observed limits. |
 | Simplified errors hide diagnosis | Keep five public new-route categories and detailed local structured logs; preserve frozen timeline/CAS errors. |
 
+**(Amended: engineering-answers judgment)** The first mitigation above means durable install-if-absent CAS publication **before** `BEGIN IMMEDIATE`, then an O(stat)-only receipt-bearing transaction; the Phase-A crash matrix checks DB→tree totality and reports but does not collect CAS orphans. Additional adopted risk controls are:
+
+| Risk | Mitigation |
+|---|---|
+| Loopback is reached by a hostile page/process | Per-boot request capability, strict Host/custom-header/CORS gate, 0700/0600 posture, path/parser bounds and Comfy node allowlist. |
+| Setup is interrupted or advertises corrupt artifacts | Separate resumable setup journal, signed hash/size/license manifest, atomic install and doctor repair; acquisition only in setup mode. |
+| Document/registry growth occupies the writer | `doc_format`, production-shaped generator, p95/p99 and occupancy measurement; prune only after reference-safety proof. |
+| Arbitrary performance guesses become promises | Treat doc 27 §7.2 budgets as `[INFERENCE]` until floor-tier baseline; publish calibrated `refuse/degrade/queue` behavior. |
+| Future-proofing recreates cut machinery | Apply doc 27 §10's seven invariants and “name the row”; preserve existing events but add no universal event or remote-transport test surface. |
+
 Production-schema drift, archive loss, provider-secret handling, fleet scaling, and rollback leakage are not active delivery risks because those futures are cut from the supported journey.
 
 ## 9. First actions
@@ -152,5 +183,7 @@ Production-schema drift, archive loss, provider-secret handling, fleet scaling, 
 **(Amended: Grok review — judged ADOPT.)**
 
 1. Land the local availability matrix and code-based completion-effects note.
-2. Implement the two-table pack migration plus the atomic completion UoW.
-3. Prove the Phase-A `wan_2_2_t2i` and render slice through doc 27's minimal protocol.
+2. Implement the separate setup journal/doctor and the local-trust gate. **(Amended: engineering-answers judgment)**
+3. Implement the two-table pack migration plus pre-transaction CAS publication and the atomic receipt-bearing UoW. **(Amended: engineering-answers judgment)**
+4. Land `doc_format`, the document/performance baseline, writer-occupancy instrumentation, and the Phase-A capability fixtures. **(Amended: engineering-answers judgment)**
+5. Prove the adversarial Phase-A `wan_2_2_t2i` and render journey through doc 27's minimal protocol and crash matrix. **(Amended: engineering-answers judgment)**
