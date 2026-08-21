@@ -27,6 +27,8 @@ Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker
 | 17 | `17-pack-v2-ddl.md` | Shots-pack v2 schema spec: `generations`/`generation_variants`/`shot_generation_items` DDL in kernel conventions (ULIDs, CHECKs, one-primary-per-generation, unique media), repositories + events + registry vocabulary + SDK/CLI additions, Postgres-column parity notes. |
 | 18 | `18-bridge-route-schemas.md` | Normative HTTP schemas for the bridge extension: R1–R12 (task admission, queue/claim, fenced attempt lifecycle, media content Range/ETag, content reads), error vocabulary incl. fence/idempotency codes, zod additions for `bridgeContract.ts`, serve-side lease-expiry loop. |
 | 19 | `19-worker-diff.md` | Exact worker cutover spec: per-file diff (today's transport calls → bridge client calls), BridgeClient + LeaseKeeper design, env changes, keep/delete lists, server-side atomic completion service (single BEGIN IMMEDIATE), T1–T12 test plan. |
+| 20 | `20-codex-recommendations.md` | Codex (GPT-5.6 Sol) recommendations on ALL open questions in the corpus (87 answered, grouped by source doc): archive-not-import slots, active-projects-only migration, same-host workers, referenced-media-only + cold archive, polling, `shots` v2 not new pack, atomic completion mandatory, enumerated capabilities; top-5 leverage decisions; one override of doc 15 (cold-archive unreferenced bytes pre-destroy). |
+| 21 | `21-codex-knowledge-gaps.md` | Codex meta-consultation: what is still missing to be a thorough decider — P0/P1/P2 gap list (live-authority snapshot, deployed completion path, retained-capability decision, generation/editor authority model, atomic-completion spike, cutover corpus policy, executable parity proof, etc.) + the 3 things to obtain first. Also corrects doc 08: `Astrid/docs/astrid-v10-implementation-decisions.md` EXISTS (commit `b362a0bb`) — doc 08's "absent" claim is stale. |
 
 ## Top 15 Key Facts
 
@@ -60,6 +62,8 @@ Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker
 10. **`types.ts` freshness**: doc 01 calls the 2026-05-19 snapshot stale; doc 06 worked from it as "appears current". Treat live DB (doc 07) as ground truth. [01 vs 06]
 
 Full open-questions list (numbered, decision-worthy): see **13-migration-context.md §10**.
+
+**Correction (Codex, doc 21):** `Astrid/docs/astrid-v10-implementation-decisions.md` is NOT absent — it exists, committed `b362a0bb` (2026-08-21), and records SD1–SD3 + the schema-pack contract. Doc 08 §7's "absent" claim is stale; the artifact should be integrated into the dossier. [21 §Preamble]
 
 ## Where the Deep-Dives Live
 
