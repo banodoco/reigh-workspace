@@ -1,3 +1,5 @@
+> **HISTORICAL CONSULTATION — superseded for build work by `27-build-spec.md`. (Amended: Grok review — judged ADOPT.)** Ratified outcomes survive through docs 15/24/25 and doc 27; importer, archive, provider, generation-stream, and broad protocol recommendations below are evidence, not journey authority.
+
 ## 08 — Unified-model prior art §5
 
 ### Strategic/prior-art

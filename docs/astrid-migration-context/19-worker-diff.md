@@ -1,5 +1,9 @@
 # 19 — Worker + Orchestrator Cutover: Exact Diff onto the Bridge Claim Protocol
 
+> **SUPERSEDED by `27-build-spec.md` (Grok review, judged ADOPT).** Historical transport inventory and per-file evidence only; it is not a working build contract.
+>
+> **(Amended: Grok review — judged ADOPT.)** Run one worker process beside `astrid serve`; do not port `api_orchestrator`, Fal/Wavespeed handlers, an executor-heartbeat route, or queue summary. The worker uses claim/heartbeat/multipart-complete/fail plus a small heartbeat-vs-terminal mutex; there is no standalone start/output call or exposed staging transaction. Kernel ULIDs are authoritative, fenced executor-only child admission remains, and contract-block fixtures are dropped where handlers do not read them `[INFERENCE]`. Day-one tests are the production-shaped `wan_2_2_t2i` slice plus missing-model, replay, fence, crash/expiry, poisoned-output, and cancel; join/travel/orchestrator fixtures move to Phase B. Thumbnails are deferred and completion never writes shot placement.
+
 > **Phase-1 design artifact.** Specifies the worker-side changes to move `reigh-worker/` and
 > `reigh-worker-orchestrator/` from the Supabase claim/status/upload transport onto Astrid's
 > fenced attempt protocol (doc 14 §3). This doc names every replaced function, every new
@@ -118,6 +122,8 @@ decision in `server.py:936-990`. Worker entrypoints: `worker`/`run_worker` → `
 
 ## 2. Target wire protocol (from doc 14 §3, restated as the client contract)
 
+> **(Amended: Grok review — judged ADOPT/MODIFY.)** The table below is historical. Doc 27 keeps claim/heartbeat/multipart-complete/fail, drops start/outputs/queue-summary/executor-heartbeat, requires keys only on complete/fail, and exposes only minimal conflict details while preserving the child gate and lease expiry.
+
 Base: `ASTRID_BRIDGE_URL` (see §4). All bodies JSON; errors are the bridge envelope
 `{"error": "<code>", "detail": "..."}` (bridge convention,
 `Astrid/astrid/core/integrations/reigh/bridge_service.py:BRIDGE_ERROR_ENVELOPE_KEYS`).
@@ -177,6 +183,8 @@ Convention: **today's function(s)** → **new function(s)**; "delete" = remove e
 | `upload_and_get_final_output_location` / `resolve_final_output_location` | local passthrough | Keep (local output path until staging) |
 
 ### 3.4 `reigh-worker-orchestrator/` — API orchestrator
+
+> **(Amended: Grok review — judged ADOPT.)** Delete this process and its Fal/Wavespeed handlers; do not port it. Former API-run-type local capabilities move behind the one worker's VibeComfy binding.
 
 | File | Function | Becomes |
 |---|---|---|
@@ -415,6 +423,8 @@ composition of task + pack mutations is **[INFERENCE]** consistent with `UnitOfW
 
 ## 7. Keep-list vs delete-list (deliverable 4)
 
+> **(Amended: Grok review — judged ADOPT.)** Current disposition: **keep** TaskRegistry and retained local WGP/VibeComfy handlers, HeadlessTaskQueue/process execution, parameter/media/output conversion needed locally, fatal-category handling, cleanup/local layout, local preflight/status, one worker entrypoint, and the heartbeat-versus-terminal mutex. **Delete** every Supabase edge/PostgREST/storage path, client retry/requeue counters, phantom recovery, task-counts, signed/base64 uploads, worker/system-log heartbeat RPC, optional executor-heartbeat route, v1 queue summary, route-selector/billing machinery, the entire API orchestrator including Fal/Wavespeed, fleet autoscaling, and any second bridge client. **Defer** thumbnails and queue summary. The older lists below are historical inventories.
+
 ### Keep (no change, or local-only change)
 
 | Item | Where | Note |
@@ -446,6 +456,8 @@ composition of task + pack mutations is **[INFERENCE]** consistent with `UnitOfW
 ---
 
 ## 8. Test plan (deliverable 6)
+
+> **(Amended: Grok review — judged ADOPT.)** T1–T12 below are historical inventory. Phase A is one `wan_2_2_t2i` success path plus `capability_unavailable`, admission/complete replay, fence, crash/expiry/reclaim, poisoned-output atomic rejection, and queued/running cancellation; use one deterministic mutex test, not a 50× race. Join/travel/orchestrator/dependency cases move to Phase B.
 
 All against the real bridge + kernel (`astrid serve` on a scratch projects root), one worker
 process or a test double implementing `BridgeClient`. Failure semantics asserted: fences reject

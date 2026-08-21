@@ -1,5 +1,9 @@
 # 17 — Shots Pack v2: Generations / Variants (DDL + Repositories + Events)
 
+> **SUPERSEDED by `27-build-spec.md` (Grok review, judged ADOPT).** Historical DDL/repository design evidence only; it is not a working build contract.
+>
+> **(Amended: Grok review — judged ADOPT.)** V1 adds exactly `generations` and `generation_variants`, retaining the one-primary partial unique index, unique media membership, `media` RESTRICT, soft delete, and atomic task completion. It does **not** add a per-generation event stream, nine event kinds, ten receipt-heavy commands, importer/replay keys, or a table-count conformance gate. `record_completion` is part of the task completion UoW and receipt; star/primary/delete are small writer-serialized pack commands. Existing `shots`/`shot_items` remain dormant and document-native placement remains the only Reigh placement authority. Thumbnails are a later cheap local task, not Phase-1 schema or a URL column.
+
 > **Amended (doc 24 Q1):** Pack v2 owns relational generation identity and media membership only. Shot groups, pools, timing, and boundary overrides are document-native and are not represented by placement tables, commands, or events.
 
 **Design spec for the pack migration that gives Reigh's content estate an Astrid-native home.** Extends the existing `shots` schema pack (`Astrid/astrid/packs/shots/`, currently migration version 1 with tables `shots`, `shot_items`) with a forward-only migration v2 creating two new owned tables — `generations` and `generation_variants` — plus the receipt-backed `GenerationRepository`, new registry vocabulary (stream type `generation.generation`, 9 event kinds, 10 command kinds), a `generations` SDK service + `media generations` CLI mount, and an atomic task-completion → generation command. Every table/command follows kernel conventions verified in `04-astrid-sqlite-schema.md` and the existing pack sources: lowercase Crockford ULID PKs, ISO-8601-UTC TEXT timestamps, DDL `CHECK`s for booleans and `json_valid`, pack FKs pointing inward to the kernel only, per-aggregate event streams, hash-chained events, and one `command_receipts` row per command with replay-first idempotency. Credits, auth, sharing, the slot system (`attempts`/`shot_slots`), and Postgres denormalizations are deliberately NOT modeled (binding owner decisions, docs 15 and 24 Q1).
@@ -172,6 +176,8 @@ Thumbnails are not placement state and do not return as a relational URL column.
 
 ## 3. Vocabulary additions (registry)
 
+> **(Amended: Grok review — judged ADOPT.)** This section is superseded historical design. V1 adds no per-generation stream/event/command vocabulary; task completion's existing receipt/UoW is the atomicity record, and small generation mutations serialize through the writer without extending the event registry.
+
 > **Amended (doc 24 Q1):** Placement events and commands are removed; timeline-document vocabulary owns shot-group edits.
 
 Namespaced dotted names, all declared by pack `shots` in `schema-pack.yaml`. Validation: `_NAMESPACED_NAME_RE` (`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`), registry uniqueness, aggregate-rule agreement at append time (`events/registry.py`).
@@ -215,6 +221,8 @@ Namespaced dotted names, all declared by pack `shots` in `schema-pack.yaml`. Val
 ---
 
 ## 4. Repository design
+
+> **(Amended: Grok review — judged ADOPT.)** The event-sourced repository below is not built for v1. Implement bounded reads plus only the small writer-serialized star/primary/soft-delete/needed variant-metadata operations; DDL constraints and the single writer enforce the surviving invariants.
 
 ### 4.1 `GenerationRepository` (`astrid/packs/shots/generation_repository.py`)
 
@@ -323,6 +331,8 @@ Wire-up: `astrid/sdk/client.py` gets a `generations` property (→ `self._app.ge
 ---
 
 ## 7. Import/replay notes (future phase, design guardrails)
+
+> **(Amended: Grok review — judged ADOPT.)** Historical evidence only. Fresh start removes importer/replay keys, deterministic legacy-ID mapping, production exports, and replay ordering from the journey.
 
 > **Amended (doc 24 Q1):** Any future replay maps generation/variant rows only; placement belongs in the timeline document rather than an import receipt family.
 

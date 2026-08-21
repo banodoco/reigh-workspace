@@ -1,5 +1,9 @@
 # 16 — Reigh Task Capability Map (for `ReighTaskBridgeAdapter`)
 
+> **SUPERSEDED by `27-build-spec.md` (Grok review, judged ADOPT).** Historical payload and resolver evidence only; it is not a working build contract.
+>
+> **(Amended: Grok review — judged ADOPT.)** Kernel ULIDs are the only task IDs; there is no worker UUID/logical-ID cache or dependency rewrite. Worker-child families are admitted only through R1 by the live fenced parent executor using deterministic `reigh.orch:v1:<parent>:<role>:<index>` keys; browser admission is forbidden. Day-one coverage is one production-shaped `wan_2_2_t2i` slice plus missing-model, admission/completion replay, fence, crash/expiry, poisoned-output, and cancellation cases; join/travel fixtures move to Phase B. Placement is timeline-document CAS state, thumbnails are later work, and the `shots` pack is dormant as a Reigh authority. `[INFERENCE]` Repository search found no handler reads of `orchestration_contract`, `task_view_contract`, or `family_contract`, so those legacy contract blocks are not part of the surviving build contract; retain `orchestrator_details`, which handlers do read.
+
 **(Amended doc 26/Grok)** Naming ratified: flat `reigh.<normalized>` IDs are final; semantic taxonomy as capability naming is rejected and remains catalog metadata only per Grok's second opinion and doc 26.
 
 **Phase-1 design spec — READ-ONLY research; no implementation. Prepared 2026-08-21.**
@@ -347,6 +351,8 @@ Params: `seed` (baseSeed+index), `image`, `prompt`, `klein_model`, `strength`, `
 
 ### 3.14 Worker passthrough (`workerPassthrough.ts`) — allowlist-backed
 
+> **(Amended: Grok review — judged ADOPT.)** The table below records the old payload. In the surviving contract the worker uses the kernel ULID returned by R1 as the task ID and puts kernel ULIDs directly in `dependant_on`; there is no pre-generated UUID, logical-ID cache, alias, or rewrite map.
+
 | input field | type | req | notes |
 |---|---|---|---|
 | `task_id` | string | O | worker pre-generated id; must be honored as the **logical** task id so sibling `dependant_on` references resolve; adapter maps to the kernel ULID after admission |
@@ -417,6 +423,8 @@ Live probe 2026-08-21 (`SELECT name, run_type, category, is_active, tool_type FR
 
 ## 6. Unknown-family passthrough → code-declared allowlist (proposal)
 
+> **(Amended: Grok review — judged ADOPT.)** This is an executor-child allowlist, not a public fallback. R1 accepts these families only with a live leased-running parent, matching executor/attempt/lease/fence, and deterministic `reigh.orch:v1:<parent>:<role>:<index>` key; browser/frontend requests are forbidden before any row is written.
+
 Doc 14 §2: "Unknown-family passthrough becomes a code-declared capability allowlist; the current `task_types` database is not migrated." Today the index falls back to `SELECT name FROM task_types WHERE name = family AND is_active = true` then `createWorkerPassthroughResolver(family)` (create-task/index.ts). Proposal — a frozen constant in the adapter, per entry: `{ task_type, capability, category, run_type }`:
 
 | allowlist entry (task_type = family) | capability | category (output_policy driver) | origin / writer |
@@ -432,6 +440,8 @@ All five worker-created child types observed live in `add_task_to_db` calls: `jo
 ---
 
 ## 7. Golden-test fixture list (one per payload shape, expected kernel rows)
+
+> **(Amended: Grok review — judged ADOPT.)** The A–N table is historical coverage inventory. Phase A runs only one production-shaped `wan_2_2_t2i` slice plus missing-model, replay/lost-ack, fence, crash/expiry, poisoned-output, and cancellation evidence; join/travel fixtures C/D/E/I/M move to Phase B. `[INFERENCE]` Drop `orchestration_contract`, `task_view_contract`, and `family_contract` from active fixtures because repository search found no handler reads; retain handler-read `orchestrator_details`.
 
 Shapes A–I correspond to doc 10 §3.3 examples A–I; J–N cover the remaining families. Each fixture = request → expected kernel rows. `project_id` is a kernel project ULID; ids are ULIDs; `spec_json.params` shown summarized (must match §3 exactly). All tasks: `priority=0`, `max_attempts=3`, `available_at=now`, status `queued` (deps) / `blocked` (with deps).
 

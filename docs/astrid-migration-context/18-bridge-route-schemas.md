@@ -1,5 +1,11 @@
 # 18 — Bridge Route Schemas: Task, Queue, Attempt, Media, Content Reads, and Render
 
+> **SUPERSEDED by `27-build-spec.md` (Grok review, judged ADOPT/MODIFY).** Historical route-design evidence only; it is not a working build contract.
+>
+> **(Amended: Grok review — judged ADOPT.)** The executor protocol is claim (creates a leased `running` attempt) / heartbeat / multipart complete / fail. Standalone start and outputs routes, upload/staging indirection, queue summary, executor heartbeat, standalone render routes, and project-wide/nested variants routes are not v1 surfaces. Render admits through R1 and reads/cancels through common task routes; lease expiry and the executor-only child gate remain.
+>
+> **(Amended: Grok review — judged MODIFY.)** New-route idempotency is required only on R1 admission and complete/fail; claim returns work or `204`, and heartbeat has no key. New-route errors collapse to `invalid_body`, `not_found`, `conflict`, `capability_unavailable`, and `payload_too_large`, with only minimal fence extras. Existing frozen timeline/CAS errors and the explicit executor-only `child_admission_forbidden` boundary are preserved rather than silently renamed.
+
 **Context doc 18 — normative HTTP schemas for the new bridge routes (tasks, queue/claim, attempts, media, content reads, render/export), phase-1 design artifact for the Reigh→Astrid migration.**
 Researched 2026-08-21. Sources: `docs/astrid-migration-context/09-astrid-bridge.md` (frozen wire contract), `Astrid/docs/contracts/astrid-bridge-v10.md` (normative contract), `Astrid/astrid/core/integrations/reigh/local_bridge_server.py` + `bridge_service.py` + `astrid/packs/timeline/bridge.py` (implemented server), `reigh-app/src/tools/video-editor/data/bridgeContract.ts` (client zod artifact), `docs/astrid-migration-context/14-codex-migration-design.md` §2/§3 (the contract being spec'd), `15-owner-decisions-defaults.md` (binding scope), `04`/`05` (kernel schema + SDK), `10` (create-task resolvers), `12` (Reigh lease/retry), `06` (frontend read surfaces). Docs 16/17 were not yet written at research time; this doc is written to be compatible with the doc-14 §4 content-pack DDL and the doc-13 §7.3 bridge-first strategy. **DESIGN SPEC — read-only, no implementation.**
 
@@ -41,6 +47,8 @@ Key facts:
 - Canonical-JSON bounds apply to every payload that reaches a repository command: 1 MiB in / 4 MiB out / depth 100; a payload that cannot canonicalize → `422 schema_incompatible` with `issues[]` (existing `_validate_save_payload_schema` pattern).
 
 ### 2.3 Error envelope and vocabulary (frozen ∪ new)
+
+> **(Amended: Grok review — judged MODIFY.)** Preserve frozen timeline/CAS errors. For new task/executor/content routes, doc 27 reduces the public vocabulary to `invalid_body`, `not_found`, `conflict`, `capability_unavailable`, and `payload_too_large`, plus the explicit executor-only child-admission boundary; repository-specific fence reasons remain internal.
 
 Frozen codes (unchanged; `bridge_service.py` error classes): `400 invalid_body | invalid_config | invalid_registry | invalid_expected_version | invalid_project | invalid_timeline`; `404 project_not_found | timeline_not_found | asset_not_found | asset_not_local`; `409 timeline_version_conflict` (+`config_version`); `422 schema_incompatible` (+`issues[]`); `500 internal`; `404 not_found` (unknown route).
 
@@ -86,6 +94,8 @@ New codes this spec adds (same envelope shape, status-specific extras):
 Fence `409` extras: every fence code adds `"attempt": {"attempt_id", "attempt_no", "status", "status_version", "lease_id", "lease_expires_at", "heartbeat_counter", "last_heartbeat_at"}` (the **current** attempt read model) so the client can resync/retry without a second round trip — the same "re-read current head on conflict" pattern as `timeline_version_conflict`'s `config_version` (contract §6.2). `attempt_budget_exhausted` additionally carries `"max_attempts": <int>`.
 
 ### 2.4 Idempotency (new header semantics)
+
+> **(Amended: Grok review — judged ADOPT.)** Doc 27 requires keys only for R1 and complete/fail. Claim is an unreceipted work-or-`204` operation and heartbeat remains unreceipted.
 
 - **Header:** `Idempotency-Key: <key>` on every state-changing request except heartbeat (doc 14 §3). Key grammar: printable ASCII, 1–200 chars; the server does not generate keys for these routes (unlike the hidden save key on `…/save`, which stays derived and unchanged).
 - **Commit semantics:** the key is passed into the repository command's caller-key slot, so the commit writes one `command_receipts` row under `(project_id, key)` with `request_hash` = SHA-256 of the canonical `{command_kind, request-minus-generated}` (`astrid/core/receipts/canonical.py`). Replay with the same key returns the stored result — `200` — with zero new rows.
@@ -263,6 +273,8 @@ Query: `?status=queued|blocked|running|succeeded|failed|cancelled` (repeatable),
 
 ## 6. R3 — Fenced claim: `POST /queue/claim`
 
+> **(Amended: Grok review — judged ADOPT.)** Claim now creates the attempt directly as leased `running`, has no idempotency key/receipt, and returns work or `204`. The `claimed` response and lost-ack claim replay described below are superseded.
+
 Adapter: `ExecutorBridgeAdapter` → `[BUILD]` capability-aware cross-project claim (doc 14 §3: kernel `TaskRepository.claim` is currently **project-scoped** and cannot filter by capability; the claim service adds the allowlist and iterates claimable projects in deterministic order).
 
 Header: **`Idempotency-Key` (required).** Body:
@@ -307,6 +319,8 @@ No eligible work (capability ∩ queue empty, `available_at` in future, or hard 
 `400 invalid_body/invalid_executor/invalid_capabilities/invalid_lease_seconds`; `409 idempotency_mismatch` (replay of a *won* claim returns the stored `{task, attempt}` — never re-claims); `413 payload_too_large`; `500 internal`. Note: a replayed claim key whose original request won must **not** claim again; replay correctness is the lost-ack test doc 14 §3 calls out.
 
 ## 7. R4 — Start: `POST /tasks/:task_id/attempts/:attempt_no/start`
+
+> **(Amended: Grok review — judged ADOPT.)** Route removed. Claim already creates the leased running attempt.
 
 Adapter: `ExecutorBridgeAdapter` → `TaskRepository.start` (kernel fence: attempt must belong to the task, be `claimed`, `lease_id` match, exact `status_version`; `tasks.py:1982-2198`), then allocate the attempt's staging quota.
 
@@ -366,6 +380,8 @@ Adapter: `ExecutorBridgeAdapter` → `TaskRepository.heartbeat` — the kernel's
 
 ## 9. R6 — Outputs (staged quarantine): `POST /tasks/:task_id/attempts/:attempt_no/outputs`
 
+> **(Amended: Grok review — judged ADOPT.)** Route removed. Complete is multipart and carries files, fence, and manifest in one request; server-side request quarantine is not exposed as a protocol object.
+
 Adapter: `ExecutorBridgeAdapter` → attempt-scoped staging writer: bytes stream to the attempt's quarantine dir (created at start), recorded in `progress_json` (staged-file ledger) inside the same writer transaction as the receipt. Doc 14 §3: "Streams output into attempt/lease-scoped quarantine." Request is **`multipart/form-data`** (the only non-JSON route; mirrors the editor's eventual upload needs — doc 14 §4 `POST /projects/{slug}/media` is the separate general-upload route, out of scope here).
 
 Header: **`Idempotency-Key` (required).** Parts:
@@ -393,6 +409,8 @@ Header: **`Idempotency-Key` (required).** Parts:
 - Errors: `400 invalid_body/invalid_lease_id/invalid_status_version`; `400 invalid_staged_outputs`; `404 task_not_found/attempt_not_found`; `409` fences (with `attempt` extra); `409 idempotency_mismatch`; `413 payload_too_large`; `500 internal` (disk/write failures → typed, no partial-commit exposure).
 
 ## 10. R7 — Complete: `POST /tasks/:task_id/attempts/:attempt_no/complete`
+
+> **(Amended: Grok review — judged ADOPT.)** Complete is `multipart/form-data`: fence/manifest JSON plus raw files. The server hashes the files and enters one `BEGIN IMMEDIATE`; `staging_key`, `staging_txn_id`, and prior upload URLs are not part of the surviving contract.
 
 Adapter: `ExecutorBridgeAdapter` → **one atomic Reigh completion service** (doc 14 §3, `[BUILD]`): in one `BEGIN IMMEDIATE` — verify/prepare staged bytes → `TaskRepository.complete` (fenced) → insert `task_outputs` + managed `media` + `media_locations` + `media_relations` lineage → create/update the generation projection when requested → perform any required internal evented timeline asset-registry merge against the current head. Replaces Reigh's multi-step `complete_task` (upload→generation→task row→billing); **no billing step** (credits cut, doc 15). **Amended (doc 24 Q1/Q4):** no placement row or implicit shot-group/pool mutation occurs here; a render completion follows the same transaction with `create_generation=false` and an MP4 managed-media output.
 
@@ -515,6 +533,8 @@ The existing timeline load/save schemas and frozen errors (`400 invalid_config|i
 - Errors: `400 invalid_project`; `404 project_not_found`; `404 generation_not_found` (new code for unknown `:generation_id`); `422` never applies (pure reads).
 
 ## 14. R13 — Local render/export task family
+
+> **(Amended: Grok review — judged ADOPT.)** Standalone render routes are removed. Submit `render_export` through R1 and read progress/error/managed-media outputs or cancel through the common project-scoped R2 task routes.
 
 **Amended (doc 24 Q4):** render/export is one same-machine task pipeline: submit a version-pinned timeline → kernel task → Astrid Remotion render → managed MP4 → R9 Range/ETag media URL → browser `<video>`. It cross-references the existing `rendering.timeline_visualize` task adapter and `rendering.render`/`RenderService`; it does not create a second render ledger or use browser rendering as the authoritative export path.
 

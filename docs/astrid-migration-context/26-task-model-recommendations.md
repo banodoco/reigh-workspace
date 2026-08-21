@@ -1,5 +1,7 @@
 # 26 — Task-model recommendations: Reigh on the Astrid kernel
 
+> **HISTORICAL CONSULTATION — superseded for build work by `27-build-spec.md`. (Amended: Grok review — judged ADOPT.)** Its ratified flat names, one binding, snapshots/ready_templates, trimmed definitions, no plugins, leased parents, and dead-type rejection are carried into doc 27. Dual identity, standalone staging, and the old phased plan are not.
+
 **Status: RATIFIED 2026-08-21 as refined by Grok second opinion (`grok/second-opinion-decisions.md`).**
 
 ## Executive summary
