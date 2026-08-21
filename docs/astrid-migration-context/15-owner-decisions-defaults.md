@@ -1,6 +1,6 @@
 # Owner Decisions — Proposed Defaults for Codex's 7 Questions
 
-Status: **PROPOSED** — owner veto overrides any item. These defaults were drafted to unblock the phase-1 design artifacts (docs 16–19). Rationale cites evidence docs.
+Status: **RATIFIED 2026-08-21** — owner approved all 87 recommendations in `20-codex-recommendations.md` (with no vetoes), which bind the defaults below. One refinement adopted: doc 20 "Overrides of doc 15" — unreferenced storage bytes must be cold-archived (verified offline copy) before Supabase destruction, in addition to referenced-only import. Prior to ratification these were PROPOSED; owner veto overrides any item.
 
 Source: doc 14 §"Open questions for the owner". Decision rule used throughout: *local-first, minimal build, no data loss via retained raw exports.*
 

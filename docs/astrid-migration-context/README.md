@@ -2,7 +2,7 @@
 
 Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker pipeline) onto Astrid's SQLite store. All docs were produced 2026-08-21 from repo files plus a read-only live-prod probe. **13-migration-context.md is the synthesis; the docs below are the evidence.** Docs 15–19 are the phase-1 design artifacts for the owner's new goal (full Reigh on Astrid SQLite, credits cut, local-only) — buildable specs, not implementation.
 
-**Reading order:** 01–13 evidence and synthesis → 14 Codex design → 15 owner decisions (vetoable defaults) → 16 capability map → 17 pack v2 DDL → 18 bridge route schemas → 19 worker diff.
+**Reading order:** 01–13 evidence and synthesis → 14 Codex design → 15 owner decisions (ratified) → 16 capability map → 17 pack v2 DDL → 18 bridge route schemas → 19 worker diff → 20 ratified recommendations → 21 knowledge gaps → 22 the roadmap (journey plan).
 
 ## Table of Contents
 
@@ -29,6 +29,7 @@ Consolidated research for a future move of Reigh (PostgreSQL + Supabase + worker
 | 19 | `19-worker-diff.md` | Exact worker cutover spec: per-file diff (today's transport calls → bridge client calls), BridgeClient + LeaseKeeper design, env changes, keep/delete lists, server-side atomic completion service (single BEGIN IMMEDIATE), T1–T12 test plan. |
 | 20 | `20-codex-recommendations.md` | Codex (GPT-5.6 Sol) recommendations on ALL open questions in the corpus (87 answered, grouped by source doc): archive-not-import slots, active-projects-only migration, same-host workers, referenced-media-only + cold archive, polling, `shots` v2 not new pack, atomic completion mandatory, enumerated capabilities; top-5 leverage decisions; one override of doc 15 (cold-archive unreferenced bytes pre-destroy). |
 | 21 | `21-codex-knowledge-gaps.md` | Codex meta-consultation: what is still missing to be a thorough decider — P0/P1/P2 gap list (live-authority snapshot, deployed completion path, retained-capability decision, generation/editor authority model, atomic-completion spike, cutover corpus policy, executable parity proof, etc.) + the 3 things to obtain first. Also corrects doc 08: `Astrid/docs/astrid-v10-implementation-decisions.md` EXISTS (commit `b362a0bb`) — doc 08's "absent" claim is stale. |
+| 22 | `22-codex-roadmap.md` | **The journey plan (owner commitment doc)** — high-level roadmap to the unified end-state (one schema, one bridge, smooth flow), after all 87 recommendations ratified: end-state picture + 10-line typical day, guiding principles, Phases 0–7 with goals/work/exit criteria (incl. an early `wan_2_2_t2i` vertical slice), how "smooth" is engineered (single writer, receipts, fences, CAS, atomic completion), v1 out-of-scope list, top-8 journey risks with owners, and the first three actions next week. |
 
 ## Top 15 Key Facts
 
