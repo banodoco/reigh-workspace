@@ -1,0 +1,4 @@
+# BC3 final review — lens 3: GROUND TRUTH SPOT-CHECK
+Independent final reviewer. Working dir: /Users/peteromalley/Documents/reigh-workspace-oracle. READ-ONLY.
+Verify delivered claims against actual code in /Users/peteromalley/Documents/Astrid-oracle (branch oracle-run): (1) generations/generation_variants DDL matches ratified doc 17 minus placement; (2) merge_registry mutates asset_registry_json only, document_json byte-identical, head-CAS defense; (3) multipart parser fails closed on oversize/bad-boundary/truncated; fd-leak fix present; (4) child-admission gate rejects browser-origin; (5) trust gate: token hmac compare, Host check, custom header, OPTIONS exempt; (6) fault matrix asserts DB→tree totality across ≥100 crashes with evidence table.
+Verdict: `CONVERGE` or `DIVERGE` (evidence + fix). ≤300 words.

@@ -29,7 +29,7 @@ This is a very-large-project run: in addition to routine per-batch oracle check-
 - **BC2 — mid-execution:** trigger a BIG sense-check after every 3 passed batches, or immediately after any batch gate failure; same multi-pass, multi-round discipline.
 - **BC3 — pre-completion:** ≥5 independent passes across the lenses above plus an operations/performance lens, round-until-converged.
 All reviewers are stealth/ox-alpha (user-pinned). Convergence is the pass condition; divergence is a stop-and-reconcile signal, never averaged away.
-
+- **DC — every 3 hours:** deploy a stealth/ox-alpha subagent for a DEEP progress audit of all track branches — in-depth report covering: code quality of the accumulated diff (vs doc 27 contract), North Star alignment (principles + anti-patterns), efficiency of progress (tasks completed vs plan/estimate, velocity), test status, blockers, and corrective recommendations. Report persisted under .oracle/evidence/deep-check-<n>.md; findings route through oracle triage like any review.
 ## Model policy (USER-PINNED FOR EVERY TASK CLASS)
 Planner = Explorer = Normal executor = Oracle/reviewer = `[XHARD]` executor = **stealth/ox-alpha** (`launch_hermes_agent.py --model="stealth/ox-alpha"` via omp/openrouter). Owner pinned one model for all classes ("stealth/ox-alpha should be doing EVERYTHING"); no auto-routing; no switches without owner approval.
 

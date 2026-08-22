@@ -5,3 +5,6 @@
 2026-08-21T23:10:18Z RUN INVARIANT: every brief (executor/reviewer/revision/planning) opens with inlined North Star principles+anti-patterns + pointer to .oracle/northstar.md
 2026-08-21T23:22:41Z PHASE3 STABLE: revise r1 material (E1-E7 folded), r2 STABLE with N1-N4 folds -> plan.md v3
 2026-08-21T23:36:55Z PHASE4 done: BC1 r1 A/B/C=DIVERGE/CONVERGE/DIVERGE → folded → r2 CONVERGE → tasklist FROZEN (B1-B4+C5, XHARD: T1-spike/T1/T13)
+2026-08-22T00:15:05Z USER-DIRECTED: DC cadence added — every 3h a stealth/ox-alpha subagent performs a DEEP progress audit (code quality vs doc 27, northstar alignment, velocity, tests, blockers) -> .oracle/evidence/deep-check-<n>.md
+2026-08-22T00:58:07Z HOURLY#1: K=B1 landed (3 commits), S=B2 landed (5 commits, incl. m8-contract derivation), R=B3 in flight (3 commits). No blockers. ~40% (6/14 tasks).
+2026-08-22T01:47:11Z SPOT: K=track scope COMPLETE (B1, 3 commits, supervisor idle). S=m7/m4-gate fixes landing. R=T5-T8 landed (admission trio, child gate, claim/heartbeat, atomic completion) + parser-abuse tests.

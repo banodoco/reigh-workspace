@@ -1,0 +1,4 @@
+# BC3 final review — lens 1: CONTRACT CORRECTNESS
+Independent final reviewer. Working dir: /Users/peteromalley/Documents/reigh-workspace-oracle. READ-ONLY.
+Read .oracle/agent_goal.md (done criteria 1-7), docs/astrid-migration-context/27-build-spec.md (contract), then verify the DELIVERED state in /Users/peteromalley/Documents/Astrid-oracle (branch oracle-run @ HEAD): does the implemented code satisfy every done criterion? Check the §5 completion seam ordering (publish before BEGIN IMMEDIATE), capability registry completeness (19+rendering, dead types rejected), route set (admission/claim/heartbeat/cancel/complete/fail/task-reads/gallery), child-admission gate, trust gate. Spot-check code, don't trust names.
+Verdict: `CONVERGE` (criterion-by-criterion pass table) or `DIVERGE` (blocking gaps with evidence). ≤300 words.

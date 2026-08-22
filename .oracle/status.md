@@ -9,3 +9,5 @@ brief-invariant: northstar inline in every dispatch
 phase: 4 (tasklist + BC1)
 phase: 5 (execute) — next: transfer to agentbox
 tasklist: FROZEN (B1 kernel+crash-foundation, B2 pack v2+repo, B3 registry+admission+trust, B4 lifecycle routes+sweeper, C5 proofs)
+deep-check cadence: DC every 3h active
+phase: 5 executing — B1✅ B2✅ B3◐ C5 pending
