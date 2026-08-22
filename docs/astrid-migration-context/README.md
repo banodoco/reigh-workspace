@@ -51,6 +51,7 @@ No lower-authority document may override the constitution. Where historical spec
 | 28 | **Judged engineering consultation** | `28-engineering-answers-judgment.md` | Per-question A/B comparison, decisive winner, adoption decisions, contradictions, and amendments carried into docs 27/22. |
 | G1 | Binding task-model decision | `grok/second-opinion-decisions.md` | Flat names, one binding, snapshots/templates, trimmed definitions, no aliases/plugins, leased parents. |
 | G2 | Judged review | `grok/simplicity-review.md` | Ten-item simplicity review; verdicts are in doc 22 §1. |
+| 31 | **Forward map** | `31-forward-map.md` | Phases B and C in full: B-1 VibeComfy binding → B-2 capability fan-out → B-3 orchestrator children → B-4 Wan2GP gates → B-5 model acquisition → B-6 conformance; C-0 cutover inventory → C-1 domain clients → C-2 shot mode → C-3 render UX → C-4 ops surfaces → C-5 acceptance; Phase D release mechanics. |
 
 ## Current product facts
 

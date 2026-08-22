@@ -1,0 +1,18 @@
+[launch_hermes_agent] model=stealth/ox-alpha → resolved=stealth/ox-alpha toolsets=['file', 'web', 'terminal'] max_tokens=65536 context_budget_tokens=(auto)
+[launch_hermes_agent] NOTE: omp gives the full toolset (Bash, Read, Edit, web, …); the file/web/terminal subset is a superset here.
+[launch_hermes_agent] cwd=/workspace/reigh-phase-a-20260822/Astrid
+Working...
+**Verdict: CONVERGE**
+
+**Anti-pattern hunt — all clear:**
+- **Second authority / mirrored state:** none. `generations`/`generation_variants` live in the same SQLite file (`0002_generations.sql`); `generation_repository.py` deliberately has *no* event stream and no receipts — the completion UoW commit is the sole atomicity record. `merge_registry` is additive into `asset_registry_json` on the timeline's own hash-chained stream, never clobbers editor-owned keys, leaves `document_json` byte-identical, and carries an `expected_head_seq` CAS. No sync/reconcile path exists.
+- **Silent executor swaps:** impossible by construction. Binding is frozen at admission (`spec.source_task_type` = derived capability, bridge_service.py:583); claim matches only on that recorded capability (`head["capability"] not in requested`, :871). Dead types are rejected with `capability_unavailable`, never aliased (capabilities.py:93).
+- **Cloud fallbacks:** none. The only network surface is loopback `ThreadingHTTPServer`. `wavespeed` is one env-var credential mapping (credentials_scope.py:50) — enablement only, no call path.
+- **Ceremony/speculative machinery:** minimal. `AVAILABILITY_PROBES` holds one trivial probe but is genuinely consumed by `check_available` at admission (doc 27 §6). Bindings are declarative constants, no runtime plugins. Every new seam (`publish_prepared_for_commit` → O(stat) `validate_published_presence`; generation/registry steps 6–7) has a named consumer in `complete()`.
+- **Principles genuinely advanced:** §5 pre-transaction CAS publication verified in code (bridge_service.py:1174–1191: publish before `BEGIN IMMEDIATE`, stat-only in lock); child hard-gate enforced at admit (:563) *and* via live parent lease fence (:686–729); trust gate = per-boot token + exact Host match + non-simple header + 0700 dirs, all constant-time compares.
+
+**Evidence:** 262 tests green (reigh routes/capabilities/trust/journey + 107-crash fault matrix + crash atomicity), 231s runtime.
+
+No fixes required.
+[launch_hermes_agent] done in 417.5s (exit=0)
+0

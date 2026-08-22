@@ -1,0 +1,19 @@
+[launch_hermes_agent] model=stealth/ox-alpha → resolved=stealth/ox-alpha toolsets=['file', 'web', 'terminal'] max_tokens=65536 context_budget_tokens=(auto)
+[launch_hermes_agent] NOTE: omp gives the full toolset (Bash, Read, Edit, web, …); the file/web/terminal subset is a superset here.
+[launch_hermes_agent] cwd=/workspace/reigh-phase-a-20260822/Astrid
+Working...
+**Verdict: CONVERGE** — no exploitable findings. Evidence per lens:
+
+**Token comparison** — Both `Host` and `X-Astrid-Request-Token` use `hmac.compare_digest` (`local_bridge_server.py:306,318`). Timing-safe. Token is 32-byte `secrets.token_urlsafe`, delivered via mode-`0600` file, never over HTTP. Mutations without it fail closed; `request_token=None` is test-only composition.
+
+**Host validation** — Exact literal match against the *bound* loopback address+port, not an allowlist of names. DNS-rebinding (attacker domain resolving to 127.0.0.1) sends the attacker's hostname in `Host` → rejected. Binding `0.0.0.0` yields an unsatisfiable expected host — fail-closed. CORS origins are an exact-match tuple; browsers cannot carry the custom token header cross-origin (preflight never passes for non-allowlisted origins), so web pages cannot mutate.
+
+**Child-admission envelope** — Cannot be forged blind: requires live parent fence (parent `running`; attempt `claimed/running` with matching `executor_id`, server-issued `lease_id`, exact `status_version`, unexpired lease) plus the deterministic idempotency key `reigh.orch:v1:{task}:{role}:{index}`. Fence values are readable via token-free GETs, but replaying them still requires the POST request token — so this fences stale/duplicate executors, not untrusted callers. Correct layering.
+
+**Path traversal** — Asset routes never join client path segments onto disk paths. Resolution is DB-mediated (project-scoped `media_id` or `media_locations` alias); absolute/`..` locators classified `unsafe` (line 86) and refused. External-realm paths are served only after actual-bytes SHA-256 matches the media row's `content_hash` — aliasing an arbitrary file requires forging both the locator row and its hash. Staged upload filenames are discarded (`mkstemp` server-named); publish path is digest-pinned `uploads/<sha>`.
+
+**Parser exhaustion** — Multipart: Content-Length cap checked before first byte, chunked TE rejected, header block ≤16 KiB, fields ≤1 MiB, files streamed to disk with per-file cap, failure unlinks everything. Notes (non-exploitable): save route `_read_request_body` is uncapped, and field-part count is bounded only by total body size — both reachable solely by token holders (same-user trust boundary per doc 27 §4.7).
+
+**Residual note** — Token-free GETs expose timelines/media/task detail (incl. lease ids) to any local process; acceptable under the stated local-trust posture, worth documenting for shared-host deployments.
+[launch_hermes_agent] done in 212.1s (exit=0)
+0

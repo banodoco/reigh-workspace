@@ -1,0 +1,27 @@
+[launch_hermes_agent] model=stealth/ox-alpha → resolved=stealth/ox-alpha toolsets=['file', 'web'] max_tokens=65536 context_budget_tokens=(auto)
+[launch_hermes_agent] NOTE: omp gives the full toolset (Bash, Read, Edit, web, …); the file/web/terminal subset is a superset here.
+[launch_hermes_agent] cwd=/workspace/reigh-phase-a-20260822/Astrid
+Working...
+## Verdict: DIVERGE — one blocking contract gap
+
+**Blocking gap (§4.1 route set):** The delivered HTTP surface (`astrid/core/integrations/reigh/local_bridge_server.py`, sole server; confirmed repo-wide) implements admission/claim/heartbeat/complete/fail/cancel/task-reads but is **missing three contracted routes**:
+- `GET /projects/:slug/generations` and `GET /projects/:slug/generations/:generation_id` — zero `"generations"` route dispatch anywhere in `astrid/`. Gallery reads exist only in-process (`packs/shots/generation_repository.py`; journey harness calls the repository directly, bypassing HTTP).
+- `GET|HEAD /projects/:slug/media/:media_id/content` — absent. Bytes are served only via the frozen timeline asset route (`/projects/:slug/timelines/:t/assets/:key`), not the §4.1 managed-media surface. This also undercuts Phase-A exit item 12 (browser MP4 Range/ETag playback).
+
+### Criterion table
+
+| # | Criterion | Result |
+|---|---|---|
+| 1 | Pack v2, 22 tables, live probe | PASS — `0002_generations.sql` matches spec DDL incl. partial unique primary index; 22-table assertions in `tests/v10/test_registry.py:169,1157` |
+| 2 | Fault matrix ≥100 crashes | PASS — `tests/v10/test_phase_a_fault_matrix.py` subprocess harness, labeled points + IOERR/FULL/exhaustion/replay/concurrent lanes, evidence table; 2/2 green (86 s) |
+| 3 | R1/R3/R5/R7/R8 routes fenced | PASS — fences, receipts, replay, 204-on-empty claim all verified; 253 reigh tests green |
+| 4 | Child-admission gate | PASS — envelope + live-lease fence + deterministic `reigh.orch:v1:<parent>:<role>:<index>` key + allowlist + project inheritance (`bridge_service.py:619-765`) |
+| 5 | Local-trust fixtures | PASS — Host check every request, per-boot token on mutations, non-simple header, 0700/0600 modes; hostile-page tests green |
+| 6 | Journey harness | PASS — admit→claim→complete→gallery→registry-visible, duplicate replay, poisoned rejection |
+| 7 | Full suite / no regressions | Not fully re-run this pass (targeted suites green); no observed regressions |
+
+**§5 seam:** correct — `publish_prepared_for_commit` (stage→fsync→install-if-absent-or-verify→dir fsync) runs **before** `UnitOfWork`; in-lock work is O(stat) via the passed `published` record.
+
+**Minor (non-blocking):** allowlist names `reigh.travel_stitch`/`reigh.join_clips_orchestrator`, but their registry entries have `child_only=False`, so executor child admission of them would be refused despite §3.1 listing them (Phase-B surface). Dead types reject correctly as unknown/unaliased.
+[launch_hermes_agent] done in 1090.0s (exit=0)
+0
