@@ -45,6 +45,21 @@ Reigh rebuilt as a local single-user video editor running entirely on Astrid's S
 - Boot manifest: dual-scope digest, fail-closed startup
 - App cutover: cutover inventory, bridge transport + AstridLocalClient, capability flags replacing instanceof gates, four cutover waves, document-native placement foundation, shot_generations retirement from realtime
 
+## Merge plan (how we get to one trunk per repo)
+
+Both transitions are fast-forwards (`--ff-only`) — zero conflicts, strictly linear.
+
+**Astrid:** `main` ← `phase-b` (100 commits ahead). Tag `archive/phase-a` at old tip. Delete merged branches (`oracle-run`, `track-K/S/R`, all `megaplan/*`). Push tags before deleting.
+
+**reigh-app:** `phase-c` → becomes the new working branch. Tag `archive/timeline-patches` at `6c02bd3b`. Parked branches (`exec-goal`, `oracle-run-v2`, slot-first, extension-foundation) archived as tags then deleted. One cherry-pick review: `fix/long-clip-drag-planning` may contain a real drag-planner regression fix.
+
+**Post-merge validation (both repos):**
+1. Astrid: `python3 -m astrid doctor` + full pytest suite green
+2. reigh-app: `npx vite build` green; grep gate proving zero supabase-js imports in covered modules
+3. Boot `astrid serve` + open app in browser with Supabase networking OS-blocked — covered journey must work
+
+Only after both validations pass: retire Supabase project and delete parked branches.
+
 ## Work remaining
 
 | Item | Scope | Depends on |
