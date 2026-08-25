@@ -21,8 +21,9 @@ For every milestone:
 3. If live VibeComfy or backend proof is required, use real RunPod yourself. Do not require extra WGP pre-run proof when WGP is already the trusted control.
 4. Publish changed nested repos before advancing the top-level chain PR, and do not hide nested repo dirt behind a top-level commit.
 5. Append detailed lessons, failure phase, root cause, fix, residual risk, and evidence to `/Users/peteromalley/Documents/learnings/megaplan-vibecomfy-sprint-00a-2026-05-05.md`.
-6. Validate every app-used route before claiming VibeComfy parity. A route is not promoted by analogy; it needs selected-template proof, Reigh-shaped queue proof, and rollback/control evidence.
-7. Keep this directory's sprint performance notes current when a milestone completes or reveals an important harness/process issue.
+6. Keep the live parity ledger current in `/Users/peteromalley/Documents/reigh-workspace/docs/vibecomfy-post-chain-validation-20260507.md`.
+7. Validate every app-used route before claiming VibeComfy parity. A route is not promoted by analogy; it needs selected-template proof, Reigh-shaped queue proof, completion/artifact evidence, and rollback/control evidence.
+8. Keep this directory's sprint performance notes current when a milestone completes or reveals an important harness/process issue.
 
 Operating cadence for each milestone:
 

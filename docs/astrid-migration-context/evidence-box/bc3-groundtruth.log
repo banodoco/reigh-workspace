@@ -1,0 +1,23 @@
+[launch_hermes_agent] model=stealth/ox-alpha → resolved=stealth/ox-alpha toolsets=['file', 'web', 'terminal'] max_tokens=65536 context_budget_tokens=(auto)
+[launch_hermes_agent] NOTE: omp gives the full toolset (Bash, Read, Edit, web, …); the file/web/terminal subset is a superset here.
+[launch_hermes_agent] cwd=/workspace/reigh-phase-a-20260822/Astrid
+Working...
+## Verdict: CONVERGE
+
+All six claims verified against source on branch `oracle-run`; fault matrix executed live.
+
+1. **DDL** — `astrid/packs/shots/migrations/0002_generations.sql:25-57` byte-matches `docs-corpus/27-build-spec.md` §2.2: both tables, all CHECKs (`self <> based_on/parent`, `starred IN (0,1)`, `UNIQUE(generation_id, media_id)`), `media_id ... ON DELETE RESTRICT`, `generation_one_primary` partial unique index, doc-17 paging/lineage/task/media indexes. No placement columns — spec line 20: "placement is document structure"; migration header cites SD1 (no `primary_variant_id` denormalization). ✓
+
+2. **merge_registry** — `astrid/packs/timeline/repository.py:1135-1227`: additive merge into `asset_registry_json` only (`existing keys ... never clobbered`, line 1224-1226 UPDATE touches only `asset_registry_json, updated_at`); `document_json` untouched. Head-CAS: reads current head, records `base_head` in the hash-chained `timeline.registry_merged` event. ✓
+
+3. **Multipart parser** — `astrid/core/integrations/reigh/multipart.py`: fails closed on oversize (`MultipartTooLarge` via `spill` caps, lines 208-211/251-257), bad boundary (`_extract_boundary` raise; delimiter checks 304-305/334-336), truncated (`take`/`capture_until`/`stage_file_until` raise on stream end, 183-188/226-231/274-279). FD-leak fix present: `finally: os.close(handle_fd)` at 280-281; `fail()` unlinks all staged files. ✓
+
+4. **Child-admission gate** — `bridge_service.py:619-709`: envelope validation, deterministic idempotency key `reigh.orch:v1:...`, capability fence (`capabilities.py:11` — "never from a browser"; test `test_child_gate_rejects_browser_families_and_unknown_names`), live parent/lease/executor/status_version fence. ✓
+
+5. **Trust gate** — `local_bridge_server.py:296-331`: `hmac.compare_digest` on token and Host, custom header `X-Astrid-Request-Token`, OPTIONS exempt (300-303), GET/HEAD token-free. ✓
+
+6. **Fault matrix** — `tests/v10/test_phase_a_fault_matrix.py:1104-1130`: asserts `crashes >= 100` across seven classes, zero DB-to-tree disagreements (old/complete only, `chains_valid` on every row), evidence rows into `phase_a_fault_evidence` SQLite. **Executed live: `2 passed in 82.88s`.** ✓
+
+No divergence found; no fix required.
+[launch_hermes_agent] done in 336.3s (exit=0)
+0

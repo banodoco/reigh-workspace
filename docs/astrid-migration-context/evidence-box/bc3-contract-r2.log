@@ -1,0 +1,19 @@
+[launch_hermes_agent] model=stealth/ox-alpha → resolved=stealth/ox-alpha toolsets=['file', 'web'] max_tokens=65536 context_budget_tokens=(auto)
+[launch_hermes_agent] NOTE: omp gives the full toolset (Bash, Read, Edit, web, …); the file/web/terminal subset is a superset here.
+[launch_hermes_agent] cwd=/workspace/reigh-phase-a-20260822/Astrid
+Working...
+CONVERGE
+
+**1. Routes implemented, contract-matched.**
+- `GET /projects/:slug/generations` (local_bridge_server.py:1189) and `GET /projects/:slug/generations/:generation_id` (:1231) dispatch to new `list_generations`/`generation_detail` DTOs (bridge_service.py:1441/:1493). List: `created_at DESC, id ASC`, deleted hidden, opaque keyset cursor (`paging.py`), limit clamped 1–200, `starred` tri-state filter with typed 400, primary-variant summary + `variant_count`. Detail: full row, recency-first variants, shot placements; misses narrow to typed `not_found` via stable exception-class names.
+- `GET|HEAD /projects/:slug/media/:media_id/content` (:1246 GET, :1273 HEAD) shares the existing `_wire_media_asset` semantics: single-range grammar, malformed Range → 400, unsatisfiable → 416 `bytes */<size>`, ETag/`If-None-Match` → 304, suffix ranges, HEAD mirrors GET bodyless. Typed 404s: cross-project/unknown → `media_not_found`; lost bytes → `media_bytes_missing`.
+
+**2. Tests pass.** `tests/integrations/reigh/test_gallery_routes.py`: **7 passed in 4.56s**. Coverage includes paging cursor round-trip, tampered-cursor → 400, limit=100000 bounded, project-scoping of detail, foreign-media 404, missing-bytes 404, full Range/ETag/304/206/416/HEAD matrix.
+
+**3. Regression green.** `tests/v10 -x -q`: **1058 passed**, one pre-existing warning, 8m57s.
+
+**4. No anti-patterns.** Commit 0b69557b adds only dispatch branches on the frozen listener, bridge-service methods, a repository page method, shared paging util, and tests — no second authority, no middleware layer.
+
+Minor notes: gallery list is GET-only (spec-conformant); `limit=0` clamps to 1 rather than erroring — acceptable under "bounded page".
+[launch_hermes_agent] done in 649.3s (exit=0)
+0

@@ -26,13 +26,13 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | Route key | Classification | Support state | Template | Notes |
 | --- | --- | --- | --- | --- |
 | `z_image_turbo` | `dual_supported` | `vibecomfy_supported` | `image/z_image` | Direct aliases: `z_image`, `z_image_turbo`. Default resolution `1024x1024`. |
-| `z_image_turbo_i2i` | `wgp_only` | `wgp_only` |  | Direct alias: `z_image_turbo_i2i`. |
-| `qwen_image_2512` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_2512`. |
-| `qwen_image` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image`. |
-| `qwen_image_edit` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_edit`. |
-| `qwen_image_style` | `wgp_only` | `wgp_only` |  | Direct alias: `qwen_image_style`. |
-| `image_inpaint` | `wgp_only` | `wgp_only` |  | Direct alias: `image_inpaint`. |
-| `annotated_image_edit` | `wgp_only` | `wgp_only` |  | Direct alias: `annotated_image_edit`. |
+| `z_image_turbo_i2i` | `dual_supported` | `vibecomfy_supported` | `image/z_image_img2img` | Direct alias: `z_image_turbo_i2i`. |
+| `qwen_image_2512` | `dual_supported` | `vibecomfy_supported` | `image/qwen_image_2512` | Direct alias: `qwen_image_2512`. |
+| `qwen_image` | `dual_supported` | `vibecomfy_supported` | `image/qwen_image_2512` | Direct alias: `qwen_image`. |
+| `qwen_image_edit` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `qwen_image_edit`. |
+| `qwen_image_style` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `qwen_image_style`. |
+| `image_inpaint` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `image_inpaint`. |
+| `annotated_image_edit` | `dual_supported` | `vibecomfy_supported` | `edit/qwen_image_edit` | Direct alias: `annotated_image_edit`. |
 | `travel_orchestrator` | `wgp_only` | `wgp_only` |  | Parent route; app requirements include travel child, stitch control, and nested join parent. |
 | `join_clips_orchestrator` | `wgp_only` | `wgp_only` |  | Parent route; app requirements include join child and final stitch control. |
 | `edit_video_orchestrator` | `wgp_only` | `wgp_only` |  | Parent route; app requirements include join child and final stitch control. |
@@ -41,7 +41,13 @@ The rows below reconcile `DIRECT_ROUTE_ALIASES` and `SPRINT_2_SELECTOR_MAP`.
 | `join_clips_segment` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | Dimensional child route family. |
 | `travel_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
 | `join_final_stitch` | `wgp_only` | `wgp_only` |  | Control route. |
-| `wan_2_2_t2i` | `wgp_only` | `wgp_only` |  | Direct aliases: `optimised_t2i`, `wan_2_2_t2i`. |
+| `wan_2_2_t2i` | `dual_supported` | `vibecomfy_supported` | `video/wanvideo_wrapper_22_14b_t2i` | Direct aliases: `optimised_t2i`, `wan_2_2_t2i`. |
+| `wan_2_2_i2v` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active travel turbo route. Blocked until an explicit VibeComfy I2V route/template and worker dispatch proof exist. |
+| `image-upscale` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
+| `image_upscale` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | Legacy underscore variant for image upscale; not ported to VibeComfy. |
+| `video_enhance` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
+| `animate_character` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
+| `flux_klein_edit` | `vibecomfy_unsupported` | `vibecomfy_unsupported` |  | App-active non-RayWorker API route; not ported to VibeComfy. |
 
 ## Section 3A Dimensional Route Surface
 
@@ -51,13 +57,24 @@ metadata without extending the runtime support-state enum.
 | Row | Route key | Classification | Disposition | Blocker |
 | --- | --- | --- | --- | --- |
 | 1 | `travel_segment__model-wan22_i2v__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template before Wan-family travel rows can be promoted. |
-| 2 | `travel_segment__model-wan22_vace__guidance-vace_flow__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and optical-flow guide preprocessing before promotion. |
-| 3 | `travel_segment__model-wan22_vace__guidance-vace_canny__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and Canny guide preprocessing before promotion. |
-| 4 | `travel_segment__model-wan22_vace__guidance-vace_depth__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and depth guide handling before promotion. |
-| 5 | `travel_segment__model-wan22_vace__guidance-vace_raw__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and raw guide-video passthrough before promotion. |
+| 2 | `travel_segment__model-wan22_vace__guidance-vace_flow__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 2a | `travel_segment__model-wan22_vace__guidance-vace_flow__continuity-video_source__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 3 | `travel_segment__model-wan22_vace__guidance-vace_canny__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 3a | `travel_segment__model-wan22_vace__guidance-vace_canny__continuity-video_source__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 4 | `travel_segment__model-wan22_vace__guidance-vace_depth__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 4a | `travel_segment__model-wan22_vace__guidance-vace_depth__continuity-video_source__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 5 | `travel_segment__model-wan22_vace__guidance-vace_raw__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
 | 6 | `travel_segment__model-wan22_vace__guidance-uni3c__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `NEW` | Requires the NEW Wan 2.2 VACE cocktail template and Uni3C patch before promotion. |
-| 7 | `travel_segment__model-ltx2__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The LTX first/last ready template is not yet wired through the Reigh travel child adapter with first/last image inputs and completion semantics. |
-| 8 | `travel_segment__model-ltx2_distilled__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The LTX first/last ready template is not yet wired through the Reigh travel child adapter with first/last image inputs and completion semantics. |
+| 6a | `travel_segment__model-wan22_vace__guidance-vace__continuity-video_source__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6b | `travel_segment__model-wan22_vace__guidance-vace_raw__continuity-video_source__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6c | `individual_travel_segment__model-wan22_vace__guidance-vace__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6d | `individual_travel_segment__model-wan22_vace__guidance-vace_flow__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6e | `individual_travel_segment__model-wan22_vace__guidance-vace_canny__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6f | `individual_travel_segment__model-wan22_vace__guidance-vace_depth__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6g | `individual_travel_segment__model-wan22_vace__guidance-vace_raw__continuity-first_last__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 6h | `join_clips_segment__model-wan22_vace__guidance-vace__continuity-join_bridge__profile-default` | `vibecomfy_supported` | `NEW` | Promoted via `video/wanvideo_wrapper_22_14b_vace_cocktail`. |
+| 7 | `travel_segment__model-ltx2__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The non-distilled LTX first/last route has no proven VibeComfy Python template, model-asset contract, or adapter binding; fail-closed until a non-distilled implementation is validated. |
+| 8 | `travel_segment__model-ltx2_distilled__guidance-none__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The distilled LTX first/last route has a candidate VibeComfy Python template but lacks completed doctor/model-asset gates and worker adapter promotion; fail-closed until the static promotion slice lands. |
 | 9 | `travel_segment__model-ltx2_distilled__guidance-ltx_control_video__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The pinned LTX first/last template is not yet proven control-capable for a full-length control guide. |
 | 10 | `travel_segment__model-ltx2_distilled__guidance-ltx_control_pose__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The pinned LTX first/last template is not yet proven control-capable for pose-preprocessed full-length guides. |
 | 11 | `travel_segment__model-ltx2_distilled__guidance-ltx_control_depth__continuity-first_last__profile-default` | `vibecomfy_unsupported` | `BLOCKED` | The pinned LTX first/last template is not yet proven control-capable for depth-preprocessed full-length guides. |
@@ -74,7 +91,7 @@ The app fixture snapshot currently covers:
 | Fixture | Route key | Classification | Backend |
 | --- | --- | --- | --- |
 | vibecomfy z-image direct route | `z_image_turbo` | `dual_supported` | `vibecomfy` |
-| wgp join child dimensional route | `join_clips_segment__model-wan22_vace__guidance-vace__continuity-join_bridge__profile-default` | `vibecomfy_unsupported` | `wgp` |
+| wgp join child dimensional route | `join_clips_segment__model-wan22_vace__guidance-vace__continuity-join_bridge__profile-default` | `vibecomfy_supported` | `wgp` |
 | legacy unknown route defaults | `legacy_custom_task` | `vibecomfy_unsupported` | `wgp` |
 
 Section 3A blocker detail is preserved in the worker map and fixture matrix

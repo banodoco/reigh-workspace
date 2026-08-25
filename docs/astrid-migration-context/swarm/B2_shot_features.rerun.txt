@@ -1,0 +1,72 @@
+All six inventories in. Compiling the memo.
+
+---
+
+# B2 — Shot-Editor Feature Inventory (evidence memo)
+
+Read-only inventory of `reigh-app/` shot editor (shots → `shot_generations` → `generations`/`generation_variants`), cross-referenced against migration docs 04/05/09/13–22 (esp. 06 §§3.2–3.3, §6; 15; 17; 18; 22). Classes: **TL** timeline/editor, **AL** asset/candidate-library, **GT** generation/task, **MF** metadata/form, **DB** database-heavy invariant.
+
+## 1. Feature matrix
+
+| Capability (evidence) | Class | Verdict |
+|---|---|---|
+| Shot list, select, back, hash deep-link nav (`useShotsQueries.ts`, `useShotNavigation.ts`) | TL | Survive — R11 GET shots (18) |
+| Create shot positional + parent ensure (`insert_shot_at_position`, `useShotsCrud.ts:118`) | DB | Survive — pack v2 positions |
+| Rename shot (`useShotUpdates.ts:53`) | MF | Survive |
+| Duplicate shot ±videos (`duplicate_shot*`, `useDuplicateShotWithVideos.ts`) | DB | Defer — deep clone, no bridge route; low frequency |
+| Delete shot (cascade) | DB | Survive as soft-delete (17) |
+| Shot reorder (`shots.update(position)`, `useShotsCrud.ts:290`) | TL | Survive |
+| Per-shot aspect ratio + dimension source (`useUpdateShotAspectRatio.ts`, 300 ms debounce) | MF | Survive — settings JSON |
+| Stats: image/positioned/video counts (`useShotsQueries.ts:144`, `shot_statistics`) | AL | Survive — derived reads |
+| External drop: crop-to-aspect, auto-create shot, attach (`externalImageDrop.ts`) | AL | Survive |
+| Add image: positioned/auto/unpositioned (`addImageToShotHelpers.ts`) | TL | Survive — `shot_generation_items`, UNIQUE shot+generation (17) |
+| Drag reorder, multi-drag, optimistic 100 ms/5 s reconcile (`useDragAndDrop.ts`, `useOptimisticOrder.ts`) | TL | Survive |
+| Position/unposition (`timeline_frame` NULL ≠ cover; `useShotGenerationMutations.ts:147`) | TL | Survive |
+| Remove slot `delete_and_normalize` | TL | Survive |
+| Frame math: gaps 0/50/100, MAX_FRAME_GAP=81, batch mode (`timelineFrameCalculators.ts`) | DB | Survive as invariant |
+| Variant grid, filter, lineage depth (`VariantSelector.tsx`, `useVariantActions.ts`) | AL | Survive — R12 reads |
+| Make primary (one-per-generation) | DB | Survive — partial unique (17) |
+| Star / viewed_at (`useToggleVariantStar.ts`, `useMarkVariantViewed.ts`) | AL | Survive; viewed-marking is badge hygiene — cuttable |
+| Promote-variant-to-generation (`usePromoteVariantToGeneration.ts`) | GT | Cut — already dead (`VariantPromotionUnsupportedError`) |
+| Make-main variant (child promoted + parent location update, `useMakeMainVariant.ts:83,107`) | AL/DB | Survive — record-completion-style UoW |
+| Delete variant; original undeletable (trigger + client guard) | DB | Survive |
+| Generation kickoff/status/progress (create-task edge; polling 3–5 s, 06 §3.10) | GT | Survive — kernel tasks/R1 |
+| Duplicate as new generation (`duplicate_as_new_generation`) | GT/DB | Defer — unique-frame walk |
+| Demote orphaned video variants (15 s stale poll, 06 §3.9) | DB | Defer — hygiene |
+| External upload: 2-step insert, non-transactional (`generationMutationsRepository.ts:136-160`) | AL | Survive; must become atomic UoW (17 `record_completion`) |
+| Pair settings: prompt/model/guidance, auto-save 500 ms, save-as-shot-defaults (`useSegmentSettings.ts`, `update_tool_settings_atomic`) | MF | Survive — settings + item metadata |
+| Segment outputs: parents/children/live slots, parent picker, progress (`useSegmentOutputsForShot.ts`) | GT | Survive |
+| Segment delete cascades children (`segmentDeletionService.ts`) | DB | Defer — soft-delete semantics (17) |
+| Ensure parent generation (`ensure_shot_parent_generation`) | DB | Survive — open per doc 16 §9.2 |
+| Trim: edge `trim-video` → trimmed variant (primary) + generation location (`useTrimSave.ts`) | GT | Survive — same-host API worker |
+| Reposition image transform (`apply-image-transform`) | GT | Survive — worker task |
+| Travel-between-images: pair build from ordered frames, guidance, create-task `travel_between_images` (`generateVideoService.ts`, `requestBody.ts`) | TL+GT | Survive — core (16 §3.9) |
+| TravelGuidanceEditor (controlled UI, no own persistence) | MF | Survive |
+
+## 2. RPCs and invariants (migrations + 06 §8.C)
+
+- `add_generation_to_shot` — idempotent slot; frame = max+50 or NULL (20260129100000).
+- `batch_update_timeline_frames` — atomic set-based multi-row frame update; drag hot path (20260218163000).
+- `reorder_normalized` — renormalize to 0/50/100; `delete_and_normalize`, `unposition_and_normalize` (20260130000000).
+- `insert_shot_at_position` — shift ≥ position, insert, ensure parent (20260404000000).
+- `duplicate_shot` (positioned images only, no videos; 20260113000000) / `duplicate_shot_with_videos` (clone + remap IDs; 20260508160000).
+- `create_shot_with_generations` — frames 0,50,100… (20260406) — **absent from generated types.ts**.
+- `duplicate_as_new_generation` — new gen + original variant + unique frame walk (20260407010000) — **absent from types.ts**.
+- `demote_orphaned_video_variants` — clear stale child-video location, preserve is_primary (20260224000001).
+- `ensure_shot_parent_generation` — reuse existing, never replace (20260218143000).
+- `update_tool_settings_atomic` — atomic JSON merge into users/projects/shots settings (06 §3.1).
+- DB triggers/indexes: exactly-one primary (partial unique + `handle_variant_primary_switch`); original-variant undeletable; `UNIQUE(shot_id, timeline_frame)` **dropped, never restored** — uniqueness now only inside RPCs.
+
+## 3. MVP survival summary
+
+Survives (shot editor core, ≥ TL/GT/AL): shot list/create/rename/delete/reorder, aspect, image add/reorder/position/unposition with normalized-frame invariants, variants + one-primary, generation kickoff/status/outputs, pair settings + enhanced prompts, trim/reposition, travel-between-images end-to-end. The relational shot timeline is already the pack-v2 shape — `generations`, `generation_variants` (one-primary unique), `shot_generation_items` (frame + sort_key) (17) — and the video timeline stays the frozen CAS core (22), so the shot timeline maps 1:1 onto pack-v2 items; "document registry" expresses cross-editor media references, not shot slots. Deferred: shot/variant duplication, demote-orphans, child cascade, external-upload atomicity hardening. Cut (15 Q5): viewed-marking, promote-to-generation (already dead), sharing/referrals/credits/auth/training/agent-sessions. Bridge exposes only reads (R11/R12) + task creation (R1) + CAS save — all shot-editor writes need route/UoW additions (18).
+
+## 4. Uncertainties
+
+- `UNIQUE(shot_id, timeline_frame)` removed — whether pack v2's UNIQUE shot+generation restores frame uniqueness [INFERENCE: yes per 17].
+- Two-step external-upload insert is non-atomic client-side; pack v2 `record_completion` UoW assumed as replacement (17).
+- Two live RPCs missing from generated types (above) — types drift, not behavior.
+- `metadata` JSON schemas (`pair_*`, `enhanced_prompt`, `segmentOverrides`) not specified in pack DDL; must survive as opaque JSON.
+- Shot-vs-project settings precedence (`update_tool_settings_atomic` scopes) and 30 s/15 s/3 s polling cadence under the 1–2 s bridge polling (15 Q7) [INFERENCE].
+- Whether pack v2 ships in MVP phase or later (22 roadmap phases 2–3).
+0

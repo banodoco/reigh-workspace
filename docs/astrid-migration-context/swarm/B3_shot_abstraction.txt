@@ -1,0 +1,46 @@
+**Verdict — (c), document-referenced candidacy over a slimmed pack; one editor abstraction, no second persistence model.** The relational shot timeline dies; its three fused concerns (doc 06 §6.1; chat 5066-5070) split: placement/order/choice → the video-editor document (already shot-capable via `pinnedShotGroups`), candidates/provenance/primary → a two-table pack, workflow state → immutable `tasks.spec_json`/`evidence_items`. The generic slots pack (b) is the overbuild you doubt: one consumer, and its invariants already exist cheaper. Document-only (a) loses the one-primary invariant and provenance because the document is editor-authored and CAS-replaced, not a transactional selection authority.
+
+## Concrete minimal structure
+
+Persistence (shots pack v2, slimmed from doc 17):
+
+```sql
+generations(id ULID PK, project_id→projects, task_id→tasks, type, name,
+  based_on_generation_id→generations, parent_generation_id→generations,
+  child_order, params_json, starred, deleted_at)      -- family + provenance
+generation_variants(id, generation_id→generations CASCADE,
+  media_id→media RESTRICT, variant_type, params_json, is_primary,
+  starred, viewed_at)   -- candidates; UNIQUE(generation_id, media_id);
+                        -- partial unique index: one is_primary=1 per generation
+```
+
+No `shot_generation_items`; no `slots`/`slot_candidates`; no `container_kind`/soft refs (chat 5084 sketch — rejected).
+
+Document (existing types, no schema change):
+- Placement/order: clips (`at`, track, `from/to`) + `pinnedShotGroups` (`types/index.ts:442-449`: `shotId`, `trackId`, `clipIds`, `mode: images|video`, `videoAssetKey`, `imageClipSnapshot`) — the position already models "filled by images or video".
+- Candidacy reference: registry entry's `generationId`/`variantId` (doc 06 §6.2; `assetRegistryContract.test.ts` preserves both); display asset = primary variant when `variantId` absent. `pool_id` stays inert provenance (`types/index.ts:379-383`; `Astrid/astrid/core/timeline/validators/pool.py` is renderer-pool validation, not curation) — no pool-resolution machinery.
+- Pair/travel: segment lineage (`based_on_generation_id` start image, `parent_generation_id`, `child_order` = segment index) + immutable pair facts (`pair_shot_generation_ids`, enhanced prompts) in `spec_json` (doc 16 §3.9; `travelPayloadReader.ts`). Pairs = sub-view query; contiguity stays client repair (`shot-group-contiguity.ts`).
+- Outputs: `generation.record_completion` one-UoW (doc 17 §5): staged bytes → media/relations → generation+variant `is_primary=1` → internal registry merge (doc 20 §18.5/§19.4); clip appears only when `output_policy.timeline_placement` (doc 16 §1.1).
+
+Invariants needing commands: one-primary (`set_primary` atomic demote/promote, receipt-gated), completion atomicity, whole-document CAS (existing bridge, doc 09), idempotent replay. Non-invariants: contiguity (repair, as today), unpositioned pool (derived: no registry reference).
+
+## Feature mapping
+
+Variants/promote → `generation_variants`+`set_primary`. Regenerate→promote→timeline updates → `variantId` resolution, no clip rewrite. Travel segments → lineage+`spec_json`. Unpositioned pool → query (`useUnpositionedImages`, doc 06 §6.1). `shot_data`/`children`/`primary_variant_id` → joins. `ensure_shot_parent_generation` → deterministic create-at-admission (doc 20 §16.2). Gallery/starred/viewed → pack columns.
+
+## Simplifies vs breaks
+
+Simplifies: kills the trigger/RPC sync — `batch_update_timeline_frames`, `reorder_normalized`, `delete_and_normalize`, `unposition_and_normalize`, `demote_orphaned_video_variants`, primary triggers, `shot_generations.metadata` pair sync (doc 06 §3.2). One document, one writer, one save path; no second editor.
+
+Breaks/deferred: travel/segments hooks re-pointed at document+pack reads and document save (`useShotImages`, `useTimelineCore.*`, segment mutations, `usePairMetadata` → spec_json source) — the real migration cost [INFERENCE: hook-by-hook parity is the dominant work item]. `duplicate_shot_with_videos`, `copy_onboarding_template`, `shot_statistics` need equivalents or cut. Full history stays latest-state (doc 15 Q6).
+
+## Pack-vs-document
+
+Candidacy/provenance/primary = pack (transactional, queryable, single-writer enforced). Placement/order/timing/choice = document (CAS, renderer-native). Document references pack via registry ids — the "receptor" the editor already has (chat 5126). Editor abstraction: one — video editor over the bridge; travel/segments is a sub-view/mode over the same document. No distinct shot persistence model.
+
+## Migration-spec impact
+
+Doc 17 must change: drop `shot_generation_items` and its placement commands/events; keep `generations`/`generation_variants` + one-primary index + `record_completion`. No `pair_item_id` replacement needed — lineage+spec derive pairs; add `generations.pair_generation_id` only if sub-view queries prove it (v3, forward-only) [INFERENCE]. Composition: 22 tables, not 23.
+
+Premature overbuild: generic slots/candidates pack (owner's doubt correct — built ahead of its second consumer, chat 5130), candidate `ordinal` (created_at suffices), position-level one-primary (fill is document state by construction), pool-resolution server, kernel candidacy, any pair-sync table.
+0

@@ -1,0 +1,229 @@
+Reigh on Astrid · engineering response
+
+Ten Answers for Reigh
+Concrete answers to the ten open questions in 07-questions.md, grounded in the pack's ratified constitution, build contract, roadmap, and task model. Each answer names the mechanism, the invariant it protects, and the artifact that proves it.
+
+The irreversible point in completion
+The falsifying vertical slice
+Limits of one timeline document
+Stable capability contracts
+Model acquisition on a fresh machine
+Boring, reversible Wan2GP upgrades
+Duplicate-free orchestrator replay
+The correct local trust boundary
+The promised performance envelope
+Option-preserving seams
+Question 1
+Where exactly is the irreversible point in atomic completion?
+AnswerThe SQLite COMMIT is the single irreversible point. Everything filesystem-side is made idempotent and ordered before it, so every crash lands in one of two provable states: replayable-pre-commit or fully-visible-complete.
+
+The build spec already stages and hashes bytes outside the writer lock. The one refinement that makes the whole matrix collapse cleanly: publish bytes into the SHA-256 managed tree before opening the transaction, not inside it. Content addressing makes that publication naturally idempotent — the object either exists with the right hash or it doesn't — so it is safe to do early and safe to repeat. Publication itself uses the standard durable pattern: write to a temp file on the same filesystem, fsync the file, atomically rename to the hash path (tolerating "already exists" — that is the dedupe), then fsync the parent directory.
+
+The full order becomes:
+
+Stream multipart files to request-scoped quarantine; hash and size-check. (Outside the lock, as spec'd.)
+Publish each verified object into the CAS tree, idempotently, durably.
+BEGIN IMMEDIATE: receipt-replay check first (return stored result, zero side effects); then lease/fence validation; then media, output, task/attempt, generation/variant, and registry-merge rows; then the completion receipt; then COMMIT with synchronous=FULL so the WAL fsync is the durability point.
+Respond only after commit. Delete quarantine after responding (or lazily at boot).
+The invariant this ordering proves — and the one the fault-injection checker should assert mechanically — is asymmetric on purpose:
+
+DB → tree is total. Any committed media row references a fully published, hash-verified object, always. This is what "orphaned authority" would violate, and the ordering makes it structurally impossible: rows never commit before their bytes exist.
+Tree → DB may be partial. A crash between publication and commit leaves an unreferenced CAS object. That is garbage, not corruption: it can never be served (media is addressed by ID through committed rows), and since v1 defers GC it simply persists harmlessly until a sweeper exists. Quarantine, by contrast, is request-scoped and swept at boot.
+The crash-point matrix, one row per instruction boundary:
+
+Crash point	DB state	Tree state	Recovery
+During upload / hashing	No rows	Quarantine partial	Boot sweep deletes quarantine; worker retries same Idempotency-Key
+After publish, before BEGIN	No rows	Orphan object	Retry re-publishes as no-op (dedupe path), transaction runs
+Mid-transaction	Auto-rollback on reopen	Orphan object	Same as above — retry is a clean replay
+After COMMIT, before response	Complete + receipt	Referenced object	Retry hits receipt replay, returns stored result — no false failure, no double effect
+After response	Complete	Referenced	Nothing to do
+Cleanup ownership is then unambiguous: the server owns quarantine (request-scoped, boot-swept), the future GC owns CAS orphans (age-gated, refcount-checked against committed rows), and nothing else may delete from the tree — the existing ON DELETE RESTRICT on variant→media already backs this from the row side.
+
+What to build and prove
+A CRASH_AT=<label> test hook at each boundary above, plus a fault-injecting VFS for SQLITE_IOERR/SQLITE_FULL and a quota filesystem for disk exhaustion.
+An invariant checker that walks DB and tree after every injected crash + retry and asserts DB→tree totality. Run the full matrix as a Phase-A gate (it directly discharges exit criteria 5–7 and 9).
+Concurrent-dedupe test: two completions with identical bytes; assert one object, two independent row sets, no rename race (the single writer serializes rows; the rename tolerates EEXIST).
+Question 2
+What is the smallest vertical slice that disproves the most architecture?
+AnswerOne scripted journey — t2i → gallery → place in timeline → render → playback — run repeatedly on a clean VM with a fault schedule aimed at the four riskiest seams, judged by numeric stop/go thresholds instead of a demo passing once.
+
+Phase A's thirteen checks are the right list; what turns it from a checklist into a falsification experiment is where the forced failures land and what counts as failure. The four seams most likely to disprove the architecture, in descending order of blast radius:
+
+Completion atomicity under crash — the Question-1 matrix, run inside the journey, not as a unit test. If DB and tree can disagree, the one-authority premise is false.
+Concurrent editor CAS save vs. internal registry merge. This is the only place two writers touch one document, and the constitution stakes "one document" on it. Force it hard: an editor save storm (a save every 500 ms with real structural edits) running while completions merge registry visibility. Any silent overwrite of shot structure, lost edit, or wrong CAS conflict is an architecture-level stop — it would mean the merge needs to become a second placement authority, which is exactly what the design forbids.
+The WGP in-process contract on a machine that isn't the dev box. The cwd/sys.path/monkeypatch contract in wgp_bridge.py is the most fragile import surface in the system. Clean-VM installs on both supported hardware tiers (including darwin-arm64, where the decord wheel gap lives) are part of the slice, not a Phase-C nicety.
+Lease/fence semantics under worker death mid-upload — kill −9 the worker at byte k of the multipart body, let the lease expire, reclaim, and assert the late completion from the dead attempt is fence-rejected while the reclaimed attempt succeeds.
+Stop/go thresholds, recorded as evidence tables per run batch:
+
+Stop (architecture bug): any DB/tree disagreement across ≥100 crash-injected journeys; any duplicate generation or receipt violation; any silent document clobber under the save storm; any fence acceptance from a superseded attempt.
+Stop (contract bug): fresh clean install needs manual path surgery rather than doctor guidance to reach first image — that means the setup contract (Question 5) is wrong, not the machine.
+Go: zero stops, active-poll freshness p95 ≤ 3 s, replayed admission and changed-payload both produce their specified 409/receipt behavior, and the whole journey passes with Supabase and provider networking blocked.
+What to build and prove
+A journey harness (drive the bridge directly; no UI dependency) with a declarative fault schedule per run.
+Clean-VM images for both hardware tiers; the slice runs on both, never only on the dev machine.
+Phase-A sign-off is the evidence table, not a screen recording.
+Question 3
+What are the measured limits of one CAS-versioned timeline document?
+AnswerMeasure with a parametric project generator swept to 10× expected scale, set per-tier percentile budgets on save and load, prune the asset registry at save time, and version the document envelope now so chunking can arrive later behind the same one-version, one-save contract.
+
+The whole-document CAS save is O(document) per keystroke-debounce, so the operating envelope is a function of document bytes. Quantify it with a generator parameterized by the things that actually grow: shots S, generations per pool G, registry entries R, boundary overrides, undo depth U. Define a "reference ceiling" project (say, the 99th-percentile plausible film: hundreds of shots, thousands of pooled generations) and sweep from typical to 10× ceiling, measuring on the floor hardware tier:
+
+serialize + parse cost and peak memory per save/load;
+save round-trip p50/p95 through the real bridge (the writer queue is shared — a slow save steals writer occupancy from completions, so this couples directly to Question 9's budgets);
+conflict behavior under the Question-2 save storm plus concurrent registry merges;
+undo-history memory across U deep edits.
+Two findings are predictable enough to act on now. First, asset_registry_json is the likely first limit — it accumulates monotonically as completions merge visibility. Give saves a cheap pruning pass that drops registry entries no longer referenced by the document (measured, and only if the measurement confirms growth; the bytes stay safe in the managed tree regardless). Second, budgets need numbers, not vibes: e.g. save p95 ≤ 150 ms at the typical project, ≤ 1 s at the reference ceiling, on the floor tier. The moment a production-shaped fixture breaks the budget is the recorded, evidence-backed trigger for the next representation — exactly the "measure before inventing authority" rule the constitution already states.
+
+The evolution seam that preserves one-document semantics: stamp a doc_format version in the document envelope now (a one-line change), and hold two things invariant forever — one CAS version number per timeline, one save route. A future chunked representation (root manifest + per-track chunks, internal to Astrid's storage) then lives entirely behind the frozen save/load contract: the editor still submits and receives one document with one expected version, and no second placement authority is created because the chunking is representation, not authority.
+
+What to build and prove
+The generator + sweep as a repeatable benchmark (it doubles as the Question-9 corpus).
+Registry-prune-at-save behind the measurement.
+doc_format: 1 in the envelope, rejected-if-unknown, before Phase A hardens the format.
+Question 4
+Can capability contracts stay stable while executors evolve independently?
+AnswerYes — if the public contract is exactly {capability ID, family, input schema, output policy, task-pinned provenance} and nothing else, enforced by a per-capability conformance suite that every executor build must pass, with a bright-line rule for which changes bump the boot manifest versus the definition version.
+
+The pack already draws the right line: tasks pin output-determinative facts (definition version, workflow digest, model hash) while the boot manifest carries environmental facts (Wan SHA, ComfyUI/node versions, ABI, tool versions). What makes that line load-bearing is a conformance suite and an explicit change taxonomy:
+
+Change	Classification	Required action
+Executor internals; env/tool versions; performance	Compatible	Boot-manifest bump; conformance suite must pass unchanged
+Model hash, workflow digest, definition semantics	Output-determinative	definition_version bump; pinned on new tasks; old provenance still names old build
+Input schema, output policy, family mapping	Contract break	New capability ID only if public I/O truly breaks; otherwise versioned definition + resolver migration
+The conformance suite is one fixture set per shipped capability: representative inputs → assertions on the completion manifest (file count, media types, dimension/duration bounds, required provenance fields present and truthful). It runs against any candidate executor build — which means it is the same artifact Question 6 reuses as the Wan2GP upgrade gate, and it is what gives "exactly one binding per capability" its teeth: a binding switch (WGP→VibeComfy or a Wan rebase) is acceptable precisely when conformance passes and the taxonomy says which version field moved.
+
+The registry's minimal entry shape — ID, family, validator, output policy, one binding, probe, optional template digest — should be frozen as a type the compiler enforces, so executor quirks physically have nowhere to leak into: a handler cannot add a field to the public surface without changing the registry type, which is a reviewed contract change by construction. The existing fail-closed rule (bridge/worker registry digest disagreement aborts startup) extends naturally: stamp the conformance-suite result hash into the boot manifest, so an executor build that never passed conformance cannot advertise.
+
+What to build and prove
+Conformance fixtures per capability, in-repo beside ready_templates, run in CI and at release.
+The change-taxonomy table above as a checked-in policy doc; PR template asks "which row is this?"
+Completion provenance always names the boot manifest hash that executed the task — the join key that makes any historical output attributable to an exact build.
+Question 5
+What's the humane, deterministic model-acquisition contract for a fresh machine?
+AnswerA per-artifact transactional state machine journaled on disk, driven by a signed versioned manifest of {hash, size, license, tier requirements}, with resumable downloads, atomic installs, boot-time fast verification, and a doctor that repairs rather than re-explains.
+
+Every artifact — model weight, checkpoint, node pack, binary — moves through one journaled state machine:
+
+absent → downloading(offset) → verifying → staged → installed
+                     ↘ any failure → corrupt(reason) → repairable
+Transitions are recorded locally (a small setup journal, not the product SQLite — setup must work before the product does), so any crash resumes deterministically: a half-downloaded file resumes from its offset via HTTP Range; a hash mismatch lands in corrupt with the reason, never in installed. Installation is temp-file + hash-verify + atomic rename, the same durable pattern as Question 1 — a machine can lose power at any moment during setup and never end up with an artifact that claims to be installed but isn't bit-exact.
+
+The manifest is signed and versioned, listing per artifact: content hash, byte size, license identifier, and hardware/tier requirements. Setup begins with a discovery probe — GPU/VRAM, disk free, OS/arch — and selects the bundle for the machine's tier before downloading anything, which is also where platform gaps (the darwin-arm64 decord wheel) are detected as "this capability is unavailable on this platform" rather than as a mid-install traceback. Disk preflight requires artifact size plus working headroom (checkpoints unpack), and a refusal states the exact gigabytes needed. License acceptance is recorded locally before the bytes move.
+
+Truthful advertisement then falls out of the existing law: a capability is advertised only when the closure of its required artifacts is installed and verified. The boot fast-path checks size + stored verification stamp; the doctor's deep pass re-hashes on demand and offers per-artifact repair (re-fetch only what's broken). A 422 capability_unavailable carries machine-readable missing_prerequisites plus a setup_hint that is a single runnable command — the humane part is that every error's next action is one step, not a wiki page.
+
+One boundary worth stating in the constitution's language: acquisition is the only sanctioned outbound networking, and it lives in setup mode. Phase-A acceptance still runs generation with all networking blocked — downloads and generation never share a phase.
+
+What to build and prove
+The setup journal + state machine, with kill-during-download/verify/rename tests mirroring the Question-1 matrix.
+Signed manifest format + tier bundles; probe → plan → confirm → execute flow with progress per artifact.
+Doctor: fast verify at boot, deep verify + targeted repair on demand; every capability_unavailable maps to one doctor action.
+Question 6
+How can Wan2GP upgrades be made boring and reversible?
+AnswerA five-gate pipeline — hermetic rebase, contract tests, platform resolution, conversion fixtures, seeded output corpus with a semantic diff policy — where gates 1–4 auto-reject mechanically and only gate 5 ever needs a human, plus drain-and-swap rollout with the prior manifest retained for instant rollback.
+
+The pack already fixes the update path (rebase fork → review → revalidate → bump SHA → smoke test). Make each step a mechanical gate:
+
+Hermetic rebase build. Rebase reigh-sprint-3 onto the candidate upstream base in CI. The patchset (wgp_patches.py and friends) must apply with zero fuzz — any conflict or fuzzy apply is an automatic rejection, because fuzz means the monkeypatch target drifted.
+Contract tests. Assert every symbol, module path, and cwd behavior wgp_bridge.py depends on; diff the wgp_config.json schema and the defaults/, finetunes/, ckpts/ layout. New required keys or moved paths auto-reject until the patch layer is updated.
+Platform resolution. Dependency solve on every supported target. A new transitive dependency without a darwin-arm64 wheel is an auto-reject here, at upgrade time — not a first-run failure on a user's laptop.
+Conversion fixtures. The existing payload/conversion fixtures run unchanged.
+Seeded capability corpus + semantic diff. Fixed seeds, representative prompts per WGP capability, compared against the accepted build's outputs and classified: bitwise identical → safe manifest bump, no review; perceptually within budget (per-capability SSIM/LPIPS thresholds, frame count/duration/dimensions exactly equal) → manifest bump with human eyes on the grid; beyond budget or shape change → rejected, unless the owner explicitly wants the new behavior — which is by definition output-determinative and takes the Question-4 definition_version bump, not a silent swap.
+Rollout and reversal: drain queued/running WGP work (the registry-edit rule already requires drain/restart), swap the submodule SHA, boot with the new manifest. Keep the previous manifest and its checkpoint set on disk until the next accepted build, so rollback is a pointer move plus restart, not a re-download. Because completion provenance names the boot-manifest hash (Question 4), any output ever produced is attributable to an exact {wan2gp_sha, upstream_base, patchset_hash, model_hashes} tuple — the inferred executor-build manifest in the task-model doc, promoted to a hard requirement.
+
+What to build and prove
+The gate pipeline as one CI job on a GPU runner; its report is the upgrade PR's body.
+The auto-reject list checked in as policy: patch fuzz, missing symbols, layout moves, unresolvable platform deps, disk-budget regressions.
+A rollback drill in Phase B: accept build N+1, roll back to N, prove queue and outputs are unharmed.
+Question 7
+What invariant makes orchestrator crash-replay provably duplicate-free?
+AnswerDeterministic plan, receipted effects, fenced authority: the child plan is a pure function of the immutable parent spec; every admission is receipted under an attempt-independent key; and only the live fence can admit or settle. Recovery is then a lookup, not a guess.
+
+The durable facts a new coordinator needs are exactly four, all already in the kernel: the immutable orchestration spec; admission receipts keyed reigh.orch:v1:<parent>:<role>:<index>; child task states; and the parent's current attempt + fence. The recovery algorithm is a pure fold over them:
+
+plan   = derive_children(parent.spec)        // pure: no RNG, no clock
+for (role, index) in plan:
+    key = f"reigh.orch:v1:{parent_ulid}:{role}:{index}"
+    if receipt_exists(key):  adopt(receipt.child_ulid)   // maybe already terminal
+    else:                    admit(key, envelope)        // gate validates live lease
+then: observe hard deps → complete/fail/cancel parent, fenced
+Three properties make this provably duplicate-free, and each deserves a named test:
+
+Keys are attempt-independent. They contain the parent ULID, never the attempt number. A reclaimed parent's new attempt regenerates the identical keys and adopts the first attempt's children via receipts. (Putting the attempt in the key is the classic mistake that turns every lease expiry into a duplicate fan-out.)
+Plan derivation is pure. derive_children(spec) may consult nothing but the spec — no randomness, no wall clock, no filesystem. Test: derive on two machines, diff must be empty. Where a later child's inputs depend on an earlier child's outputs, the inputs flow through published media_ids (as the task model requires), but the child's identity — its role and index — is still fixed by the spec alone.
+The fence is the single authority. A zombie executor from an expired attempt can still be running; its late admissions and its parent-complete both carry a superseded fence and are rejected. Double parent completion is impossible by composition: terminal transition is fenced, receipted, and bound by the one-winning-attempt rule.
+Cancellation closes the loop: the child gate refuses admission when the parent is no longer live-and-uncancelled, and the recovery fold observes run state before admitting — so a replay racing a cancellation converges to cancelled, never to a resurrected fan-out.
+
+For the formal model, a full TLA+ spec is optional; what is not optional is an explicit transition table over (parent attempt, lease, fence) × (child: unplanned | receipted | running | terminal) and an exhaustive interleaving test that drives a deterministic scheduler through the adversary schedule: lease expiry mid-fan-out, lost admission ack, crash between admissions i and i+1, cancel during replay, zombie executor racing the reclaimed one, executor restart during parent settlement. This is the pack's own "largest cutover risk," so these tests are Phase-B exit criteria, not nice-to-haves.
+
+What to build and prove
+The transition table checked in beside the coordinator; every arrow has a test.
+Deterministic-scheduler interleaving suite enumerating the adversary schedule; zero duplicate children and exactly one parent terminal across all permutations.
+A purity test on derive_children, and a lint that no orchestration key ever embeds an attempt number.
+Question 8
+What is the correct local-trust boundary, not the convenient one?
+AnswerTreat the bridge as reachable by every process and every web page on the machine — because it is — and close that with four cheap controls: a per-boot bearer token, Host-header validation, a custom-header requirement, and 0700 data-dir permissions. Treat all project inputs as hostile parse targets that run caged, quarantine-first.
+
+"Loopback + strict CORS" stops less than it appears to. CORS governs whether a page can read responses; it does not stop no-cors POSTs (form-encoded CSRF against the bridge), and DNS rebinding lets a malicious page talk to 127.0.0.1 under its own hostname. Any other local process — including other OS users on a shared machine — can hit the port directly. The concrete threat model:
+
+Threat	Control	Cost
+DNS rebinding from a malicious page	Validate Host against a strict allowlist (127.0.0.1:port, localhost:port)	~10 lines
+CSRF / no-cors writes from any page	Require a custom header + per-boot bearer token on every mutating route; launcher mints the token and hands it to app and worker out-of-band	Small; a capability, not accounts
+Other local processes / other OS users	Bind 127.0.0.1 only; the same per-boot token; chmod 700 on SQLite, media tree, quarantine	Config
+Hostile workflow JSON	Schema validation + a Comfy node allowlist (no arbitrary-filesystem/network/script nodes); digest pinning already immutabilizes the bytes	The allowlist is the real work
+Hostile archives / imports	Canonicalize entry paths; reject absolute paths and ..; cap entry count and expanded size	Standard zip-slip hygiene
+Hostile filenames	Already structurally closed: media is addressed by ULID/hash, never by client-supplied path — keep that total (imports copy immediately; display names are metadata, sanitized for the UI)	Free, by existing law
+Parser exploits (ffmpeg, decord, image codecs)	Decode under timeout, memory and output-size caps, as a crashable subprocess where feasible; quarantine-first means a parser crash torches a temp dir, never authority	Wrapper + limits
+Confused-deputy file reads	The frozen bridge's verified path containment on timeline assets and managed media — already in the contract; add a test that a symlink planted in the tree cannot escape	One test
+Secrets stay where the constitution puts them — environment or keychain, never SQLite — and the per-boot token deliberately isn't a secret worth stealing: it dies with the process. Nothing here rebuilds cloud auth; every control is static, local, and testable, and each row above should land as an acceptance test in the phase that ships its surface.
+
+What to build and prove
+The token + Host + custom-header gate on the bridge, with a hostile-page test (a local HTML file attempting rebinding and no-cors POSTs must fail).
+The Comfy node allowlist for local.workflow.run — the highest-leverage single control in the table.
+Zip-slip, symlink-escape, and decode-bomb fixtures in CI.
+Question 9
+What performance envelope should the product explicitly promise?
+AnswerTwo named hardware tiers, per-tier p95 budgets on the eleven user-felt latencies, a shared-writer occupancy ceiling that protects them all, and three explicit degradation verbs — refuse, degrade, queue — each with its own trigger.
+
+Define the tiers concretely and publish them: a floor tier (the weakest machine the product claims to support — e.g. Apple Silicon 16 GB / mid-range 12 GB-VRAM PC) and a comfortable tier. Every budget below is measured on the floor tier; the comfortable tier just gets more headroom. Generation duration itself is model-bound and honestly variable — so the promises attach to everything around generation:
+
+Surface	Budget (p95, floor tier)
+Cold start → interactive UI	≤ 3 s (availability probe runs async; capabilities appear as verified)
+Admission → claimed	≤ 1 worker loop iteration (~1 s) when the queue is empty
+Progress freshness while active	≤ poll interval + 1 s (≤ 3 s), matching the 2-second promise
+Any single writer transaction	≤ 50 ms; completion with rows ≤ 250 ms (bytes are outside the lock by design)
+Sustained writer occupancy	< 20% — the one number that protects save latency, poll reads, and claim latency simultaneously
+Editor save round-trip	≤ 150 ms typical project / ≤ 1 s at the Question-3 reference ceiling
+Gallery page (50 items @ 10k generations)	≤ 200 ms
+Render admit → first Remotion progress	≤ 10 s
+Managed-MP4 playback start (Range)	≤ 500 ms to first byte
+Lease-expiry reclaim	≤ 2× lease duration, always
+Disk	Per-capability output budgets; warn at 85% of configured cap
+Degradation is a policy, not an accident, with three verbs: refuse with the exact remedy when correctness is at stake (disk headroom below the next output's budget, VRAM below the capability's floor — the capability_unavailable machinery already speaks this language); degrade when only fidelity is at stake (preview resolution, deferred thumbnails); queue when only time is at stake (GPU busy → work waits in admission order; never thrash the GPU with parallel jobs the tier can't hold).
+
+The benchmark corpus is the Question-3 generator plus recorded task mixes replayed through the Question-2 harness, run on tier-representative machines at release. Telemetry stays local: a ring buffer of the timings above, surfaced by the doctor as "your machine vs. your tier's budgets" — which turns "it feels slow" into a diagnosable, one-line answer without a byte leaving the machine.
+
+What to build and prove
+The budget table as a checked-in, versioned promise; CI fails a release that regresses a budget on the reference corpus.
+Writer-occupancy instrumentation from day one — it's the load-bearing metric and the cheapest to record.
+The three-verb degradation policy wired into admission and preflight, each verb with a fixture.
+Question 10
+Which seams preserve future options without prebuilding them?
+AnswerSeven invariants — most already law — each cheap, testable, and protecting a named future. Plus one governance rule: an abstraction that cannot name which of these options it preserves gets cut, which is how v1 stays tight.
+
+Invariant (hold now)	Option it preserves	Test that guards it
+Media identity is (ULID, SHA-256) — a path or URL never crosses the bridge as authority	Sync, remote execution, dedupe, storage relocation	API review + lint: no filesystem path in any wire schema
+Task specs immutable; receipts + provenance complete	Remote/replayed execution, audit	Spec rows are INSERT-only; test that UPDATE fails
+Every mutation is a writer-queue command emitting the existing hash-chained kernel events	Future sync / multi-user replication seam	No write path bypasses the queue; event chain verifies
+The wire protocol carries no loopback-only semantics — idempotency keys, fences, and leases are transport-independent	Remote worker later = TLS + auth only, zero semantic change	Run the full protocol suite against a non-loopback test listener
+One CAS version + one save route per timeline; envelope carries doc_format	Chunked/larger documents behind the same contract (Q3)	Frozen-route tests + unknown-format rejection
+Backup is a documented pair — SQLite file + managed tree + manifest — and restore is tested, not assumed	Export, machine migration, sync bootstrap	Round-trip restore in Phase-C acceptance
+Capability conformance suite (Q4) defines "compatible executor"	New local executors are additive, not migrations	The suite itself
+Notice what's absent: nothing here is a new subsystem. Five of the seven are restatements of existing constitutional law with a test attached; the two additions (doc_format, the non-loopback protocol run) are a line and a CI job. That's the point — options are preserved by discipline about identities and boundaries, not by machinery.
+
+The governance rule is the other half of the answer. The corpus already rejected runtime plugins, alias tables, binding selectors, promotion services, and premature graph orchestration — correctly, because none of them protects an option the table doesn't already cover. Keep that rule alive going forward: every proposed abstraction must name the row it serves. No row, no abstraction.
+
+What to build and prove
+The seven guard tests, each tiny, landed in the phase that ships its surface.
+The "name the row" rule written into the constitution's decision process for future proposals.
+Prepared against the Reigh-on-Astrid project pack (readme, overview, end-state, constitution, build spec, roadmap, task model, questions), authority order as the pack defines it. Where an answer extends the pack — the pre-transaction CAS publish, the per-boot bearer token, the setup journal, doc_format — the extension is marked in place and stays inside the ratified constraints.

@@ -1,0 +1,16 @@
+[launch_hermes_agent] model=stealth/ox-alpha → resolved=stealth/ox-alpha toolsets=['file', 'web', 'terminal'] max_tokens=65536 context_budget_tokens=(auto)
+[launch_hermes_agent] NOTE: omp gives the full toolset (Bash, Read, Edit, web, …); the file/web/terminal subset is a superset here.
+[launch_hermes_agent] cwd=/workspace/reigh-phase-a-20260822/Astrid
+Working...
+## Verdict: DIVERGE
+
+**Gap 1 — lease expiry is never driven (operational wedge).**
+`TaskRepository.expire_overdue` (astrid/core/repositories/tasks.py:2374, command kind `core.task.expire`) has **zero production callers** — only tests invoke it (`tests/v10/test_task_lifecycle.py:793`, `test_task_races.py:186`, fault matrix). `_dispatch_serve` (gateway/dispatch.py:128–259) starts no sweeper thread and runs no boot sweep of overdue attempts; there is no `tasks expire`/sweep CLI or SDK verb. Consequence chain: executor crashes mid-run → attempt stays `running` past `lease_expires_at` → `heartbeat` rejects with `lease_expired` but does not transition it → `tasks retry` predicate requires a prior *failed/expired* attempt, so it returns `not_retryable`; `runs retry-failed` eligibility likewise only matches failed/expired children. The task is permanently stuck with no user-reachable recovery. The schema side is fine (indexed `attempts_lease_expiry`, precise parsed comparison, deterministic FIFO) — the driver is missing.
+**Fix:** sweep overdue attempts at `compose_standard_bridge` boot (alongside the existing staging-GC call, packs/\_\_init\_\_.py:234) plus either a periodic timer on the serve loop or an explicit `tasks expire` verb.
+
+**Gap 2 — stale sweeper references after the m8 retirement.**
+`sweeper.py` deleted in 51c02498, but: (a) `astrid/core/events/__init__.py:29` still documents a "RunPod sweeper's documented hard-mode exception" as a live allowlisted writer; (b) `astrid/core/integrations/runpod/__init__.py:1` docstring still claims "sweeper … and CLI wiring" that no longer exists (module is a bare docstring). Fix both docstrings or reinstate the promised `runpod.sweep` executor (.oracle plan.md:358).
+
+**Converging checks:** staging GC + boot sweep present ✓; backup create/restore wired, staged/journaled with WAL-sidecar handling ✓; `capability_unavailable` carries the setup hint (`bridge_service.py:571-574` embeds `exc.hint`; cf. `ENSURE_STORAGE_HINT`) ✓; doc-27 §4.1 polling surface implemented (`bridge_service.py:1369`, routes at `local_bridge_server.py:1067`) ✓; serve boot fails typed with owner-lock discipline ✓.
+[launch_hermes_agent] done in 305.7s (exit=0)
+0
