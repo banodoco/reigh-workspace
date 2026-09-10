@@ -1,5 +1,7 @@
 # Portfolio coordinator goal
 
+Mandatory latest direction: read [the pure orchestration contract](orchestrator-contract.md). Astra low coordinates; Luna xhigh managers delegate all substantive execution; Astra high supplies sparse meta-oracle judgment within the existing budget. Give the startup read-back before dispatch. Operational instructions to inspect, edit, test, sync or merge mean delegate those actions, then judge the returned evidence.
+
 Deliver the six programs in [projects.md](projects.md) to their agreed, tested outcomes on compatible source merged to the affected repositories' main branches. Follow [northstar.md](northstar.md), the latest [user authority](authority.md), [sequencing plan](plan.md) and [operating instructions](operations.md).
 
 This preparation publishes direction and selected preservation inputs; it does not execute the programs. The receiving coordinator activates delivery in the single [run.yaml](run.yaml), retaining project roles, review stages and consumed budgets. Recover the existing Astrid unified-execution P7 CPU handoff first; do not recreate its manager or infer acceptance from historical records.

@@ -1,5 +1,7 @@
 # Astrid portfolio — orchestrator handover
 
+Mandatory latest direction: read [the pure orchestration contract](orchestrator-contract.md). Astra low coordinates; Luna xhigh managers delegate all substantive execution; Astra high supplies sparse meta-oracle judgment within the existing budget. Give the startup read-back before dispatch. Operational instructions to inspect, edit, test, sync or merge mean delegate those actions, then judge the returned evidence.
+
 You are coordinating six existing programs to tested, validated, integrated code on their respective `main` branches. Five are new projects; **Astrid unified-execution**, plan **`megado-unified-v3`**, is already at **P7 CPU closure**. Continue that work; do not restart it from an older wrapper or planning snapshot.
 
 The intended recipient is an intelligent Codex coordinator on the same Mac, opening a persistent Codex window for each new project manager and keeping progress visible in those same threads. Use judgment, delegate real work, and keep the state small. This package is direction and evidence, not a new scheduling framework.

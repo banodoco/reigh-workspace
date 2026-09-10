@@ -5,6 +5,7 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
 import time
 
 PACKAGE = Path(__file__).resolve().parents[1]
@@ -40,6 +41,12 @@ def main():
     except ImportError:
         parser.error('PyYAML is needed to read run.yaml; use the manual CLI recipe without changing its configured role.')
     binding = yaml.safe_load(config.read_text())['roles']['coordinator']
+    approved = yaml.safe_load((PACKAGE / 'handovers' / args.project / 'run.yaml').read_text())['roles']['coordinator']
+    if binding != approved:
+        message = 'Active manager binding differs from approved portable binding; delegate safe configuration reconciliation before launching (do not replace a live owner).'
+        if args.execute:
+            parser.error(message)
+        print('WARNING: ' + message, file=sys.stderr)
     codex = shutil.which('codex')
     if not codex:
         parser.error('codex is not on PATH')

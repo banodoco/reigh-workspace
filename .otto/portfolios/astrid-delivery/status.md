@@ -1,5 +1,7 @@
 # Preparation status
 
+Latest user amendment: [pure orchestration contract](orchestrator-contract.md), mandatory read-back, Astra low top coordinator, Luna xhigh project managers and Astra high meta oracle within the existing three-call allowance. Active managers are not hot-swapped by these portable changes. The launcher rejects execution with stale active role bindings. [Local source audit](source-readiness.md) recommends no additional product-main push before owner acceptance/P7 reconciliation.
+
 Prepared September 10, 2026. **Ready for receiver bootstrap**, not product-complete. The package provides six project handovers, sequencing/ownership, source pins, the receiving prompt, checkpoint instructions and same-thread waiting. No orchestrator or project-manager windows were launched, and no recurring scheduler/global/cloud sync was installed.
 
 Approved follow-up adds one separately managed Integration & E2E workstream, explicit V1-FIXTURE-READY, three ready implementation lanes with a conditional fourth, and first-class multi-repository custody/push/merge instructions in repositories.md. The integration handover is a preparation seed; no live INT run or fixture was created. It adds no independent oracle allowance or duplicate review stage. [Astra's focused assessment](analysis/parallelism-and-final-integration-astra.md) informed the amendment; the earlier package review remains historical, not a new certification of these edits.

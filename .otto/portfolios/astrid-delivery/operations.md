@@ -1,5 +1,7 @@
 # Operating the portfolio
 
+Mandatory latest direction: read [the pure orchestration contract](orchestrator-contract.md). Astra low coordinates; Luna xhigh managers delegate all substantive execution; Astra high supplies sparse meta-oracle judgment within the existing budget. Give the startup read-back before dispatch. Operational instructions to inspect, edit, test, sync or merge mean delegate those actions, then judge the returned evidence.
+
 Treat the coordinator as a capable colleague. Give managers the goal, source, constraints and next dependency; let them solve implementation details. Keep this portfolio's live memory to a short status, a project/thread map and the current shared-source handoff. Original tasklists and review evidence stay with their projects.
 
 ## Keep work visible in the same threads
