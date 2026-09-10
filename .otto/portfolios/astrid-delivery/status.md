@@ -10,6 +10,8 @@ Canonical control/ledger root: `.otto/portfolios/astrid-delivery/`. Original out
 
 ## Preparation record
 
+User-approved efficiency refinements are applied: quiet-project checks remain, sparse observations are acceptable, no unchanged-assignment nudges, Astra low has a narrow mechanical clerical exception, bookkeeping is batched, and missing monitoring alone is not a gate. Scheduled 12-hour calls remain mandatory and now emphasize identifying bottlenecks/acceleration opportunities during quiet periods. The oracle prompt includes optional downstream failure lenses within that existing call, not a new review stage. No project execution or extra oracle invocation was performed for this amendment.
+
 Latest instruction supersedes the prior no-additional-main-push recommendation: validate and publish the intended latest Astrid/Runtime source and adopt the running GPU program immediately in the receiving orchestrator's remit. Follow gpu-project-takeover.md for existing-thread recovery and the checkpoint composition → main merge → retest → continuation sequence. Publication results are recorded in source-publication.md; publication is not GPU/P7 completion.
 
 Role amendment: [pure orchestration contract](orchestrator-contract.md), mandatory read-back, Astra low top coordinator, Luna xhigh project managers and Astra high meta oracle within the existing three-call allowance. Active managers are not hot-swapped by these portable changes. The launcher rejects execution with stale active role bindings. The [earlier local source audit](source-readiness.md) is historical; subsequent explicit publication authority and results supersede its no-push recommendation.

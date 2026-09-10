@@ -1,6 +1,6 @@
 # Operating the portfolio
 
-Mandatory latest direction: read [the pure orchestration contract](orchestrator-contract.md). Astra low coordinates; Luna xhigh managers delegate all substantive execution; Astra high supplies sparse meta-oracle judgment within the existing budget. Give the startup read-back before dispatch. Operational instructions to inspect, edit, test, sync or merge mean delegate those actions, then judge the returned evidence.
+Mandatory latest direction: read [the pure orchestration contract](orchestrator-contract.md). Astra low coordinates; Luna xhigh managers delegate all substantive execution; Astra high supplies sparse meta-oracle judgment within the existing budget. Give the startup read-back before dispatch. Operational instructions to inspect, test, sync or merge mean delegate those actions, then judge the returned evidence. Astra low may directly perform small mechanical control updates under orchestrator-contract.md's clerical exception; substantive work stays delegated.
 
 Treat the coordinator as a capable colleague. Give managers the goal, source, constraints and next dependency; let them solve implementation details. Keep this portfolio's live memory to a short status, a project/thread map and the current shared-source handoff. Original tasklists and review evidence stay with their projects.
 
@@ -72,7 +72,7 @@ At every scheduled check-in and before a dependency release, integration/merge, 
 
 Each returns a short evidence-linked report: what actually changed, claimed versus demonstrated completion, dependencies/conflicts, signs of drift or waste, and unresolved uncertainty. Bind findings to the inspected commit or dirty-worktree state and observation time. Reuse an investigation already underway for the same checkpoint rather than spawning duplicates; count investigators in the total concurrency/resource picture.
 
-The orchestrator judges their findings itself: compare evidence, resolve contradictions with a focused check, and explicitly accept, hold or redirect the next step. Luna conclusions do not replace required project tests or reviews and cannot authorize a merge. If investigation is unavailable or incomplete, report the gap and hold the affected evidence-dependent gate. Summarize the judgment and next action in the existing orchestrator thread; send corrections to existing manager threads. Keep this lightweight—no standing review panel or mandatory long report for unchanged work.
+The orchestrator judges their findings itself: compare evidence, resolve contradictions with a focused check, and explicitly accept, hold or redirect the next step. Luna conclusions do not replace required project tests or reviews and cannot authorize a merge. If an investigator report is unavailable or incomplete, record the monitoring gap and recover it proportionately; that alone does not block otherwise-proven work. Hold only for missing mandatory acceptance/source evidence or a material unresolved contradiction, under the original project gates. Summarize the judgment and next action in the existing orchestrator thread; send corrections to existing manager threads. Keep this lightweight—no standing review panel or mandatory long report for unchanged work.
 
 ## Hourly checks with wakeup-loop
 

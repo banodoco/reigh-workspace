@@ -18,7 +18,7 @@ Copy the observation block into the assigned project's local history. Replace pl
 ### Astra judgment — pending
 ```
 
-Only after Astra decides, the sole delegated writer appends this second block. Leave the pending marker as historical state; the later timestamped judgment resolves it.
+Only after Astra decides, Astra low itself under the clerical exception or the sole assigned recorder appends this second block. Leave the pending marker as historical state; the later timestamped judgment resolves it.
 
 ```markdown
 ### Astra judgment — decided at UTC_TIME
