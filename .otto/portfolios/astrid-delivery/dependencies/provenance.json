@@ -1,0 +1,71 @@
+{
+  "repository": "https://github.com/peteromallet/poms-skills",
+  "published_branch": "handover/astrid-portfolio-20260910",
+  "published_commit": "d849898cd0c191cffc5ababbb5ea7d2c188e8ed0",
+  "published_remote_verified": true,
+  "inspected_commit": "f1296034386486d65cf19876d5e5ebfb0547e7cf",
+  "remote_main_verified": "f1296034386486d65cf19876d5e5ebfb0547e7cf",
+  "source_checkout": {
+    "path": "<skills-source>",
+    "branch": "main",
+    "head": "f1296034386486d65cf19876d5e5ebfb0547e7cf",
+    "dirty": true,
+    "dirty_paths": [
+      "megado/SKILL.md",
+      "agent-pipeline-improve/",
+      "context-usage/",
+      "contextminning-subagentmaxxing/",
+      "disk-cleanup/",
+      "go-all-the-way/",
+      "image-generation/",
+      "image-understanding/",
+      "minimize-context/",
+      "moirae/",
+      "pickup-agent-conversation/",
+      "process-cleanup/",
+      "push-things-forward/",
+      "search-agent-logs/",
+      "shit-or-get-off-the-pot/",
+      "weekly-update/"
+    ],
+    "publication_rule": "The pinned commit is reproducible base content; only the explicitly selected dirty megado/SKILL.md is exported. Unrelated dirty paths are excluded."
+  },
+  "exports": [
+    {
+      "export": "megado/",
+      "source": "<skills-source>/megado/",
+      "basis": "pinned commit plus selected dirty megado/SKILL.md",
+      "commit_skill_sha256": "9e3808bd3cff42b626ed8d8a145193f376d25588ba636ef92bda1aad6b1cd290",
+      "selected_dirty_skill_sha256": "ce303607ee95f428ae71fd1487e3e51f549cec847de1eeaad219e1c6a43b6379",
+      "note": "The vendored SKILL.md exactly matches the selected dirty source, not the pristine commit blob."
+    },
+    {
+      "export": "megado-handover/",
+      "source": "<skills-source>/megado-handover/",
+      "basis": "pinned commit"
+    },
+    {
+      "export": "wakeup-loop/SKILL.md",
+      "source": "<supplied-helper-source>/wakeup-look/SKILL.md",
+      "source_sha256": "58971b8f5e9eab9c8866595c8d12796668358649db8ea04790e67bdf70a53097",
+      "export_sha256": "d5cfd3007f65ff4b417cb6c56333c255aed55c349ee9684dfe5f77d1a1b8bb46",
+      "transform": "renamed frontmatter skill name from wakeup-look to wakeup-loop; otherwise preserved helper text"
+    },
+    {
+      "export": "wakeup-loop/scripts/wakeup_loop.sh",
+      "source": "<supplied-helper-source>/wakeup-look/scripts/wakeup_loop.sh",
+      "source_sha256": "dfec8bec530d2baa05d9228e72f8721d2862a64ee9d40868e881c574ad72fad6",
+      "export_sha256": "dfec8bec530d2baa05d9228e72f8721d2862a64ee9d40868e881c574ad72fad6",
+      "transform": "none"
+    },
+    {
+      "export": "sync.sh",
+      "source": "<skills-source>/sync.sh",
+      "source_sha256": "eb6aaeb10a2af8c06650fa577b63e345c0de48ebd2f37633f2e2db7517a394fe",
+      "export_sha256": "eb6aaeb10a2af8c06650fa577b63e345c0de48ebd2f37633f2e2db7517a394fe",
+      "transform": "none; source is ignored/untracked in poms_skills and therefore explicitly vendored"
+    }
+  ],
+  "sync_scope": "The vendored sync.sh sees only megado, megado-handover, and wakeup-loop in this dependency directory. It does not include _global, so no CLAUDE.md/AGENTS.md replacement or backup occurs. Use POMS_SKILLS_SKIP_CLOUD=1 for local-only operation.",
+  "note": "No commit, push, source checkout mutation, cloud sync, or real global sync was performed by this packaging task."
+}

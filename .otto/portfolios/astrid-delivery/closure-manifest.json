@@ -1,0 +1,803 @@
+[
+  {
+    "source": "authored or selected preparation artifact",
+    "export": ".gitignore",
+    "transforms": [],
+    "export_sha256": "90cc4f4f7514c5b0114249698a731e20fa94937de80e43bb95cb8ab4450f2957"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "START-HERE.md",
+    "transforms": [],
+    "export_sha256": "953cf0960ecd5203290dab9abbf60bea9128238fe862fc4d85095ee3564a7ba2"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "agent_goal.md",
+    "transforms": [],
+    "export_sha256": "d45011a89578496a9fb129438ebe1d04ccdeba6f4cf7c6a8cf268fe57bfac185"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "analysis/astra-handover-review.md",
+    "transforms": [
+      "trailing whitespace/blank EOF normalized"
+    ],
+    "export_sha256": "63b34edd7008ac5beb551e2aad661cdceeadc2766727ac91d924d08f33992ca9"
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/ephemeral-lifecycle.md",
+    "export": "analysis/ephemeral-lifecycle.md",
+    "original_sha256": "89b87f0f9c95762d16591eb33e50d8f2a95fd038be29e3050e7b5eef8b124f35",
+    "export_sha256": "10839b690f381794bce6ac349b329405e51315a0628b1c6a5987cba41a7c6ae1",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/generation-path-alignment.md",
+    "export": "analysis/generation-path-alignment.md",
+    "original_sha256": "aff14194a3fdb408c6cc3442b8e47f44e9d882dfcd92de6dcc0a92ed785df32c",
+    "export_sha256": "133296e693882aac15fd85cbb3af8e4399942487db26578aaca67f617eb1621e",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/gpu-sequencing-assessment.md",
+    "export": "analysis/gpu-sequencing-assessment.md",
+    "original_sha256": "a525ecc4b4db6db957a3fbbb47540e182c12a359d562fbaa1313e935c0f25645",
+    "export_sha256": "58a4efd848c15cc2a3f67f41073560a1d62a84f926fe262621b7ab02bd23d50a",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/orchestrator-brief.md",
+    "export": "analysis/orchestrator-brief.md",
+    "original_sha256": "f5a36917684d8dbfa55e361b4e1202e278c759c03daafaa9ce5bfe33208b2358",
+    "export_sha256": "b94429189a72424ba57fdeca058b39799478d149c5a3fece565895a3d4cc2904",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/portfolio-plan.md",
+    "export": "analysis/portfolio-plan.md",
+    "original_sha256": "0c320497197eeb3b889428ddc861f72b776caf8570abed569ebe427162619b98",
+    "export_sha256": "a422fef769e8b379d6c343603aba34d4319df2c1fa19cbf4c9f0053a704eca9b",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/runtime-database-clean-break.md",
+    "export": "analysis/runtime-database-clean-break.md",
+    "original_sha256": "4128a8aaf96cdd56ab93e5b40482301d1a474b9fcc5cb231028c600f5f2607b3",
+    "export_sha256": "d09d9c9987eaf933a7b859356b3e7894c66811f98eb10c1afaa05bcb827670cf",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/runtime-render-path-reliability.md",
+    "export": "analysis/runtime-render-path-reliability.md",
+    "original_sha256": "7cbe0e76c1a1139031da2a2d4e7625cadf8e39bd1fe6118b7b1edaee00f8ec01",
+    "export_sha256": "7d433934bdcf4a399e6835981155aaa4675a7bfcf8619f9d8ce33f4341affd2e",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/sequencing-method.md",
+    "export": "analysis/sequencing-method.md",
+    "original_sha256": "9b0674eebe63fd5e7cad81a4e744a8425109e1e06f7282d0bbca8073ba81d36c",
+    "export_sha256": "ca0c9e50a9a4abc05b9f7c8d21bd72e587f48c6f6eb6075ec1c03e75176237ab",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/sequencing-review.md",
+    "export": "analysis/sequencing-review.md",
+    "original_sha256": "ad2f43f6ba7370cd53b85d8e76f35178c23e75ea6b8e937d74773eadcf966770",
+    "export_sha256": "782348a1d3102621c4d544eca2ffa1edd7afe657e1ae93490e17ee0b98fc1fc2",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "analysis/source-validation.md",
+    "transforms": [],
+    "export_sha256": "5130d2a7dfc39c4d277d261493d6088dc48a5d5d05d46f39b0a31b34497632bf"
+  },
+  {
+    "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/timeline-visualization.md",
+    "export": "analysis/timeline-visualization.md",
+    "original_sha256": "80e0e3724932fa8b6cc783895b24446882afd54b7d32ef3c6a8786fd8c0f5a15",
+    "export_sha256": "2f6aebdd55a7d98520a179528d909cd78cc9da154064cfca8c8d63e97fa52363",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "assets/handover-message.md",
+    "transforms": [],
+    "export_sha256": "207f2145a0e8eba3ca931db4724e4de3109337b0750195d06f2ed467af3cbe72"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "assets/hourly-message.md",
+    "transforms": [],
+    "export_sha256": "b6fb06d914d83b843b4aae4d582b559bd9612efea67099a579ad457ab12b91d5"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "assets/project-manager-message.md",
+    "transforms": [],
+    "export_sha256": "c2f0b914b6ebecaf3233bf4e1243eb04b556475fdc58434ecf80d47c58d76bc0"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "authority.md",
+    "transforms": [],
+    "export_sha256": "244e0f37261fe907c7a22fa7b14e5af7281ced7d6182dd0bca36af48a07559c3"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "dependencies/README.md",
+    "transforms": [],
+    "export_sha256": "daaed8adacacc8852aad909ac8e9113bd5e41f427b10af318bf22395ce09b41f"
+  },
+  {
+    "source": "<skills-source>/megado/SKILL.md",
+    "export": "dependencies/megado/SKILL.md",
+    "original_sha256": "ce303607ee95f428ae71fd1487e3e51f549cec847de1eeaad219e1c6a43b6379",
+    "export_sha256": "ce303607ee95f428ae71fd1487e3e51f549cec847de1eeaad219e1c6a43b6379",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<skills-source>/megado/references/agentbox.md",
+    "export": "dependencies/megado/references/agentbox.md",
+    "original_sha256": "d797d9febfa507a3cfc0e79c8dd23cee6193d27bff39217784c758048bc17fda",
+    "export_sha256": "d797d9febfa507a3cfc0e79c8dd23cee6193d27bff39217784c758048bc17fda",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<skills-source>/megado/references/execution.md",
+    "export": "dependencies/megado/references/execution.md",
+    "original_sha256": "b3a9fe63ba190574695c41cc21f4a39b3587c92088a9c196d7701ef04b4f5ee2",
+    "export_sha256": "b3a9fe63ba190574695c41cc21f4a39b3587c92088a9c196d7701ef04b4f5ee2",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<skills-source>/megado/references/review-packets.md",
+    "export": "dependencies/megado/references/review-packets.md",
+    "original_sha256": "41b137c8020ed1e538416e8b6001fabc36314e7f71698fbeb0bc9f83e131174b",
+    "export_sha256": "41b137c8020ed1e538416e8b6001fabc36314e7f71698fbeb0bc9f83e131174b",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<skills-source>/megado/references/run-config.md",
+    "export": "dependencies/megado/references/run-config.md",
+    "original_sha256": "ecfc704c13ac405b6b1ce5d8e18e90f151990e2ee13482930b8d02189be611ac",
+    "export_sha256": "ecfc704c13ac405b6b1ce5d8e18e90f151990e2ee13482930b8d02189be611ac",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<skills-source>/megado/templates/review-packet.md",
+    "export": "dependencies/megado/templates/review-packet.md",
+    "original_sha256": "7b39635db70de8dd1090de78cdb7dceb3ad8be1ea7782ed97034630e88e42d0b",
+    "export_sha256": "7b39635db70de8dd1090de78cdb7dceb3ad8be1ea7782ed97034630e88e42d0b",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<skills-source>/megado/templates/run.yaml",
+    "export": "dependencies/megado/templates/run.yaml",
+    "original_sha256": "28604c4a6e93b19469cdd5be7710514c84c6baa4d2cbfd1a9f59ddecbdec6171",
+    "export_sha256": "28604c4a6e93b19469cdd5be7710514c84c6baa4d2cbfd1a9f59ddecbdec6171",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<skills-source>/megado-handover/SKILL.md",
+    "export": "dependencies/megado-handover/SKILL.md",
+    "original_sha256": "7a8c394b575a9cbda984b8f8e7d61f6cccd89f57571abc4e4d9d5845d46ee978",
+    "export_sha256": "7a8c394b575a9cbda984b8f8e7d61f6cccd89f57571abc4e4d9d5845d46ee978",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "dependencies/provenance.json",
+    "transforms": [],
+    "export_sha256": "cb569c17b070ca7e1c94351ac1a978a4ff856bc1494247b9eba206d3f802899a"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "dependencies/sync.sh",
+    "transforms": [],
+    "export_sha256": "eb6aaeb10a2af8c06650fa577b63e345c0de48ebd2f37633f2e2db7517a394fe"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "dependencies/wakeup-loop/SKILL.md",
+    "transforms": [],
+    "export_sha256": "d5cfd3007f65ff4b417cb6c56333c255aed55c349ee9684dfe5f77d1a1b8bb46"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "dependencies/wakeup-loop/scripts/wakeup_loop.sh",
+    "transforms": [],
+    "export_sha256": "dfec8bec530d2baa05d9228e72f8721d2862a64ee9d40868e881c574ad72fad6"
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/agent_goal.md",
+    "export": "handovers/database/agent_goal.md",
+    "original_sha256": "af4daa046b9eca8d66e961d79e5a905c1e9aa25b6eda3d40dab6837aec9d749e",
+    "export_sha256": "37eb443cebe4189cbbd15c4870bf3f68b4afb11b1ff230b2018141d86ff4c13b",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/docs/architecture/runtime-database-clean-break-plan.md",
+    "export": "handovers/database/architecture.md",
+    "original_sha256": "9cce8e3310759a712031b0f2e2e637d39ffa5fdd1a2b6d34da564b49cb4be7ac",
+    "export_sha256": "5a5a320857f35d4b35c570bcff9bc935334d82384d25bc7de8bc2975a1b8f0bb",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/astra-assessment.md",
+    "export": "handovers/database/astra-assessment.md",
+    "original_sha256": "6f7127f1562eabd13982e1a9696cf47ac822936b57f9df9f40d2420b10be78a9",
+    "export_sha256": "4d902b9f3ee696dbab003983e4ddee3046ff50da34c195a04257201949d95060",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/implementation-criteria.md",
+    "export": "handovers/database/implementation-criteria.md",
+    "original_sha256": "a53344793b29af00e0b4306b903fdb84e87b6bbe3ee57ec42cc1c2a570eb3d7a",
+    "export_sha256": "63fd1dadd34655cbbbc30a55e227fa5214c08a9f6bc9e362e24be91e3f458ccb",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/northstar.md",
+    "export": "handovers/database/northstar.md",
+    "original_sha256": "95b91b161760cd16ec074507c670f10c0b6ebc52273cc22ef6a6ba6e938bf4bd",
+    "export_sha256": "f7dbe61232b872c173012fcc96c6aba34df4768412fdbce71150640bc1f53239",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/plan.md",
+    "export": "handovers/database/plan.md",
+    "original_sha256": "6fede5706df62cdb34619f4e77fed0c9a1d13f47d72bba6ff0f606af36f9a5f8",
+    "export_sha256": "4bad06863d80e61b062c3feeba165ea91bc1a7dc64af26d74d362980a69175bf",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/run.yaml",
+    "export": "handovers/database/run.yaml",
+    "original_sha256": "bac2208019544d0e33fe1e02461c8903c2cda787f5275089f601d3967a25e74e",
+    "export_sha256": "bac2208019544d0e33fe1e02461c8903c2cda787f5275089f601d3967a25e74e",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/status.md",
+    "export": "handovers/database/status.md",
+    "original_sha256": "daaeca480183782465b786935405fc25e4a6949d6fcbee4baf5feeb1195ef2b2",
+    "export_sha256": "acf279f4092819613d6848845650f5526e23794cdfafa5a2819e22fa579b5062",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/tasklist.md",
+    "export": "handovers/database/tasklist.md",
+    "original_sha256": "4ddc75c235987842d31305ee140b88a370b742b415c46406ddef19345f3157c8",
+    "export_sha256": "55a578ac8098f11d82bb0119e3d606063951babb518f3e48b8e2ff3aff2d4879",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/ephemeral-derived-artifact-lifecycle-20260910/agent_goal.md",
+    "export": "handovers/ephemeral/agent_goal.md",
+    "original_sha256": "6745a39ebc0e1b1ae75c99462520aae41075c86300fd12e3c26f9762f8785737",
+    "export_sha256": "e7a502fb8f26958491b67606bd83eac9b70c21f43f656f1c55093caf671fea27",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/ephemeral-derived-artifact-lifecycle-20260910/implementation-criteria.md",
+    "export": "handovers/ephemeral/implementation-criteria.md",
+    "original_sha256": "47e070411601688d97929607458b668ad54c78936aa60f96a221063a6fc44db6",
+    "export_sha256": "b49c87235c589a456b3ea7f4f966199ffb326331a16c1c239331a1332f3e1777",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/ephemeral-derived-artifact-lifecycle-20260910/northstar.md",
+    "export": "handovers/ephemeral/northstar.md",
+    "original_sha256": "f0818c91f0563568e4d2827c13d6d9bb482b7ad857e51cf001df3769f004f6c5",
+    "export_sha256": "d3dc930e2945104adb587fd757cc0898bada6f4ceb9fd7e6a36dac7d0932d534",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/docs/design/ephemeral-derived-artifact-lifecycle-plan.md",
+    "export": "handovers/ephemeral/plan.md",
+    "original_sha256": "3b78df7f5873af9e441e1902da88689a4274c330a2fb2c2532f8bc200eaaea2e",
+    "export_sha256": "1804cb825d8917414e91f9e9f03cee275e6cfce855c669bece3951e56ffca320",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/ephemeral-derived-artifact-lifecycle-20260910/run.yaml",
+    "export": "handovers/ephemeral/run.yaml",
+    "original_sha256": "9fbbb41d88b5baace24ba85b83dce00c110c0e505433a9b018561e01d238ef52",
+    "export_sha256": "9fbbb41d88b5baace24ba85b83dce00c110c0e505433a9b018561e01d238ef52",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/archive/render-review-plan-20260910/oracle-response.md",
+    "export": "handovers/ephemeral/shared-decision.md",
+    "original_sha256": "f760bda366141cf605ae9d146cb77794a8ddf233620aab0838499ff8787a1c34",
+    "export_sha256": "c56fde0b29b2486d7a602659e1f212c7887cb31aab0f251a1c4cbd61742fd65e",
+    "transforms": [
+      "final oracle ruling exported once; raw transcript/startup/tool output excluded",
+      "source references normalized; original transcript retained locally"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/ephemeral-derived-artifact-lifecycle-20260910/status.md",
+    "export": "handovers/ephemeral/status.md",
+    "original_sha256": "aab618b74b4f69d77484c4c9b803fa632d89d6bc82c6d6adc8e0d9d2915186c9",
+    "export_sha256": "4bea9d466a4b7d0601171c937c838e0c627d1717497152ac0a1d77595d5909af",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/ephemeral-derived-artifact-lifecycle-20260910/tasklist.md",
+    "export": "handovers/ephemeral/tasklist.md",
+    "original_sha256": "349c0ef145b90afe50fd3181b33871c0a89cfcbc9e9039b41b2487c5562a1e3a",
+    "export_sha256": "bea5efb2e1906a7d4665be5031f02070cb2021d6888bdc3dbd9eaebcf436caf5",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/agent_goal.md",
+    "export": "handovers/generation/agent_goal.md",
+    "original_sha256": "9f1d3ab24870bad6c9ee2f79d9d14664e3d71338e76c7b5f60e089850481c92d",
+    "export_sha256": "ff7d737840e035f6490b12d6fa07572374660e633d2a0d921078b4f2e3b0b9a3",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/northstar.md",
+    "export": "handovers/generation/northstar.md",
+    "original_sha256": "131c50808f1951756db5f3ff704279edf246dd3d8f91f8adaf64ada2be79b664",
+    "export_sha256": "eb39393d8ab124f489474740aee7f94a589f2fb6e83d261085cfdd22bae3c112",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/oracle-D1.md",
+    "export": "handovers/generation/oracle-D1.md",
+    "original_sha256": "e4e2601f8ce1741768baae3456cd3e5cd6de3e783ce715cf8944aee7644f86ae",
+    "export_sha256": "73bcead50f2f3deea631a63fc4081a0f3be663c93428f4ac838995925265728d",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/plan.md",
+    "export": "handovers/generation/plan.md",
+    "original_sha256": "cf0b7b59a0a3d02a70c7380274d6b9b56bc3445f4c65a1b920dace8f3840c14c",
+    "export_sha256": "3bfb8b403394fc5ac9a0807296245497f4d14f6f013e0cee9a2cb4713d924490",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/run.yaml",
+    "export": "handovers/generation/run.yaml",
+    "original_sha256": "f191e4dbbd2d0992324cd4990e1b24ce28e629b93a46b6e3478ed022bea328fc",
+    "export_sha256": "f191e4dbbd2d0992324cd4990e1b24ce28e629b93a46b6e3478ed022bea328fc",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/simplicity.md",
+    "export": "handovers/generation/simplicity.md",
+    "original_sha256": "d4909a7bd39f9ef5256e3c99446b81fdb6e93fdacf997095d2edbe612a44a3d1",
+    "export_sha256": "9e96dac0061ef48b1440e59dfa098ed2146959719f367f20e2a0af1c96b55ea3",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/status.md",
+    "export": "handovers/generation/status.md",
+    "original_sha256": "22668beca5b045a9de5f046c635cfbb54dd8e3b97d5671df7a250dcf3af59e64",
+    "export_sha256": "a054266ff99e3bba27ce3d3431d2f92ada3fb616c59ee0ea8f97e083e1f76129",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.otto/runs/astrid-generation-path-alignment-20260910/tasklist.md",
+    "export": "handovers/generation/tasklist.md",
+    "original_sha256": "d1bde5e069a6f48df0c688ab2117d79bae1d74cb2148bc2cbda0cddd2419df7f",
+    "export_sha256": "ac6f508fe727835060c93091e72b6058832ddeabaa363046fc6f61fe15b11014",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/agent_goal.md",
+    "export": "handovers/render/agent_goal.md",
+    "original_sha256": "921d40ffdaa496677897d594696df63541531a2bbab99732ff0b218bc0e553ee",
+    "export_sha256": "f072cdb4416a0e4c1048d6e65c4bcfd83ba0002991d00d3aaa2703c8514cd1ea",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled",
+      "trailing whitespace/blank EOF normalized"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/implementation-criteria.md",
+    "export": "handovers/render/implementation-criteria.md",
+    "original_sha256": "607ed5e23c72ce046f241527ff04911b3732dfec7c003b09fc224efb9b443947",
+    "export_sha256": "55863706b0d3787584d0714e861fbe87009e46f402cb8fe5b574653c694f4eef",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled",
+      "trailing whitespace/blank EOF normalized"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/northstar.md",
+    "export": "handovers/render/northstar.md",
+    "original_sha256": "e144c87b46d28a7ff07a711e59595b6570bc3715b4e5b0ba8835e2090aee65c9",
+    "export_sha256": "a5b7fb52068333b5f22d08eac668995154621284428c68ad93260729546d2a7e",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled",
+      "trailing whitespace/blank EOF normalized"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/plan.md",
+    "export": "handovers/render/plan.md",
+    "original_sha256": "6aa45d04ac4f99655098e444ee8c1a99962bb41a6f04756a0f36b7ae25870995",
+    "export_sha256": "c70ea438b83483664c40d9e793e387f209e35bb7025a48202f31d31e844d89f8",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled",
+      "trailing whitespace/blank EOF normalized"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/run.yaml",
+    "export": "handovers/render/run.yaml",
+    "original_sha256": "711fc50f2d51903f1205556b102e150569efc19b6b8fffd8bbd4ef9c89761c03",
+    "export_sha256": "e2438b87e19578e7c1cdf726a566d97d7ab111814f78c6c6bf3bee0fac5a3bca",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled",
+      "trailing whitespace/blank EOF normalized"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/status.md",
+    "export": "handovers/render/status.md",
+    "original_sha256": "6e9f7098a234a6b961769241f1baaefadd16e8adcec50c0c0e9988085060acbb",
+    "export_sha256": "c95c996d73f24c0b10f4af451005bb4f5e09d1bc8725227be740b7e0ae6a2f89",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled",
+      "trailing whitespace/blank EOF normalized"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/tasklist.md",
+    "export": "handovers/render/tasklist.md",
+    "original_sha256": "d7b7476287730fe9c3633ce165dd365d31849d0b5eef9ec9f48cdd99d22fdb94",
+    "export_sha256": "68ca549316e3a8fd434242e03383202cc7fc66f630261ff2725db863da73e75d",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled",
+      "trailing whitespace/blank EOF normalized"
+    ]
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "handovers/unified-execution/CURRENT.md",
+    "transforms": [],
+    "export_sha256": "804bda2cc76a87f160bea0df38842a83db7fbfe7138d3e0435e1f9a1ce1f8a1b"
+  },
+  {
+    "source": "<workspace>/.megaplan/plans/complete-the-astrid-gpu-20260909-1540/anchors/north_star/plan.md",
+    "export": "handovers/unified-execution/UNIFIED-PLAN-v3.md",
+    "original_sha256": "0772f5ac5196b7c0e28d19c1d636f18c26a3cc8c550f9f1a09bd9a4e2ddb7dc0",
+    "export_sha256": "ec0b2510c3deb3d4352acc1136709d227421b05bc6ed084d1a69d18c150f69de",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/.megaplan/plans/complete-the-astrid-gpu-20260909-1540/idea_snapshot.md",
+    "export": "handovers/unified-execution/idea-snapshot.md",
+    "original_sha256": "085d9b8b1f8ef8cd30ed984388ffb30e301c4db2d1a2317fb734ab211ff26476",
+    "export_sha256": "5c892227d97f598289beb8f342b6327ac9b819ba5275ac40e5b48c3c813a6709",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/agent_goal.md",
+    "export": "handovers/visualization/agent_goal.md",
+    "original_sha256": "ceb8f97b7d4a5e756361d254126c568118208f785b33a7baaadfd1d82ae3691f",
+    "export_sha256": "1be207a479e6bfd42a3f489d349289847e1817edd5b5075df6973b3c12e51f1c",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/decision-summary.md",
+    "export": "handovers/visualization/decision-summary.md",
+    "original_sha256": "7dbce7f5d09142096153ba01fa4f216da6183eb673170b91b5e68ade1e534652",
+    "export_sha256": "f95ef071378dd6e4f968813337bb54db3a1d1dce06e6e523e73608db261f42d8",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/implementation-criteria.md",
+    "export": "handovers/visualization/implementation-criteria.md",
+    "original_sha256": "9f1f1d1f9d9eda7fe7ee5b3a7a60908c6208d570c588192219565d8fba2c5893",
+    "export_sha256": "5d8e402b7767e5c9eb68068411cb195b5140762fed09c3b8c5da8ec9c906b5ac",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/references/plan2-migration-pointer.md",
+    "export": "handovers/visualization/lifecycle-pointer.md",
+    "original_sha256": "a918d4b0ddc21b2d9003c7f13af99d3b341bf6a269013d91edd9750c61fc8f0b",
+    "export_sha256": "2ab324d3c1dcd49826fa551a0f6f264cee7a49ec187db33d06dd2252972ac3ff",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/northstar.md",
+    "export": "handovers/visualization/northstar.md",
+    "original_sha256": "c86df245fdd6e20004361a4d82292db146ce28b76a39f976c30ecec65b34b1a9",
+    "export_sha256": "b403392504f7b83685182ca3b207faeeac6bcceff172caf10e3f600fd6ee9b79",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/references/timeline-visualization-fixes-plan.md",
+    "export": "handovers/visualization/plan.md",
+    "original_sha256": "e0a4621be5b2c89ffafb2cad18aed8d2455957acb16df4264facc718cf16b754",
+    "export_sha256": "cab64bcbeea415e13fc4b2313767599c6870faeba90ed771b79deb9e1f620846",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/run.yaml",
+    "export": "handovers/visualization/run.yaml",
+    "original_sha256": "f623d586cc6df32921a211e7c2cccabd743026ffbfe04374b5241649d01c5e45",
+    "export_sha256": "f623d586cc6df32921a211e7c2cccabd743026ffbfe04374b5241649d01c5e45",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/source-provenance.md",
+    "export": "handovers/visualization/source-provenance.md",
+    "original_sha256": "956b2cdae49d41bf1d035ae74b0a7db1ba0defcb925c4e6713a98ed3f8a5fcf9",
+    "export_sha256": "24c01f2b31fd6340e76997a02e41095957a7a4cb25e1bedb4ded269aa30d91e3",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/status.md",
+    "export": "handovers/visualization/status.md",
+    "original_sha256": "1f693e0c65f83738d53bde9c0d245bb8a137565ac8f707c40ec5f0d0700af559",
+    "export_sha256": "ee0a2009d66fce1f115ef869028232b4030cc5b6c9579abf3b3b45bc49e5fbc4",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/tasklist.md",
+    "export": "handovers/visualization/tasklist.md",
+    "original_sha256": "73d0ec3cc33a1c9b36265d5c267a9a79f2ce4eea6be200f8eab0c3168c2aa1d0",
+    "export_sha256": "7bb6f9aa89ee181e239243a7d8ade55267438aacc2b15a1d62b8a5cc4814af26",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "<workspace>/Astrid/.otto/runs/timeline-visualization-fixes-20260910/test-project.md",
+    "export": "handovers/visualization/test-project.md",
+    "original_sha256": "d6dd0f6f3fbb335de532c81fb4ba154a4d767d21e2141bc4d09259bbd16ccd06",
+    "export_sha256": "e8592cf2b4e4c0848b01ec9567afabcad0b45a65142d016425f9e94264794bca",
+    "transforms": [
+      "workspace/home paths normalized",
+      "selected links rebased; omitted evidence links labeled"
+    ]
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "northstar.md",
+    "transforms": [],
+    "export_sha256": "c7260ec1335efa87ff1fe64d8baca0a3ab1c8e5e8acbe65951626c2a76c45092"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "operations.md",
+    "transforms": [],
+    "export_sha256": "0a01f09a079b6f0e5053a3205ba78aa1425774d577819dbb69827c24602b21f2"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "plan.md",
+    "transforms": [],
+    "export_sha256": "5673abc8cadf74eeb5761904249780536cd3cc9fd51f475f9ce630d6841f3aae"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "projects.md",
+    "transforms": [],
+    "export_sha256": "a4235f43a067c678ba5d2224b5128303c89355c2c8d145c97b26b00e2ab2df44"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "review.md",
+    "transforms": [],
+    "export_sha256": "780d0f728164f1d993aa8485feb5df97b2aa50dc299e37ed10f07bbd7b69335a"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "run.yaml",
+    "transforms": [],
+    "export_sha256": "d149955812d687b597e83a58b1bb794907dc2fa107a2f412842368f015aba216"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "scripts/open-manager.py",
+    "transforms": [],
+    "export_sha256": "df9ddb01098c338dffa9b8789bfab696e10553e03a695cbebc124bad7f3971fa"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "source-publication.json",
+    "transforms": [],
+    "export_sha256": "c13cf2464eb0bb0915c53dabdf01078de3cc155e673ce1fb84ad70adfcd86017"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "source-publication.md",
+    "transforms": [],
+    "export_sha256": "ec7bac12cd4bf75ac382d38efe3f920ac5b8027ea92fa4b1be1ad79c04d6a9a6"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "status.md",
+    "transforms": [],
+    "export_sha256": "e9aeaf76926ecd7eabffb4e3cef0dc7c9cd3d7cd5594b46bd87903677b466c08"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "tasklist.md",
+    "transforms": [],
+    "export_sha256": "a8b7b7611902902e4ab9f05d6d8479827c60f972a9a87d43e0991ca566545012"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "validation.md",
+    "transforms": [],
+    "export_sha256": "9bc66b1bf563d5e851534625ce1f11070062fa16394cefd9569af3195f19058d"
+  }
+]

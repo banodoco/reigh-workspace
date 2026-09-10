@@ -1,0 +1,13 @@
+# Hourly orchestrator check
+
+Deploy a bounded Luna evidence check at this checkpoint, covering all active projects with distinct, read-only assignments (normally one or two investigators). Have them inspect updates, source/test evidence, dependencies, drift and agent usage; return concise evidence-linked findings with source identity and uncertainties. Reuse an already-running check rather than duplicate it. Judge their findings yourself, resolve material contradictions, then accept, hold or redirect the next step. Do not treat their summaries as substitutes for required tests or merge gates. Apply this same pattern at dependency-release, integration and completion checkpoints.
+
+Continue the Astrid portfolio in this same thread. Read current meta status and each manager's latest same-thread update plus its evidence. UE is Astrid unified-execution / megado-unified-v3; start from the actual current P7 handoff, not historical wrapper state.
+
+Ask yourself: has useful work landed; is the next dependency now available; is any manager off scope; are two agents duplicating work or writing the same files; are reviews/tests repeating without changed evidence; are actual agent/resource limits being respected? Healthy slow work is not a stall. Inspect the affected source/receipt before acting on a claimed completion or failure.
+
+Advance the next authorized step: resolve a routine scheduling issue, give a precise follow-up in the existing manager thread, release a newly ready project, or diagnose the concrete cause of a stall. At the P7 CPU checkpoint coordinate capture of main/dirty inputs, the integration branch and verified baseline, then release overlapping projects. Avoid new conversations, duplicate managers, additional review panels or a second task scheduler.
+
+Prefer a clear reversible decision within the mandate and explain it briefly. Preserve existing decisions and budgets; do not delete run state, bypass proof, force-push, or infer deployment/resource authority. If the same decision recurs twice without evidence or action, repair the brief/process rather than ask the same oracle question again. Keep independent work moving when one item needs unavailable authority or resources.
+
+Send a concise update in this orchestrator thread: meaningful change, current gate, next action, and any material risk or decision. Update only the small local status/thread map. If waiting is appropriate, launch and AWAIT the next bounded wakeup-loop delay in this same turn; never background a wait and finish the turn expecting a future callback. Once all agreed work is validated and merged to main with remote identities verified, stop waiting and give the final evidence-backed result.

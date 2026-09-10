@@ -1,0 +1,13 @@
+mode: planning_only
+roles:
+  coordinator: {model: gpt-5.6-luna, reasoning: medium}
+  worker_normal: {model: gpt-5.6-luna, reasoning: high}
+  worker_xhard: {model: gpt-5.6-sol, reasoning: high}
+  reviewer_normal: {model: gpt-5.6-luna, reasoning: medium}
+  reviewer_xhard: {model: gpt-5.6-sol, reasoning: high}
+  oracle: {model: gpt-6-astra, reasoning: medium}
+  final_reviewer: {model: gpt-6-astra, reasoning: medium}
+oracle:
+  max_calls: 2
+  budget_policy: "Shared remaining budget from the central original run: max 3, 1 consumed by RR-ORACLE-001, 2 remaining across both split projects. No calls in setup; charge any later call centrally."
+review_stages: []
