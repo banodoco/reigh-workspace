@@ -66,6 +66,8 @@ The orchestrator judges their findings itself: compare evidence, resolve contrad
 
 ## Hourly checks with wakeup-loop
 
+Run the explicit eight-step [hourly checklist and targeted manager drill-down](assets/hourly-message.md). It covers progress evidence, delegated-worker efficiency, slow milestones, RAM/CPU/storage, budgets, dependencies, next assignments and same-thread reporting. This is a lightweight investigation/decision waypoint, not another test or review gate.
+
 Use the user-selected **wakeup-loop** same-thread waiting helper, packaged in [dependencies/wakeup-loop/SKILL.md](dependencies/wakeup-loop/SKILL.md). The source was previously named wakeup-look; the user explicitly renamed it wakeup-loop for this handover. There is no custom hourly watcher, background scheduler or auto-queue loop.
 
 The orchestrator stays in its current turn: await a bounded delay, inspect manager updates and evidence, take a useful next action, send a concise update, and await again when waiting is appropriate. Never launch a wait and end the turn. If the tool yields a running handle, keep awaiting that handle; steering or early tool returns do not mean the wait completed. Use the actual host's wait tool rather than inventing a Hub command in Codex.

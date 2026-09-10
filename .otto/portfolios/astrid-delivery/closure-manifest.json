@@ -166,9 +166,10 @@
     "source": "authored or selected preparation artifact",
     "export": "assets/hourly-message.md",
     "transforms": [
-      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
+      "explicit hourly checklist and bounded manager-efficiency drill-down"
     ],
-    "export_sha256": "aa2cdfe75e4eea3a8b8dbcebcd00ff7aac9d28b38d82094d4a0b697fa60feb87"
+    "export_sha256": "1bf4adbc6ebed43905228887b7d2b12fe1a8b0bc04c1bd1288ab94190e53b88d"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -842,9 +843,10 @@
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
       "approved pure-orchestration and source-readiness amendment",
-      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
+      "explicit hourly checklist and bounded manager-efficiency drill-down"
     ],
-    "export_sha256": "84981dcd03b8b650c450dd90d0920695e6b18d55a4f3a9e17e3ed19f43b93dee"
+    "export_sha256": "4207441b8fb18e0a2cf10dbabb5265d7d75092385a5334431214c394e225cec2"
   },
   {
     "source": "authored or selected preparation artifact",
