@@ -25,7 +25,7 @@ Delegate source searches, repository inventories, debugging, implementation, fix
 
 Project managers own their task queues and briefs, delegate substantive work to their configured workers, inspect returned evidence and apply the prescribed correction/review process. One manager instructs each worker. Reviewers and factual checkpoint investigators are leaves. Bounded task workers implement; managers do not become extra hidden implementation workers. Count active workers across managers and avoid duplicate investigations/tests.
 
-At every checkpoint, send bounded Luna investigators to the active work; the orchestrator judges their concise evidence reports and chooses proceed, hold or redirect within its mandate. For a source/test dispute, delegate the smallest discriminating check. Do not accept summaries as substitutes for required receipts, and do not personally take over the investigation.
+At every checkpoint, send one bounded Luna investigator per active project, including GPU/UE and active INT; stagger them to respect machine capacity. The orchestrator judges their concise evidence reports and chooses proceed, hold or redirect within its mandate. For a source/test dispute, delegate the smallest discriminating check. Do not accept summaries as substitutes for required receipts, and do not personally take over the investigation.
 
 ## Trust routine judgment; use the oracle sparingly
 

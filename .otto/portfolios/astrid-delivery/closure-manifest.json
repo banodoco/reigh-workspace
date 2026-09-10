@@ -158,18 +158,20 @@
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
       "approved pure-orchestration and source-readiness amendment",
-      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
+      "per-project checkpoint investigators and explicit startup/portfolio ledger"
     ],
-    "export_sha256": "add1e82c84f96aa9af2fa9bdac15271f72ea0c640b8699b6335d31c490c39304"
+    "export_sha256": "25fe87f230f05b9a3d188c66fe22a2f2af74c11e6cff7f062288b796f5f65290"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "assets/hourly-message.md",
     "transforms": [
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
-      "explicit hourly checklist and bounded manager-efficiency drill-down"
+      "explicit hourly checklist and bounded manager-efficiency drill-down",
+      "per-project checkpoint investigators and explicit startup/portfolio ledger"
     ],
-    "export_sha256": "1bf4adbc6ebed43905228887b7d2b12fe1a8b0bc04c1bd1288ab94190e53b88d"
+    "export_sha256": "a7eb1d369d8363afe4eadc1e7ea1bc7270480ba9ef3f81232158c76007a47222"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -844,18 +846,20 @@
       "approved fixture/concurrency/integration/multi-repository amendment",
       "approved pure-orchestration and source-readiness amendment",
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
-      "explicit hourly checklist and bounded manager-efficiency drill-down"
+      "explicit hourly checklist and bounded manager-efficiency drill-down",
+      "per-project checkpoint investigators and explicit startup/portfolio ledger"
     ],
-    "export_sha256": "4207441b8fb18e0a2cf10dbabb5265d7d75092385a5334431214c394e225cec2"
+    "export_sha256": "f6ad76f616f664b10fd3197e175d0b244659798cf426e0fdbd23ce244ce70213"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "orchestrator-contract.md",
     "transforms": [
       "approved pure-orchestration and source-readiness amendment",
-      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
+      "per-project checkpoint investigators and explicit startup/portfolio ledger"
     ],
-    "export_sha256": "f7dedca225262f45c71de8762494f5628614f69cfe7a68ad0e9c31f428798a9c"
+    "export_sha256": "822cd1908b7fe2c68fbd78bc3eb05a4302993cd83b4d2866d1f4b951a55a48c5"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -934,9 +938,10 @@
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
       "approved pure-orchestration and source-readiness amendment",
-      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
+      "per-project checkpoint investigators and explicit startup/portfolio ledger"
     ],
-    "export_sha256": "5c0d0827625f7d7a35cfdb8d805bd4c596cd6816dbd9639b189a2be02ae59f7c"
+    "export_sha256": "9173f5cc2586f758549d914789f26219e9f9a5efc66b9a2f21371e5d8a50f165"
   },
   {
     "source": "authored or selected preparation artifact",

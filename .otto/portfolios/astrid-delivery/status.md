@@ -1,5 +1,11 @@
 # Preparation status
 
+## Portfolio ledger identity
+
+Canonical control/ledger root: `.otto/portfolios/astrid-delivery/`. Original outcomes are in tasklist.md (META-1–META-6); this file records lifecycle and current state. Current lifecycle is **handover prepared/published, destination orchestration not started or verified by this preparation thread**. No destination orchestrator UUID, actual GPU-manager UUID, live checkpoint timestamp or next wakeup is invented here. At bootstrap a delegated worker records actual orchestrator/manager identities in local/managers.json and maintains this status under operations.md. The source projects' own ledgers remain authoritative for their task/review counters.
+
+## Preparation record
+
 Latest instruction supersedes the prior no-additional-main-push recommendation: validate and publish the intended latest Astrid/Runtime source and adopt the running GPU program immediately in the receiving orchestrator's remit. Follow gpu-project-takeover.md for existing-thread recovery and the checkpoint composition → main merge → retest → continuation sequence. Publication results are recorded in source-publication.md; publication is not GPU/P7 completion.
 
 Role amendment: [pure orchestration contract](orchestrator-contract.md), mandatory read-back, Astra low top coordinator, Luna xhigh project managers and Astra high meta oracle within the existing three-call allowance. Active managers are not hot-swapped by these portable changes. The launcher rejects execution with stale active role bindings. The [earlier local source audit](source-readiness.md) is historical; subsequent explicit publication authority and results supersede its no-push recommendation.

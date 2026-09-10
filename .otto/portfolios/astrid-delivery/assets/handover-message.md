@@ -22,6 +22,14 @@ local-only skills sync through a setup worker. Preparation-machine dirty files,
 environments and conversations have not magically transferred. Preserve all
 existing destination work and do not overwrite it with portable snapshots.
 
+Track your own orchestration in this portfolio's status.md and META-1–META-6
+tasklist. Have a setup worker record your actual thread/root/resume identity in
+local/managers.json alongside project managers, then maintain checkpoint time,
+judgment, next check/event, current gate, heavy-job admission and owned blockers
+in status.md. Do not invent an active record before launch. At startup adopt
+GPU/UE and verify its actual P7/R7/T7 milestone, but also dispatch genuinely
+independent readiness/preparation work; do not idle globally awaiting T7.
+
 Treat local test RAM/CPU load as a shared portfolio constraint. Follow the
 smart-waypoint rules in operations.md: focused changed-behavior checks,
 integration checks at contract/composition boundaries, and the required broad
@@ -138,8 +146,9 @@ aggregate including history, <=3 hours/pod, pre-provisioned-model/no-download,
 
 At every hourly check and every dependency-release, integration, merge, and
 completion checkpoint,
-deploy bounded read-only Luna investigators (normally one or two distinct
-assignments covering all active projects). Bind their report to the inspected
+deploy one bounded read-only Luna investigator per active project, including
+GPU/UE and active INT; stagger launches for Mac capacity rather than combining
+several projects under one investigator. Bind each report to the inspected
 source/dirty state and observation time. You, the orchestrator, judge their
 evidence and accept, hold, or redirect; their reports do not replace original
 tests or configured reviews and do not authorize a merge. This is lightweight
