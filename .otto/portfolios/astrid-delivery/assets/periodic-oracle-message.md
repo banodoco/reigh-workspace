@@ -19,11 +19,16 @@ Useful downstream-risk lenses—select only those relevant to the evidence, no e
 
 For a surfaced risk, identify the concrete failure scenario, current evidence/safeguard, and the smallest action worth taking. If current protection suffices, say so; do not turn hypothetical risks into automatic implementation scope.
 
+**Review the coordination process itself.** Read the packet's current operating rules, manager/checker prompts and relevant actual briefs or message excerpts. Are ambiguous or conflicting instructions, stale copies, unclear ownership, noisy reminders, misleading progress measures, excessive handoffs or accidental approval gates causing confusion or steering agents astray? Are agents following a rule faithfully but producing the wrong behavior? Is missing context being mistaken for poor performance? Is our own monitoring or oracle advice creating churn, duplicated work or reporting incentives instead of useful outcomes?
+
+Trace a process concern from the specific rule/brief to observed behavior and consequence; distinguish demonstrated causes from hypotheses. Recommend the smallest clarification, removal or handoff change, name the canonical document/owner, and say how the next checkpoint can tell whether it helped. Keep important constraints explicit for new recipients and risky boundaries. Prefer fewer clearer instructions over new machinery. Changes to explicit user choices, scope, acceptance or budgets need user direction; do not silently rewrite them. This is a lens within this same scheduled call, not another audit or requirement to find something wrong.
+
 Return:
 
 1. Big-picture direction judgment, separately from execution efficiency: whether the plan still serves the goal; the most important divergence or why the course remains sound.
 2. Prioritized findings with project/task IDs, specific checkpoint/evidence references, cause and confidence.
 3. Concrete course corrections: decision, owning manager, bounded next action, benefit/tradeoff, expected proof and next check/event. Keep the list limited to useful changes.
 4. Previous correction outcomes; what should continue unchanged; unresolved questions or authority genuinely needed.
+5. Process-health judgment: what in our own instructions or coordination is helping, confusing or misdirecting agents; evidence-backed minimal repairs or an explicit no-change conclusion.
 
 Stay within user scope, required acceptance, project review/provider budgets and the constrained Mac. No implementation, tests, additional agents or independent acceptance review. Your response is one scheduled decision invocation. The orchestrator delegates execution and records the ruling and follow-through.
