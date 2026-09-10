@@ -1,6 +1,6 @@
 # Projects and handovers
 
-Workspace-relative active roots below are the same-machine source of live status. Bundled handovers are frozen planning inputs, not replacement ledgers. Record each actual manager thread/session and current source in the local status when taking over; do not publish private transcript IDs.
+Workspace-relative roots below are preparation-machine references to map and verify on the different receiving Mac. Existing destination roots and the recovered GPU owner supply live status. Bundled handovers are frozen planning inputs, not replacement ledgers. Record each actual destination manager thread/session and current source locally when taking over; do not publish private transcript IDs.
 
 | ID | Project and frozen handover | Existing active/local root | First useful assignment |
 |---|---|---|---|

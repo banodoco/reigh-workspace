@@ -1,6 +1,8 @@
 # Preparation status
 
-Latest user amendment: [pure orchestration contract](orchestrator-contract.md), mandatory read-back, Astra low top coordinator, Luna xhigh project managers and Astra high meta oracle within the existing three-call allowance. Active managers are not hot-swapped by these portable changes. The launcher rejects execution with stale active role bindings. [Local source audit](source-readiness.md) recommends no additional product-main push before owner acceptance/P7 reconciliation.
+Latest instruction supersedes the prior no-additional-main-push recommendation: validate and publish the intended latest Astrid/Runtime source and adopt the running GPU program immediately in the receiving orchestrator's remit. Follow gpu-project-takeover.md for existing-thread recovery and the checkpoint composition → main merge → retest → continuation sequence. Publication results are recorded in source-publication.md; publication is not GPU/P7 completion.
+
+Role amendment: [pure orchestration contract](orchestrator-contract.md), mandatory read-back, Astra low top coordinator, Luna xhigh project managers and Astra high meta oracle within the existing three-call allowance. Active managers are not hot-swapped by these portable changes. The launcher rejects execution with stale active role bindings. The [earlier local source audit](source-readiness.md) is historical; subsequent explicit publication authority and results supersede its no-push recommendation.
 
 Prepared September 10, 2026. **Ready for receiver bootstrap**, not product-complete. The package provides six project handovers, sequencing/ownership, source pins, the receiving prompt, checkpoint instructions and same-thread waiting. No orchestrator or project-manager windows were launched, and no recurring scheduler/global/cloud sync was installed.
 
@@ -8,7 +10,9 @@ Approved follow-up adds one separately managed Integration & E2E workstream, exp
 
 Astrid unified-execution is user-confirmed at **megado-unified-v3 / P7 CPU closure**. The recipient must recover the actual existing manager, candidate, receipts, accepted contracts, spent counters and remaining live allowance. Historical phase counts are not current progress.
 
-Selected Astrid source is published to main at `cd4610973f52e3087fd29c282e648e0905b32785`; Runtime is preserved separately at `a1ee4343912a47d096d491a752a543986c72e827`; skills at `d849898cd0c191cffc5ababbb5ea7d2c188e8ed0`. Remote identities were verified. Active dirty checkouts were preserved; later concurrent Runtime/local changes must be reconciled, not discarded or represented as already published.
+Latest Astrid source is published to main at `b33b1593fa7b89c6600a3b14fc7b8a5641b494ad`; Runtime main at `c38590a07f1ca3ec9d28cb018fddd7760f9be6ce`; skills at `d849898cd0c191cffc5ababbb5ea7d2c188e8ed0`. Remote identities were independently verified. [Latest publication](latest-source-publication.md) records bounded corrections, test results and the existing Astrid Stage 1 census failure. Active dirty checkouts were preserved; changes newer than the exact snapshots remain separate integration inputs.
+
+Execution is on a different 8 GB MacBook with constrained storage. Recover the GPU owner there; this Mac's unsuccessful owner search is not evidence about the destination's live project. [Operations](operations.md) applies shared heavy-job admission, smart test waypoints, RAM/CPU/disk checks and owned-process/output cleanup. Astra's bounded preparation advice informed these rules; no new runtime oracle budget or scheduler was added.
 
 One independent **Astra high** preparation review completed. Four required corrections were applied and checked; see [review.md](review.md). Meta oracle usage remains 0 of 3; meta executable review stages remain empty. Existing projects retain their own consumed counts and stage policies. V1/E2 share two remaining oracle calls total, with one central accounting owner.
 

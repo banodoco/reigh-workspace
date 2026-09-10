@@ -4,9 +4,9 @@ These six outcomes coordinate original tasklists; they do not replace them.
 
 | ID | Outcome | Depends on | Evidence |
 |---|---|---|---|
-| META-1 | Recover current UE handoff and five new-project manager contexts; capture published/local input identities | Receiving start | One current manager/thread per project, real source and remaining obligations |
+| META-1 | Adopt and supervise the running GPU/UE conversation immediately; recover its handoff and five new-project manager contexts; capture published/local input identities | Receiving start | One current manager/thread per project, verified checkpoint ID, real source and remaining obligations |
 | META-2 | Freeze P7 CPU closure and classify main/dirty integration inputs | META-1; UE CPU closure | Frozen candidate, retained input refs, exclusions and late drift |
-| META-3 | Reconcile and verify one continuation composition | META-2 | Exact repository baseline manifest and affected integration results |
+| META-3 | Preserve/compose the GPU project's intended existing work, merge latest main into isolated continuation branches, then verify and hand back one continuation composition | META-2 | Exact per-repository input/main/candidate manifest and affected integration results; same manager resumes |
 | META-4 | Deliver each project through its own task/dependency/review contract | Relevant gates; overlapping work after META-3 | Original criteria and reviews on compatible source; visible manager updates |
 | META-5 | Orchestrator accepts the separate INT manager's integrated setup/workflow, required owning reviews, coordinated per-repository merges and final-main smoke | INT-01 preparation after META-3; code-ready inputs for final campaign; all mandatory evidence before promotion | Accepted revision-set manifest, actual setup/workflow receipt, target-main drift checks and verified final remote trees |
 | META-6 | Final outcome report and stop same-thread waiting | META-5 | Explicit completed scope, no hidden mandatory gaps, no further wakeup-loop waits |

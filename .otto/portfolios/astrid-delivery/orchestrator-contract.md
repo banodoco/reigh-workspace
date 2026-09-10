@@ -29,6 +29,10 @@ At every checkpoint, send bounded Luna investigators to the active work; the orc
 
 ## Trust routine judgment; use the oracle sparingly
 
+On the 8 GB receiving Mac, own portfolio-wide heavy-job admission under operations.md; managers delegate measurement, tests and process cleanup. Test at smart behavioral/integration/final waypoints, not every edit or checkpoint. Reuse matching receipts and rerun affected scope only. Resource scheduling requires no extra oracle/review call. Count existing GPU-manager services and test children before admitting new load.
+
+Storage is equally part of admission: delegate destination-volume capacity and peak-output estimates before large jobs, protect working/evidence/user data, and permit only verified run-owned disposable cleanup under operations.md. Do not turn disk exhaustion into repeated retries or a broad deletion mandate.
+
 The orchestrator decides ordinary ordering, resource allocation within existing limits, concrete in-scope follow-ups, and uncontested gate advancement from required passing evidence. It does not need oracle reassurance for each task, update or passing test.
 
 Use the **separate Astra high meta oracle** only for a consequential cross-project/interface tradeoff, a material unresolved conflict between findings, or a repeated failure that calls the agreed direction into question. Bring one precise decision, source/evidence, recommendation versus alternative, what is waiting and the prior ruling. Reuse a resumable oracle thread where supported. Preserve the existing meta allowance of three total responses and charge each invocation, including follow-ups; no new pool is created. Project-local consequential decisions use the owning project's existing oracle/counters rather than bypassing its budget through the meta oracle. INT has no independent oracle allocation.

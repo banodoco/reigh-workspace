@@ -4,13 +4,15 @@ Selected source and skills were published normally and remote refs verified on S
 
 | Repository | Published ref | Exact commit |
 |---|---|---|
-| peteromallet/Astrid | main | `cd4610973f52e3087fd29c282e648e0905b32785` |
-| banodoco/banodoco-workspace-runtime | handover/astrid-portfolio-source-20260910 | `a1ee4343912a47d096d491a752a543986c72e827` |
+| peteromallet/Astrid | main | `b33b1593fa7b89c6600a3b14fc7b8a5641b494ad` |
+| banodoco/banodoco-workspace-runtime | main | `c38590a07f1ca3ec9d28cb018fddd7760f9be6ce` |
 | peteromallet/poms-skills | handover/astrid-portfolio-20260910 | `d849898cd0c191cffc5ababbb5ea7d2c188e8ed0` |
 
 The control package is published separately in public banodoco/reigh-workspace, branch `handover/astrid-portfolio-20260910`, based on main `b1993c35a0000833f1990589c9cc280884ef322d`. Its exact commit is supplied in the preparer's final delivery message and verified with `git rev-parse HEAD` in the fetched checkout. Do not substitute the dirty workspace recovery branch: its 38 additional commits are not part of this publication.
 
 ## What was preserved
+
+**Latest publication supersedes the earlier source pins below:** both main refs in the table were independently verified after normal pushes. Read [the latest publication and validation receipt](latest-source-publication.md). It includes Astrid's SDK/CLI and later host/assets snapshot, Runtime's feature/main/dirty composition and bounded integration corrections, plus proof limitations. The original JSON and paragraphs below are historical preservation records, not the current main baseline.
 
 [source-publication.json](source-publication.json) records all **44 Astrid** and **15 Runtime** selected paths, Git blob identities, parent/tree/commit SHAs, exclusions and post-publication observations. Astrid's parent is `82d09bb91c8a4621695c1d8b6966652cad941ef4`; Runtime's is `afccb430e2a983c968b6a8a96fd630ba3a6262fc`. [CPU validation](analysis/source-validation.md) records the bounded 276 + 31 passing tests on audited dirty inputs. Those tests are not P7 or portfolio acceptance.
 
@@ -18,7 +20,7 @@ Source snapshots used isolated Git indexes and commit-tree. **Active local HEADs
 
 Concurrent work continued after the snapshot: Astrid acquired additional status entries; Runtime's tracked patch changed and an additional boundary test appeared. Published snapshots are unaffected, but do **not** include every later local edit. Capture and reconcile that delta with its owner at the P7 handoff. Publication does not freeze another manager's work.
 
-Runtime was **not merged to main** during preparation. Its migration-tool changes remain provisional clean-break inputs. The later orchestrator coordinates the P7/main/dirty composition and eventual validated merge under authority.md.
+Runtime was initially preserved on a handover branch only. The user's subsequent explicit publication instruction superseded that decision: the latest validated source composition is now on main at the table's pin. This does not migrate live data or certify GPU/portfolio completion. The orchestrator still coordinates the destination GPU candidate plus latest main at its verified checkpoint.
 
 ## Exclusions and other inputs
 

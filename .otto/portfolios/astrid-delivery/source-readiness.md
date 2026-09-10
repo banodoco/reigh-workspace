@@ -1,5 +1,7 @@
 # Local source readiness — September 10, 2026
 
+Historical audit before the user's subsequent explicit instruction to validate and publish latest intended Astrid/Runtime source to main. The no-push recommendation below is superseded by that authority; use the latest verified publication results in source-publication.md for current fetch inputs. Preserve and reconcile any edits newer than those exact snapshots.
+
 Decision: no additional product-main push is justified by this audit. Preserve the in-flight changes for owner acceptance and the P7 continuation reconciliation; do not sweep dirty checkouts onto main. This is an observation, not a freeze: receiving investigators must refresh source identities before action.
 
 - Astrid: all 44 selected published source paths still byte-match published main `cd4610973f52e3087fd29c282e648e0905b32785`. Additional local gateway dispatch, SDK autobootstrap/client/pagination and corresponding test edits are not covered by that receipt. Existing passing tests do not certify these later deltas.

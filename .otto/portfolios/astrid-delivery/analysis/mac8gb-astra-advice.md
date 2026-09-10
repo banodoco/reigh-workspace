@@ -1,0 +1,25 @@
+Keep the three implementation lanes and conditional fourth. **Centrally coordinate expensive local subprocesses, not every agent turn.** An 8 GB Mac can support concurrent model/network work while running local validation conservatively.
+
+Amend the six files as follows:
+
+- **`operations.md` — replace the broad resource paragraph with concrete admission guidance.** Astra low owns portfolio-wide heavy-job ordering; managers request admission through existing messages, naming the command, source, expected subprocess fan-out and services needed. Keep only the running job and next ready job in existing status—no scheduler, watcher or new ledger. Count existing UE activity before admitting anything.
+
+  Start with **one expensive local job portfolio-wide**, with one test worker/build job/encoder thread where supported. Alternatively, allow **up to two small focused test processes** when no heavy job is running. Builds, dependency installation, full suites, browser suites, fixture rendering and media encoding share that heavy-job allowance. A test runner’s child processes count too; disable automatic CPU-count parallelism initially.
+
+  Keep the three ready implementation workers and conditional fourth available for disjoint editing, reading and model/network work. Managers and investigators are additional processes with overhead, but their thread count is not equivalent to expensive test concurrency. Light work may overlap a heavy job when observed responsiveness permits.
+
+  Before heavy launches and after slowdowns, a delegated worker checks native macOS memory pressure, swap/page-out trends, CPU contention and interactive responsiveness. Sustained pressure, growing paging or noticeable developer lag means defer the next job and reduce subsequent fan-out. Let healthy bounded work finish where practical; stop only the owned, restartable offender when necessary. Resume conservatively once pressure settles. Increase concurrency only after representative jobs demonstrate headroom; never use an invented free-RAM threshold.
+
+- **`operations.md` — clarify services and scheduling.** Reuse an already-running compatible service only when its revision/configuration matches and tests have genuinely isolated realms/databases, credentials, ports and output/cache locations as applicable. Never share mutable test state or a globally reset service. Otherwise serialize isolated service lifetimes. Independent fixture jobs, encodes and browser tests can proceed before unrelated product work is complete, but independence does not exempt them from heavy-job admission. Avoid overlapping them with builds/full suites initially. Prioritize dependency-unblocking checks and short corrective reruns; leave room for interactive development and prevent broad suites from starving indefinitely.
+
+- **`orchestrator-contract.md` — add one resource boundary.** Astra chooses admission and ordering from concise reports; Luna managers delegate measurement and execution. Neither runs diagnostics personally. Resource scheduling is ordinary coordinator judgment, requiring no extra oracle/review invocation or budget. This preparation advice is not runtime oracle consumption.
+
+- **`repositories.md` — make transfer and evidence rules explicit.** On the receiving Mac, create fresh dedicated clones for the incoming portfolio’s consumed repositories, checking out verified published revisions and resolving dependencies to those clones. Treat preparing-Mac paths, worktrees, editable installs, session IDs and uncommitted edits as unavailable unless explicitly preserved and transferred. Keep the destination UE owner’s live checkouts intact; reconcile its source through isolated continuation branches at the checkpoint.
+
+  Reuse receipts only where source, consumed dependencies/contracts, fixture identity and relevant environment assumptions still match. Run required destination setup/smoke checks. During implementation use affected checks; run the complete required campaign on the settled composition. Defects or meaningful drift trigger affected corrective reruns and prescribed reviews. These efficiencies remove duplication, never mandatory proofs.
+
+- **`gpu-project-takeover.md` — specify destination recovery.** Recover the UE manager already running on the **receiving Mac**. Verify its current milestone: the documented checkpoint is **P7 CPU closure**; “R7” requires confirmation. At that verified checkpoint, preserve and compose its intended work, merge each repository’s freshly fetched latest main into isolated continuation candidates, validate affected boundaries, then hand back to that same owner. Retain every existing remote GPU/provider limit unchanged.
+
+- **`fixture-readiness.md` and `assets/handover-message.md`.** Add the admission rule to fixture execution; retain every fixture/actor proof. Mirror the different-Mac, pinned-clone, destination-owner and concurrency instructions in the receiving prompt.
+
+**Crucial unknown:** the destination UE manager’s current local subprocess/service load and source publication state. Recover those first; do not assume the single heavy-job allowance is free.

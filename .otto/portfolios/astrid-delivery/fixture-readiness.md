@@ -1,5 +1,7 @@
 # V1 iteration fixture — explicit delivery task
 
+On the 8 GB receiving Mac, fixture rendering, encoding and browser/actor tests require the shared heavy-job admission in operations.md. Independent fixture ownership is not independent machine capacity. Batch useful iteration changes, run at meaningful fixture/UX waypoints, reuse matching evidence and retain every required fixture/actor proof.
+
 The [packaged specification](handovers/visualization/test-project.md) and capped UX iteration sequence exist; a ready five-minute test project does **not**. Published Astrid includes 85 JSON/PNG/SVG/parity/adversarial fixture files under `tests/fixtures/timeline_visualize`, not the required dual-view video/actor package. Do not report a specification as runnable proof or replace the required fixture with an arbitrary cached video.
 
 Add **V1-FIXTURE-READY** to the existing V1 active tasklist without renumbering prior tasks. V1's manager owns it; a dedicated worker may implement it early alongside disjoint work using a frozen fixture contract and exclusive fixture/tooling paths. It needs no new GPU/cloud allowance. The user's approved V1 delivery includes this work; the old snapshot's 'separately authorized change' phrase does not create a fresh approval gate.

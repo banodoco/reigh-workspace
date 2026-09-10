@@ -10,9 +10,10 @@
     "export": "START-HERE.md",
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "016f339e6bd87cbc572eeb1aabaea2bc25ec67408c047c819da4a259488be855"
+    "export_sha256": "372e0646827fd09107a58e28299da328a2a5d0cf62c2519a989c7560075e6b49"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -60,6 +61,14 @@
       "workspace/home paths normalized",
       "selected links rebased; omitted evidence links labeled"
     ]
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "analysis/mac8gb-astra-advice.md",
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "b87eb924408e612c074ff0968a75b712b5eb90b6e24f3b855668c1aabc8a7128"
   },
   {
     "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/orchestrator-brief.md",
@@ -148,15 +157,18 @@
     "export": "assets/handover-message.md",
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "aa38ee2569b68415f840999039012a57757707b49e9a656844b47210a4ab259c"
+    "export_sha256": "add1e82c84f96aa9af2fa9bdac15271f72ea0c640b8699b6335d31c490c39304"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "assets/hourly-message.md",
-    "transforms": [],
-    "export_sha256": "b6fb06d914d83b843b4aae4d582b559bd9612efea67099a579ad457ab12b91d5"
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "aa2cdfe75e4eea3a8b8dbcebcd00ff7aac9d28b38d82094d4a0b697fa60feb87"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -171,9 +183,10 @@
     "export": "authority.md",
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "c6dfacaa6ef6f345b844d47401b5db59d779e02e27d1d9bcc4aae3840a9799d4"
+    "export_sha256": "ce321464f8b0eeabb3205f29d657a051ec33c2bced93e29986daefc553b653cb"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -288,8 +301,18 @@
   {
     "source": "approved multi-repository handover amendment",
     "export": "fixture-readiness.md",
-    "transforms": [],
-    "export_sha256": "8382d0a94bb528970d812bd312f0d4847a12d284ca671314704bd6e57fd90459"
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "ac0d27086bd88dfe4535a6236282a0e5a7525669e1382b44a72fcad5a1c46a81"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "gpu-project-takeover.md",
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "7bb7ed51ef72ac6f1e822099ea504615fa29d3320ff35722f1ee69a30d493845"
   },
   {
     "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/agent_goal.md",
@@ -663,8 +686,10 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "handovers/unified-execution/CURRENT.md",
-    "transforms": [],
-    "export_sha256": "804bda2cc76a87f160bea0df38842a83db7fbfe7138d3e0435e1f9a1ce1f8a1b"
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "e0cb728bd44ac84c3f7961cb2bc332663e4aa9639c539a281abf2bd8f390452f"
   },
   {
     "source": "<workspace>/.megaplan/plans/complete-the-astrid-gpu-20260909-1540/anchors/north_star/plan.md",
@@ -799,6 +824,14 @@
   },
   {
     "source": "authored or selected preparation artifact",
+    "export": "latest-source-publication.md",
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "34d51b9db45581a73420ea72a6166567903e1a59bf919d7326176d53dba16f22"
+  },
+  {
+    "source": "authored or selected preparation artifact",
     "export": "northstar.md",
     "transforms": [],
     "export_sha256": "c7260ec1335efa87ff1fe64d8baca0a3ab1c8e5e8acbe65951626c2a76c45092"
@@ -808,17 +841,19 @@
     "export": "operations.md",
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "0b857fb4a2458a8412c23260b21cadd39866812c5405212eceec7c496d9fc40d"
+    "export_sha256": "84981dcd03b8b650c450dd90d0920695e6b18d55a4f3a9e17e3ed19f43b93dee"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "orchestrator-contract.md",
     "transforms": [
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "a100e062ffa0538d7bbfed4b73aa156b7aa2188c0cd9dc5509ef5572bc6dcbe7"
+    "export_sha256": "f7dedca225262f45c71de8762494f5628614f69cfe7a68ad0e9c31f428798a9c"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -832,15 +867,18 @@
     "source": "authored or selected preparation artifact",
     "export": "projects.md",
     "transforms": [
-      "approved fixture/concurrency/integration/multi-repository amendment"
+      "approved fixture/concurrency/integration/multi-repository amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "b36a3a3aa87b0bcd95f3d22b987dffc855aeed56e001e64c8d3f0bfa561a4a9c"
+    "export_sha256": "2a58da0f7ca28191562de802601113a2765ccc7487db7385b5c0a92883571d4c"
   },
   {
     "source": "approved multi-repository handover amendment",
     "export": "repositories.md",
-    "transforms": [],
-    "export_sha256": "679afede850ec89b1b0598275ac825c362541d53ceb8e2e8c33bcb1b9aa878a1"
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "273199652f1325594de3c0883e1a8fd76ae8205981d90c5c59a22e78165d2fc4"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -874,40 +912,46 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "source-publication.md",
-    "transforms": [],
-    "export_sha256": "ec7bac12cd4bf75ac382d38efe3f920ac5b8027ea92fa4b1be1ad79c04d6a9a6"
+    "transforms": [
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+    ],
+    "export_sha256": "04ea6b9c48c1b52408c05c74716e56e559a40c9ecdad4a772814c4ec1ed9d615"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "source-readiness.md",
     "transforms": [
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "f30e51fbb3916bc9c4322477b08c8fc1d09229a63ddfaa7046ba4e8666025f1f"
+    "export_sha256": "d1728a94308fdf9276491f07075ea13f941327db98cdfdea01a70fc39cdd8056"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "status.md",
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "2b4fd4c04f4ee9ab085ce08cfff42e811839c05b86ab4b00f7e1434268fa4742"
+    "export_sha256": "5c0d0827625f7d7a35cfdb8d805bd4c596cd6816dbd9639b189a2be02ae59f7c"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "tasklist.md",
     "transforms": [
-      "approved fixture/concurrency/integration/multi-repository amendment"
+      "approved fixture/concurrency/integration/multi-repository amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "eaf28bf126bb3be546d1f9fa4fd36f11fa1eb3aa9027f3e18106a549665d8bbc"
+    "export_sha256": "46a8d33a4bd3baeb5271c979cba22d6e6e2357c58190fc8fb5fab08205d607de"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "validation.md",
     "transforms": [
-      "approved fixture/concurrency/integration/multi-repository amendment"
+      "approved fixture/concurrency/integration/multi-repository amendment",
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
-    "export_sha256": "e4163df8149fc420c3eec08d8759d846f2193eb6852034b52d108dabdbbc7d11"
+    "export_sha256": "b236027afd150d9cf9fca4b466cd49c4d702929938ebb987d226beb917e7282d"
   }
 ]

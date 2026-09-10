@@ -1,10 +1,12 @@
 # Astrid portfolio — orchestrator handover
 
+Latest instruction: [adopt the running GPU project now and merge main at its checkpoint](gpu-project-takeover.md). Recover its existing conversation; do not launch another GPU manager. Newly published source must be consumed through the tested continuation handoff.
+
 Mandatory latest direction: read [the pure orchestration contract](orchestrator-contract.md). Astra low coordinates; Luna xhigh managers delegate all substantive execution; Astra high supplies sparse meta-oracle judgment within the existing budget. Give the startup read-back before dispatch. Operational instructions to inspect, edit, test, sync or merge mean delegate those actions, then judge the returned evidence.
 
 You are coordinating six existing programs to tested, validated, integrated code on their respective `main` branches. Five are new projects; **Astrid unified-execution**, plan **`megado-unified-v3`**, is already at **P7 CPU closure**. Continue that work; do not restart it from an older wrapper or planning snapshot.
 
-The intended recipient is an intelligent Codex coordinator on the same Mac, opening a persistent Codex window for each new project manager and keeping progress visible in those same threads. Use judgment, delegate real work, and keep the state small. This package is direction and evidence, not a new scheduling framework.
+The intended recipient is an intelligent Codex coordinator on a different MacBook with 8 GB RAM, where the current GPU conversation must be recovered locally. Open a persistent Codex window for each new project manager and keep progress visible in those same threads. Use judgment, delegate real work, and keep state small. This package is direction and evidence, not a new scheduling framework. Preparation-machine checkouts, uncommitted files, session IDs and installed dependencies are not implicitly transferred.
 
 One additional **Integration & E2E manager** coordinates their compatible multi-repository finish; it is not a seventh product implementation. Read [repository custody and push strategy](repositories.md) and [V1 fixture readiness](fixture-readiness.md). The visualization fixture is a required early build task, not an already packaged runnable video.
 

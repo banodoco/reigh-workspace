@@ -1,5 +1,11 @@
 # Validation and limits
 
+## Latest publication and receiving-machine amendment
+
+[Latest source publication](latest-source-publication.md) supersedes the earlier snapshot proof below. Both product main refs were independently verified; generated Python client bytes and protocol/schema/component/operations metadata match across the published Astrid/Runtime pair. Runtime's corrected final affected matrix passed 122 tests; Astrid's later host/assets snapshot passed 78 direct tests plus a local smoke, supplementing its preceding SDK/CLI results. The known broad Astrid Stage 1 census failure is recorded, not waived. No physical GPU acceptance or destination-machine setup was performed.
+
+Different-Mac recovery, 8 GB RAM/CPU/shared-test admission, smart validation waypoints and storage rules were added to the receiving prompt and operating contract. Astra high supplied one bounded preparation recommendation, not a runtime project review/oracle call. This package does not claim the destination GPU owner has already been contacted. Portable link/hash/YAML/launcher checks validate the package, not product completion.
+
 ## Completed preparation checks
 
 - Focused source tests: **276 Astrid passed in 18.14s; 31 Runtime passed in 1.61s**. Exact commands, scope and audited dirty patch identities are in [source-validation.md](analysis/source-validation.md). The first Runtime collection failure was corrected by setting PYTHONPATH=.; no product fix was made.

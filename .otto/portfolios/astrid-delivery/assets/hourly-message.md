@@ -1,5 +1,7 @@
 # Hourly orchestrator check
 
+On the destination 8 GB Mac, include RAM pressure/paging, CPU responsiveness, disk trend, admitted heavy jobs and leftover test children/services in the delegated check. Inspect existing evidence first: an hourly checkpoint is not an instruction to rerun suites. Admit validation only at useful waypoints under operations.md, accounting for the recovered GPU owner's load. Delegate all diagnostics, edits and cleanup; protect active work and required evidence.
+
 Deploy a bounded Luna evidence check at this checkpoint, covering all active projects with distinct, read-only assignments (normally one or two investigators). Have them inspect updates, source/test evidence, dependencies, drift and agent usage; return concise evidence-linked findings with source identity and uncertainties. Reuse an already-running check rather than duplicate it. Judge their findings yourself, resolve material contradictions, then accept, hold or redirect the next step. Do not treat their summaries as substitutes for required tests or merge gates. Apply this same pattern at dependency-release, integration and completion checkpoints.
 
 Continue the Astrid portfolio in this same thread. Read current meta status and each manager's latest same-thread update plus its evidence. UE is Astrid unified-execution / megado-unified-v3; start from the actual current P7 handoff, not historical wrapper state.
