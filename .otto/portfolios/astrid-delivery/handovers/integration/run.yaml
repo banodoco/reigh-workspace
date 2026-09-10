@@ -1,0 +1,17 @@
+# Portable receiver seed. The orchestrator activates delivery in the canonical
+# .otto/runs/astrid-integration-e2e-20260910/ run; this preparation is planning-only.
+mode: planning_only
+roles:
+  coordinator: {model: gpt-5.6-luna, reasoning: medium}
+  worker_normal: {model: gpt-5.6-luna, reasoning: high}
+  worker_xhard: {model: gpt-5.6-sol, reasoning: high}
+  reviewer_normal: {model: gpt-5.6-luna, reasoning: medium}
+  reviewer_xhard: {model: gpt-5.6-sol, reasoning: high}
+  oracle: {model: gpt-5.6-sol, reasoning: high}
+  final_reviewer: {model: gpt-6-astra, reasoning: high}
+oracle:
+  # Zero independent integration calls. Route consequential decisions to the
+  # owning project's existing oracle/meta remaining budget.
+  max_calls: 0
+# No independent integration reviewpanel; original project reviews remain gates.
+review_stages: []

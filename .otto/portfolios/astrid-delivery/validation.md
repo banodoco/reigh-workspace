@@ -11,6 +11,8 @@
 - Public export inspection removed the raw E2 operational transcript, retaining its final decision once and the original digest. Credential/private-path/transcript-marker scans were applied to the selected package, not unrelated local trees. Marker scans are not guarantees that arbitrary secrets are detectable.
 - The complete selected publication file set is covered by [closure-manifest.json](closure-manifest.json), except the manifest itself to avoid recursive hashing. Original snapshot hashes remain alongside final export hashes; authored coordinator files and added dependencies are also included.
 
+Approved multi-repository follow-up: verified the five product-repository remote URLs from the local checkouts; all portable links and YAML/Python syntax checked; all **six** new-manager choices (including integration) passed dry-run in a fresh copy. A foreign-copy integration launch was rejected before state mutation. No manager or product test was launched. The earlier Astra review is not represented as reviewing these later edits; the separately requested focused Astra assessment is preserved in analysis/parallelism-and-final-integration-astra.md. Final publication regenerates the full manifest and checks the actual committed archive.
+
 ## What this does not establish
 
 The focused tests ran on audited dirty inputs and support source preservation. They do not prove the P7 closure, the six projects, the combined continuation composition, GPU residency, live provider cleanup, production readiness or excluded repositories. Later active-worktree drift is outside those receipts. Source publication and review are not deployment permission.

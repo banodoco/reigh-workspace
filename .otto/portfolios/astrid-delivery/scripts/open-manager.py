@@ -14,6 +14,7 @@ ROOTS = {
     'visualization': 'Astrid/.otto/runs/timeline-visualization-fixes-20260910',
     'render': 'Astrid/.otto/runs/runtime-render-path-reliability-20260910',
     'ephemeral': 'Astrid/.otto/runs/ephemeral-derived-artifact-lifecycle-20260910',
+    'integration': '.otto/runs/astrid-integration-e2e-20260910',
 }
 
 def main():

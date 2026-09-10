@@ -13,6 +13,14 @@ Workspace-relative active roots below are the same-machine source of live status
 
 Each directory also contains its original North Star and status where available. Full original task and criterion IDs remain intact. The compact meta tasklist coordinates these plans rather than renumbering them.
 
+## Separately owned integration finish
+
+**integration — Integration & E2E:** [goal](handovers/integration/agent_goal.md), [plan](handovers/integration/plan.md), [tasks](handovers/integration/tasklist.md), [roles](handovers/integration/run.yaml). Initialize/reuse the single workspace run `.otto/runs/astrid-integration-e2e-20260910` when the orchestrator releases INT-01 after the accepted continuation checkpoint. This manager assembles accepted results continuously, owns the final practical test and cross-repository merge manifest, and routes implementation defects to existing owners. It receives no new oracle pool or duplicate review panel. See [repositories.md](repositories.md).
+
+V1's first preparation assignment also includes [V1-FIXTURE-READY](fixture-readiness.md), explicitly feeding UX-01. The future integration manager consumes that same artifact rather than creating another fixture.
+
+When initializing the missing INT active run from its seed, retain the six run files and rebase their package-relative links to the canonical portfolio documents. Verify links from the new active location; do not assume relative paths survive relocation. Record the adopted seed revision and preserve any existing newer run instead of overwriting it. Future status/counters live only in that active run, while the shipped seed remains reference material.
+
 ## Shared ownership
 
 - DB manager directs shared Runtime schema/transaction/recovery changes, taking GEN/E2/RRP requirements. Contributors retain acceptance of their own behavior.

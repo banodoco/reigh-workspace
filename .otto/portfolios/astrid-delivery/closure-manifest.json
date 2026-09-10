@@ -8,14 +8,18 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "START-HERE.md",
-    "transforms": [],
-    "export_sha256": "953cf0960ecd5203290dab9abbf60bea9128238fe862fc4d85095ee3564a7ba2"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "7ec6c6ed8aaa0748093891f6adc4a0714351ed3843cff3d3a1a2acfb2d58ef09"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "agent_goal.md",
-    "transforms": [],
-    "export_sha256": "d45011a89578496a9fb129438ebe1d04ccdeba6f4cf7c6a8cf268fe57bfac185"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "e212a252236b5586198d940085a1402a2f864cd8163e253230000e821723726d"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -64,6 +68,12 @@
       "workspace/home paths normalized",
       "selected links rebased; omitted evidence links labeled"
     ]
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "analysis/parallelism-and-final-integration-astra.md",
+    "transforms": [],
+    "export_sha256": "59311ca813feed2ddc128d4b146a00f0e1f015238f9d6fe7164700b3db7ecc9b"
   },
   {
     "source": "<workspace>/.otto/reports/portfolio-sequencing-20260910/portfolio-plan.md",
@@ -134,8 +144,10 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "assets/handover-message.md",
-    "transforms": [],
-    "export_sha256": "207f2145a0e8eba3ca931db4724e4de3109337b0750195d06f2ed467af3cbe72"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "1a7cdcc824bc8f258e34ca3203483bca3241fbf45666ce7199f621bcfab4ff99"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -152,8 +164,10 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "authority.md",
-    "transforms": [],
-    "export_sha256": "244e0f37261fe907c7a22fa7b14e5af7281ced7d6182dd0bca36af48a07559c3"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "e27e5acb92dd93246d98b5c88db62087c19444f7593868f91231ecfff2cd6ad8"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -264,6 +278,12 @@
     "export": "dependencies/wakeup-loop/scripts/wakeup_loop.sh",
     "transforms": [],
     "export_sha256": "dfec8bec530d2baa05d9228e72f8721d2862a64ee9d40868e881c574ad72fad6"
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "fixture-readiness.md",
+    "transforms": [],
+    "export_sha256": "8382d0a94bb528970d812bd312f0d4847a12d284ca671314704bd6e57fd90459"
   },
   {
     "source": "<workspace>/Astrid/.otto/runs/runtime-database-clean-break-20260910/agent_goal.md",
@@ -516,6 +536,42 @@
     ]
   },
   {
+    "source": "approved multi-repository handover amendment",
+    "export": "handovers/integration/agent_goal.md",
+    "transforms": [],
+    "export_sha256": "119c90313e2c3399abd5640288fbee590d83457038b2b4ab178bdb6a1d5c80a1"
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "handovers/integration/northstar.md",
+    "transforms": [],
+    "export_sha256": "f6255fc950dd2e6094ef4a8062a5dc687cfe93bb2d397d65b6117d9d8161e17c"
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "handovers/integration/plan.md",
+    "transforms": [],
+    "export_sha256": "929dadf94d75ee1707a1ff94d8c6b8c496a9914046d59edbc11ba04d47e5fbab"
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "handovers/integration/run.yaml",
+    "transforms": [],
+    "export_sha256": "5a6fd4a42b17983a546fcf9753915c377e53d5946a6a77af30353a56386c3b79"
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "handovers/integration/status.md",
+    "transforms": [],
+    "export_sha256": "4998315e53700fa5e97910d6c12f4ac62221be38a5824e50a97424d0c204c388"
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "handovers/integration/tasklist.md",
+    "transforms": [],
+    "export_sha256": "b2e63c599000cc24b3d552a0bd63398f7191d4b8543d170c704e55dc2eeddf69"
+  },
+  {
     "source": "<workspace>/Astrid/.otto/runs/runtime-render-path-reliability-20260910/agent_goal.md",
     "export": "handovers/render/agent_goal.md",
     "original_sha256": "921d40ffdaa496677897d594696df63541531a2bbab99732ff0b218bc0e553ee",
@@ -737,20 +793,32 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "operations.md",
-    "transforms": [],
-    "export_sha256": "0a01f09a079b6f0e5053a3205ba78aa1425774d577819dbb69827c24602b21f2"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "c6cad325c9218425918dccc2530b2e26b0983006ee732e28fde9804be1a3fe80"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "plan.md",
-    "transforms": [],
-    "export_sha256": "5673abc8cadf74eeb5761904249780536cd3cc9fd51f475f9ce630d6841f3aae"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "b17d1cb1499337b26d73b1119dd70a87337910ce2fee42b5484056c656580dbb"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "projects.md",
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "b36a3a3aa87b0bcd95f3d22b987dffc855aeed56e001e64c8d3f0bfa561a4a9c"
+  },
+  {
+    "source": "approved multi-repository handover amendment",
+    "export": "repositories.md",
     "transforms": [],
-    "export_sha256": "a4235f43a067c678ba5d2224b5128303c89355c2c8d145c97b26b00e2ab2df44"
+    "export_sha256": "679afede850ec89b1b0598275ac825c362541d53ceb8e2e8c33bcb1b9aa878a1"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -767,8 +835,10 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "scripts/open-manager.py",
-    "transforms": [],
-    "export_sha256": "df9ddb01098c338dffa9b8789bfab696e10553e03a695cbebc124bad7f3971fa"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "875ecb698db6b9ca144e250eeecfa4b44a930977138e59652bebee66597ef7cd"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -785,19 +855,25 @@
   {
     "source": "authored or selected preparation artifact",
     "export": "status.md",
-    "transforms": [],
-    "export_sha256": "e9aeaf76926ecd7eabffb4e3cef0dc7c9cd3d7cd5594b46bd87903677b466c08"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "a36e64b7a22c16d5af294579c2183ac34bda8c4a309efe06b06421276a2b116b"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "tasklist.md",
-    "transforms": [],
-    "export_sha256": "a8b7b7611902902e4ab9f05d6d8479827c60f972a9a87d43e0991ca566545012"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "eaf28bf126bb3be546d1f9fa4fd36f11fa1eb3aa9027f3e18106a549665d8bbc"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "validation.md",
-    "transforms": [],
-    "export_sha256": "9bc66b1bf563d5e851534625ce1f11070062fa16394cefd9569af3195f19058d"
+    "transforms": [
+      "approved fixture/concurrency/integration/multi-repository amendment"
+    ],
+    "export_sha256": "e4163df8149fc420c3eec08d8759d846f2193eb6852034b52d108dabdbbc7d11"
   }
 ]

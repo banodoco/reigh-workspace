@@ -4,6 +4,8 @@ You are coordinating six existing programs to tested, validated, integrated code
 
 The intended recipient is an intelligent Codex coordinator on the same Mac, opening a persistent Codex window for each new project manager and keeping progress visible in those same threads. Use judgment, delegate real work, and keep the state small. This package is direction and evidence, not a new scheduling framework.
 
+One additional **Integration & E2E manager** coordinates their compatible multi-repository finish; it is not a seventh product implementation. Read [repository custody and push strategy](repositories.md) and [V1 fixture readiness](fixture-readiness.md). The visualization fixture is a required early build task, not an already packaged runnable video.
+
 ## First ten minutes
 
 Fetch this package from the published handover branch into a separate, unused directory if needed:
@@ -33,6 +35,7 @@ Compare the SHA with the preparer's delivery message. This checkout supplies the
 | Timeline visualization (V1) | Exact-render filmstrips, truthful coverage, navigation and spoken metadata | Prepare fixture and independent work; preserve original task and UX ordering |
 | Render-path reliability (RRP) | Responsive diagnostics, launcher recovery, scoped render resolution and verified named opening | Trace and contribute shared requirements; implement once with the boundary owner |
 | Ephemeral derived artifacts (E2) | Runtime-owned temporary derivatives, safe retention/promotion/deletion; primary outputs remain durable | Design output intent/schema with DB/GEN; final visualization migration follows V1 acceptance |
+| Integration & E2E (INT) | Exact cross-repository composition, practical final setup/workflow and coordinated main promotion | After the continuation checkpoint, prepare and consume accepted handoffs early; run the final campaign only on settled code |
 
 The detailed [sequencing analysis](analysis/portfolio-plan.md) and [orchestrator brief](analysis/orchestrator-brief.md) explain the dependencies. **This handover's authority and merge checkpoint are the latest instructions** where older analysis says delivery permission is absent or suggests a different source-custody policy.
 

@@ -1,0 +1,11 @@
+# V1 iteration fixture — explicit delivery task
+
+The [packaged specification](handovers/visualization/test-project.md) and capped UX iteration sequence exist; a ready five-minute test project does **not**. Published Astrid includes 85 JSON/PNG/SVG/parity/adversarial fixture files under `tests/fixtures/timeline_visualize`, not the required dual-view video/actor package. Do not report a specification as runnable proof or replace the required fixture with an arbitrary cached video.
+
+Add **V1-FIXTURE-READY** to the existing V1 active tasklist without renumbering prior tasks. V1's manager owns it; a dedicated worker may implement it early alongside disjoint work using a frozen fixture contract and exclusive fixture/tooling paths. It needs no new GPU/cloud allowance. The user's approved V1 delivery includes this work; the old snapshot's 'separately authorized change' phrase does not create a fresh approval gate.
+
+Acceptance: reproducible documented setup/build/run commands; actual decodable approximately five-minute authored/rendered project; A/B source/manifest identities; overlap, shotless speech, caption traps, full tail/final-frame coverage and decoded-clock checks; checksummed public media/manifests; hidden ground truth kept outside actor-visible inputs; and actual actor image-viewing/capture evidence. Include dependency/environment versions and output locations, not just a successful shell exit. Generate disposable media from a deterministic builder or use an explicitly accessible checksum-pinned artifact; do not require an untracked laptop cache.
+
+**UX-01 depends on V1-FIXTURE-READY**, its existing predecessors and required deterministic gates. Retain fresh Luna actors, two capped Astra UX rounds with precise fixes, affected replay and the final held-out deterministic check. Missing capture is undetermined. Do not add a third hidden UX review or a new evaluator service.
+
+The Integration & E2E manager consumes this one V1-owned fixture after the relevant implementation is ready; it does not create a duplicate fixture or repeat the whole UX review loop. Its final connected workflow additionally checks Runtime setup/publication, scoped rendering and lifecycle behavior. Synthetic evidence cannot replace required provider/GPU proof or the distinct RRP historical Minkhole-byte regression.

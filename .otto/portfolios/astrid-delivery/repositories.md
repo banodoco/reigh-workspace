@@ -1,0 +1,34 @@
+# Multi-repository delivery and push strategy
+
+A project is not a repository. DB, GEN, E2 and UE overlap in **Banodoco Workspace Runtime**; several also change Astrid, while UE crosses Reigh and VibeComfy. The workspace repository hosts this control package, not a merged copy of those source repositories. Git history, source custody, test identity and final main verification remain separate for each repository.
+
+| Repository / remote | Role | Ownership and boundaries |
+|---|---|---|
+| `peteromallet/Astrid` | Host/SDK, generated Runtime client, timeline/visualization, rendering and CLI | UE owns retained-session boundary; GEN publication consumers; V1 visualization; RRP scoped resolution/opening. Serialize shared host/SDK edits. |
+| `banodoco/banodoco-workspace-runtime` | Canonical schema, admission, transactions, task settlement, generation/variant publication and artifact lifecycle | DB directs schema/recovery; GEN supplies publication semantics; E2 lifecycle semantics; UE execution/session consumers. One implementation owner per shared patch, not a Runtime copy per project. Local selected checkout was `banodoco-workspace-runtime-execution-20260909`; confirm its actual Git root/ref with the current owner. |
+| `banodoco/reigh-app` | Application integration consuming the accepted execution/runtime contracts | UE selects actual integration surface and source; it is not a substitute name for the unified-execution project. |
+| `banodoco/reigh-worker` | Worker/task execution integration | UE owns accepted worker changes. Local main was behind remote at preparation; neither is automatically the correct P7 candidate. |
+| `peteromallet/VibeComfy` | Workflow/engine integration and declared generative adapters | UE supplies selected workflow/session revisions; GEN handles declared adapter output mapping. Preserve separately published handover refs until reconciled. |
+| `banodoco/reigh-workspace` | Portable portfolio/control documents | Do not publish its unrelated recovery history or flatten nested checkouts into it. |
+| `peteromallet/poms-skills` | Pinned coordinator skills and machine sync | Setup dependency, not product code. Follow dependencies/README.md; local-only sync does not authorize cloud changes. |
+
+The existing UE handoff determines which additional dependencies are actually consumed. Record their exact provenance (for example Sisypy/ComfyUI/RunPod tooling) without automatically bringing their dirty work into scope. The separate Reigh worker-orchestrator conflict/operational checkout remains excluded unless the original accepted project scope demonstrably requires it and its owner resolves custody. No blanket 'push all repositories' operation.
+
+## One compatible revision set
+
+The Integration & E2E manager owns one small revision-set manifest per candidate. For **each consumed repository**, record: canonical remote; verified local Git/worktree root; source branch and input SHA/tree; intentionally included dirty-input identity; preserved input refs; candidate branch/SHA/tree; expected target-main SHA; dependency revisions/lock identity; applicable tests/reviews; and final remote-main SHA/tree after promotion. Record unchanged repositories too, marked unchanged with their required source identity. No `latest`, guessed root or bare branch name is acceptance identity.
+
+Attach the Runtime protocol/schema and generated-client identities, especially the Runtime Python client and Astrid's vendored copy; dependency installation must resolve the intended checkout/revision, not a stale editable install elsewhere. Record actual interpreter/module paths at setup. Generate clients from the accepted producer contract when needed and check parity—never hand-merge divergent generated output. Include fixture/media manifests and setup/evidence digests. Use the same revision set for manager handoffs, final tests and merge evidence; do not create independent competing manifests.
+
+Published preparation pins in [source-publication.md](source-publication.md) are **inputs**, not the final composition. Reconcile late local drift and the existing UE candidate before adopting a continuation set. Preserve every relevant input; do not reset a dirty checkout, double-apply an already-published patch or assume matching branch names mean matching code.
+
+## Push and promotion checkpoints
+
+1. **Preserve and reconcile:** fetch remote refs without switching active worktrees; compare the exact P7/current-main/dirty inputs with owners. The orchestrator directs the initial P7 integration checkpoint; publish named tested continuation branches and the accepted revision set.
+2. **Publish useful increments:** project managers normally commit/push coherent, tested feature or contract checkpoints to their assigned candidate branches, with dependencies and remaining gates. Use draft PRs where useful/supported. Push only explicit intended source; no force or broad dirty-tree staging. A branch push is recoverable progress, not main acceptance.
+3. **Continuously compose:** Integration & E2E consumes accepted handoffs and catches conflicts early. Source owners fix their own defects. Shared files and generated clients have one owner; do not wait until every branch is 'finished' to discover divergence.
+4. **Freeze final candidate:** capture expected main heads and the exact cross-repository tested composition. Run the agreed final setup/workflow and required owning reviews. If code or consumed dependencies change, invalidate affected evidence and revalidate before promotion. Do not require evidence from the final run as a prerequisite to starting that run.
+5. **Promote deliberately:** the integration manager alone coordinates final main merges/pushes through supported protections/PRs. Choose and record order from actual producer/consumer compatibility; do not assume 'Runtime first' is always safe. Multiple repository merges are **not atomic**. Do not deploy mixed revisions or have managers independently pull floating main during promotion.
+6. **Verify the set:** fetch each remote main and prove it contains the accepted tree/dependency composition (squash/rebase may change commit IDs). Stop affected promotion on unexpected main drift; reconcile and rerun affected checks. After all required merges, run the lightweight supported-entry-point smoke on that exact main revision set and publish the final manifest. If one merge fails, record partial state and preserve refs; do not claim completion or force/reset already-merged histories. Rollback/revert or production cutover is not implicitly authorized.
+
+The complete end-to-end campaign runs once on the settled candidate before merge; post-merge identity/smoke is deliberately smaller. A real defect or meaningful source drift requires affected reruns. Existing project tests/reviews and live-proof budgets remain binding, and main merges do not themselves deploy services or migrate existing data.

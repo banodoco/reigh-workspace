@@ -29,7 +29,13 @@ Required main inputs needed by P7 itself are integrated under UE's existing proc
 
 The orchestrator chooses ready tasks, not calendar waves. A task needs its original predecessors, the contracts it actually consumes, available source custody and relevant authorization. If an input changes, invalidate only affected evidence. Detect apparent cycles by separating early contract requirements from later acceptance proof.
 
+Use three ready implementation lanes (Runtime foundation, visualization, scoped opening), with a fourth disjoint fixture/adapter task only when ready and machine capacity permits. Agree shared Runtime/host edits with one owner. Explicitly build [V1-FIXTURE-READY](fixture-readiness.md) early so UX-01 can actually run; do not wait for the final integration manager to discover missing media or capture tooling.
+
 ## D. Finish and merge
+
+After the accepted continuation checkpoint, delegate the [Integration & E2E workstream](handovers/integration/plan.md) to one persistent manager. It prepares early and continuously composes accepted handoffs; the final practical setup/workflow campaign runs once the relevant code is settled. The orchestrator retains META-5 acceptance; existing project owners retain implementation and review obligations. Follow [the multi-repository push/merge strategy](repositories.md), including Banodoco Workspace Runtime and every actually consumed integration repository.
+
+Assembly consumes code-ready inputs and their upstream gates. Any original final evidence intentionally produced during the integrated campaign is listed explicitly, not required before that campaign begins; its owning required review must pass before merge. Reuse still-valid original proof rather than duplicating GPU fires. After the final campaign and reviews, promote the exact composition to main and perform a smaller main-identity/supported-entry-point smoke. A defect or meaningful drift requires affected reruns, not a blanket ban on testing twice.
 
 Each manager completes its original criteria and configured reviews on its exact candidate. Integrate continuously at meaningful seams, then run required final affected checks on the chosen combined source. UE physical/warm claims require its actual GPU evidence; a previous fire does not certify new source automatically.
 

@@ -15,6 +15,30 @@ meta role/model/stage/budget declaration; each project's existing run.yaml is
 authoritative for its own work. Never replace a newer active run with this
 snapshot or reset counters.
 
+Also read repositories.md and fixture-readiness.md. Treat Astrid, Banodoco
+Workspace Runtime, Reigh app/worker and VibeComfy as separate Git/source owners
+in one tested revision set; never flatten them into the workspace repository.
+Record exact consumed revisions, generated-client/dependency identities and
+expected target-main heads. Preserve newer local dirt separately from the
+published snapshots; do not blindly pull or double-apply captured patches.
+
+Use three genuinely ready implementation lanes and a conditional fourth
+disjoint fixture/adapter worker under operations.md. Add V1-FIXTURE-READY early
+to V1's active tasklist and require it for UX-01; the five-minute iteration
+project is currently a specification, not an implemented fixture.
+
+After the accepted continuation checkpoint, initialize/reuse the integration
+run from handovers/integration and open one Integration & E2E manager thread.
+It prepares early, consumes accepted handoffs continuously, and owns the final
+connected setup/workflow campaign on settled code, coordinated per-repository
+main promotion, and lightweight final-main smoke. It adds no oracle budget or
+review panel and sends product defects to the existing managers. Evidence
+intended to be produced in this final campaign is not an assembly prerequisite;
+all original mandatory checks/reviews must pass before main promotion. Multiple
+repository merges are not atomic: hold affected promotion on drift/failure and
+publish the final accepted revision set only after every required merge is
+verified. No mixed-version production deployment is authorized.
+
 Authority and current state: the user authorizes delivery of all six agreed
 programs—(1) Astrid unified-execution (UE), (2) Runtime database clean break
 (DB), (3) generation alignment (GEN), (4) timeline visualization (V1), (5)
