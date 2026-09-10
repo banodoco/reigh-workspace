@@ -4,6 +4,8 @@ Keep an hourly/event history so the orchestrator can compare the plan, observed 
 
 ## Location and ownership
 
+Managers remain accountable for the original project task/status ledger and existing acceptance/decision records; they arrange batched updates through their workers at meaningful events and before dependent handoffs. Luna checkpoint investigators own observations **about** that record and its evidence, not project task acceptance. Each hourly check verifies that material completed/reopened work, blockers, source changes, consumed calls and handoffs are reflected where appropriate. No-change hours require no artificial manager-ledger edit. Stale bookkeeping is corrected by the owning manager; actual uncertainty about required proof, source or remaining budget—not a missing monitoring form—determines whether an action must wait.
+
 On the receiving Mac, create histories only when a project is first inspected:
 
 `local/checkpoints/PROJECT_ID.md`

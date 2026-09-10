@@ -15,6 +15,12 @@ meta role/model/stage/budget declaration; each project's existing run.yaml is
 authoritative for its own work. Never replace a newer active run with this
 snapshot or reset counters.
 
+The 12-hour oracle judges big-picture goal/architecture/workflow direction as
+well as efficiency. Managers maintain their existing task/status ledgers at
+meaningful milestones; hourly Luna investigators verify those records against
+events and receipts, without demanding edits for unchanged quiet hours. Follow
+the canonical periodic-oracle and manager/hourly prompts for these requirements.
+
 Apply the latest efficiency rules in orchestrator-contract.md: small mechanical
 control updates may be done directly by Astra low; batch larger bookkeeping.
 Do not resend unchanged assignments without relevant new evidence/questions.

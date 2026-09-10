@@ -34,6 +34,8 @@ For an **inactive persisted** manager, resume it once with `codex resume ACTUAL_
 
 ## Updates that reveal drift
 
+Each project manager owns the accuracy of its existing task/status ledger and accepted decision/review records, with batched worker updates at meaningful events and before dependent handoffs; see the manager starting message. Each hourly Luna investigator checks that record against actual progress and receipts, accepting unchanged accurate state on quiet projects. The per-project checkpoint history is observation chronology, not a replacement task ledger. Ask for one concrete correction when stale records matter; do not create another documentation gate or repeat an unchanged reminder.
+
 Managers post after meaningful results, failures, handoffs or changed direction, and about hourly while active. A good update is four short sentences: what changed; evidence/source; what is next; any risk or decision. The orchestrator posts its cross-project update in its own thread. No unchanged polling transcript is needed.
 
 At a check, look for a specific sign of drift: worker output outside its brief, repeated source changes under a frozen candidate, a new abstraction without a requirement, more workers than distinct ready tasks, two agents doing the same search/test, or repeated reviews without a changed candidate. Ask the manager for a concrete correction in the existing thread. Do not infer waste from window count alone or interrupt a healthy slow worker merely because it has been quiet.

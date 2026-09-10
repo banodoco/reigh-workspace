@@ -171,9 +171,10 @@
       "per-project checkpoint investigators and explicit startup/portfolio ledger",
       "per-project chronological checkpoint observations and coordinator decision feedback",
       "user-authorized twelve-hour Astra course correction and elapsed-hour accounting",
-      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses"
+      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses",
+      "big-picture oracle judgment and milestone-based manager ledger freshness checks"
     ],
-    "export_sha256": "e10e2cee0ca26c8836a014e10b8290cd80b4fe8b1cb85fb3bfdd6844431cdf31"
+    "export_sha256": "d648dfbc634012e374750ace24daf842ec25d03eadc795f99a1e6189d647b25b"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -184,26 +185,29 @@
       "per-project checkpoint investigators and explicit startup/portfolio ledger",
       "per-project chronological checkpoint observations and coordinator decision feedback",
       "user-authorized twelve-hour Astra course correction and elapsed-hour accounting",
-      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses"
+      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses",
+      "big-picture oracle judgment and milestone-based manager ledger freshness checks"
     ],
-    "export_sha256": "7b3636350a226c9087e0e366319f198917bd7f18d169d5f39f7a9a4e9b57ecec"
+    "export_sha256": "4a84e35ec77428db313682560e68189e4e231dceb2553741417aa4ee6377cd01"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "assets/periodic-oracle-message.md",
     "transforms": [
       "user-authorized twelve-hour Astra course correction and elapsed-hour accounting",
-      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses"
+      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses",
+      "big-picture oracle judgment and milestone-based manager ledger freshness checks"
     ],
-    "export_sha256": "bdb829867880cab4d17d1a616addeb4f8b6ebacab6f9c9205296826616ea8a96"
+    "export_sha256": "56ef9a2c9d90e8c83ac8ad15f7ba16e1bf5462b05b3cc9919df13828946065e5"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "assets/project-manager-message.md",
     "transforms": [
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "big-picture oracle judgment and milestone-based manager ledger freshness checks"
     ],
-    "export_sha256": "57ad3808b845a031598056103ed9f91a2171e03d26e091ecd5a1ae874c7c57c5"
+    "export_sha256": "f24f134748f8e0cb30ecf415f3dc19e5279216d398ddd7a56106f1cf72b03ea2"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -223,9 +227,10 @@
     "transforms": [
       "per-project chronological checkpoint observations and coordinator decision feedback",
       "user-authorized twelve-hour Astra course correction and elapsed-hour accounting",
-      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses"
+      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses",
+      "big-picture oracle judgment and milestone-based manager ledger freshness checks"
     ],
-    "export_sha256": "3f468b333527e830b4ce1834270e163dd8fba3971a07404b78e4cdc7948377c8"
+    "export_sha256": "c341a95011757135319cc9db6b5dbf57dd8886f7c44f62a6d4539d35788e6590"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -886,9 +891,10 @@
       "per-project checkpoint investigators and explicit startup/portfolio ledger",
       "per-project chronological checkpoint observations and coordinator decision feedback",
       "user-authorized twelve-hour Astra course correction and elapsed-hour accounting",
-      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses"
+      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses",
+      "big-picture oracle judgment and milestone-based manager ledger freshness checks"
     ],
-    "export_sha256": "8cfb3f6e7703cc786a1854a6ae6801e8985dc0247698baf3cf4851b96dbf4696"
+    "export_sha256": "f76442f5be979fd582459ec9a8566e95bb8aacae913e43ed3173b27735b55222"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -907,9 +913,10 @@
     "export": "periodic-course-correction.md",
     "transforms": [
       "user-authorized twelve-hour Astra course correction and elapsed-hour accounting",
-      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses"
+      "approved low-bureaucracy refinements, quiet-period acceleration and downstream-risk lenses",
+      "big-picture oracle judgment and milestone-based manager ledger freshness checks"
     ],
-    "export_sha256": "2c20d8cb5fd086a538b45713b10344bdf7f1a2d2836f8e91c17f54925f9b4ed0"
+    "export_sha256": "fbbf5ea618af8e4c6a78190fe2ae587bf7550dffc36fe83e3df29d5aabafb1dc"
   },
   {
     "source": "authored or selected preparation artifact",
