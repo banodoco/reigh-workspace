@@ -154,14 +154,23 @@
   },
   {
     "source": "authored or selected preparation artifact",
+    "export": "assets/checkpoint-entry.md",
+    "transforms": [
+      "per-project chronological checkpoint observations and coordinator decision feedback"
+    ],
+    "export_sha256": "f41656ac8ab11cbf2f4bc9f3894966f59c6ca35cffe3798efac4e14ab73e8708"
+  },
+  {
+    "source": "authored or selected preparation artifact",
     "export": "assets/handover-message.md",
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
       "approved pure-orchestration and source-readiness amendment",
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
-      "per-project checkpoint investigators and explicit startup/portfolio ledger"
+      "per-project checkpoint investigators and explicit startup/portfolio ledger",
+      "per-project chronological checkpoint observations and coordinator decision feedback"
     ],
-    "export_sha256": "25fe87f230f05b9a3d188c66fe22a2f2af74c11e6cff7f062288b796f5f65290"
+    "export_sha256": "cd545abb27b4669ce40761ae3cbc48741a75afb8538f29d604d23298606572c1"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -169,9 +178,10 @@
     "transforms": [
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
       "explicit hourly checklist and bounded manager-efficiency drill-down",
-      "per-project checkpoint investigators and explicit startup/portfolio ledger"
+      "per-project checkpoint investigators and explicit startup/portfolio ledger",
+      "per-project chronological checkpoint observations and coordinator decision feedback"
     ],
-    "export_sha256": "a7eb1d369d8363afe4eadc1e7ea1bc7270480ba9ef3f81232158c76007a47222"
+    "export_sha256": "0ddf94ecedd59008c944b860ed810c22e90d94b56bf210ce4ea58dafeb93058a"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -190,6 +200,14 @@
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
     ],
     "export_sha256": "ce321464f8b0eeabb3205f29d657a051ec33c2bced93e29986daefc553b653cb"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "checkpoint-history.md",
+    "transforms": [
+      "per-project chronological checkpoint observations and coordinator decision feedback"
+    ],
+    "export_sha256": "8f49e051defea877f62810398407262cfc5e5132b8f0dd186b7ea423843cf1f5"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -847,9 +865,10 @@
       "approved pure-orchestration and source-readiness amendment",
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
       "explicit hourly checklist and bounded manager-efficiency drill-down",
-      "per-project checkpoint investigators and explicit startup/portfolio ledger"
+      "per-project checkpoint investigators and explicit startup/portfolio ledger",
+      "per-project chronological checkpoint observations and coordinator decision feedback"
     ],
-    "export_sha256": "f6ad76f616f664b10fd3197e175d0b244659798cf426e0fdbd23ce244ce70213"
+    "export_sha256": "1060cbf36f16369168b4c585c62b4a94168ba726077094a2630767c5f61df40e"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -939,9 +958,10 @@
       "approved fixture/concurrency/integration/multi-repository amendment",
       "approved pure-orchestration and source-readiness amendment",
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
-      "per-project checkpoint investigators and explicit startup/portfolio ledger"
+      "per-project checkpoint investigators and explicit startup/portfolio ledger",
+      "per-project chronological checkpoint observations and coordinator decision feedback"
     ],
-    "export_sha256": "9173f5cc2586f758549d914789f26219e9f9a5efc66b9a2f21371e5d8a50f165"
+    "export_sha256": "2d277247a43adcb9ebd4bdd5bb472189e9ad20c93a384ed02098cfcfbf908ccb"
   },
   {
     "source": "authored or selected preparation artifact",

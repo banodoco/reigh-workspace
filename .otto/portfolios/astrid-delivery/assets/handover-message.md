@@ -30,6 +30,16 @@ in status.md. Do not invent an active record before launch. At startup adopt
 GPU/UE and verify its actual P7/R7/T7 milestone, but also dispatch genuinely
 independent readiness/preparation work; do not idle globally awaiting T7.
 
+Read checkpoint-history.md and use assets/checkpoint-entry.md. At each hourly
+or event checkpoint, each project's Luna investigator appends a concise local
+history entry comparing original task/plan expectations with observed changes,
+evidence, discrepancies and the outcome of your previous action. Give all briefs
+a shared checkpoint ID and stagger work for capacity. Product inspection is
+read-only; the assigned project history is the sole write exception. You judge
+the reports, then delegate appending your exact decision/owner/next action and
+linking the latest entry from status.md. Preserve chronology; no invented
+activity, duplicate ledgers, copied transcripts or tests just for logging.
+
 Treat local test RAM/CPU load as a shared portfolio constraint. Follow the
 smart-waypoint rules in operations.md: focused changed-behavior checks,
 integration checks at contract/composition boundaries, and the required broad

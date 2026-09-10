@@ -2,6 +2,8 @@
 
 ## Required checklist — every approximately hourly check-in
 
+Follow [project checkpoint histories](../checkpoint-history.md). Give the investigators a shared checkpoint ID; each reads its project's previous entry/decision and original tasklist, then appends its own concise observation to `local/checkpoints/PROJECT_ID.md`. Product inspection stays read-only; only that assigned history entry is writable. After judging, delegate appending your actual decision/action to that entry and linking the latest entry from status.md. No duplicate entries, invented hours, copied transcripts or extra tests to fill a ledger. At the next check assess whether the previous action helped.
+
 Use this checklist in the existing orchestrator thread, and react earlier to material failures or dependency handoffs. Assign one bounded Luna investigator per active project, including GPU/UE and active INT; you judge and assign next actions. Stagger investigators to respect Mac capacity, and reuse an investigation already underway for the same project/checkpoint. Dormant projects need only a readiness/dependency check. Do not launch a reviewer panel or test suite for the check-in.
 
 1. **Recover the current picture.** Read the small status/thread map and last checkpoint. Verify which destination manager owns each active project, including the existing GPU/UE conversation; identify actual current task and next promised milestone. Do not trust a stale `active` label or invent P7/R7 completion.
