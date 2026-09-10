@@ -2,6 +2,8 @@
 
 Recorded from the user's September 10 instructions and subsequent steering.
 
+- **Twelve-hour course-correction override:** count elapsed hours and run one scheduled GPT-6 Astra oracle decision every 12 hours of active portfolio delivery, reviewing the complete checkpoint-history access and overall plan for stalls, inefficiency, miscoordination and wrong direction. This explicitly adds a recurring allowance separate from the three ad-hoc meta-oracle responses; run.yaml and periodic-course-correction.md govern accounting, missed intervals and follow-through. No project review/GPU budget, implementation scope or deployment authority changes. No periodic call runs during preparation.
+
 - **Latest source/GPU instruction:** publish validated latest intended local Astrid and Banodoco Runtime source to their respective main branches. The receiving orchestrator adopts the running GPU/UE project immediately by recovering its existing conversation; at its verified checkpoint (previously P7 CPU closure; user later said R7), delegated workers first preserve/compose its existing work, then merge current main into isolated continuation branches and test the combined revision set. See gpu-project-takeover.md. This overrides the earlier Runtime handover-branch-only publication decision, not source safety or project acceptance gates.
 
 - **Preparation now:** build this first meta-handover, preserve/publish relevant current source and plans to their existing GitHub repositories, and have one independent Astra high agent improve it from the receiving coordinator's perspective. Do not launch the portfolio while preparing the package.

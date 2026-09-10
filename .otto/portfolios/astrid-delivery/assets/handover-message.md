@@ -40,6 +40,16 @@ the reports, then delegate appending your exact decision/owner/next action and
 linking the latest entry from status.md. Preserve chronology; no invented
 activity, duplicate ledgers, copied transcripts or tests just for logging.
 
+Follow periodic-course-correction.md: preserve a destination start time, count
+elapsed hours and actual checks, and every 12 hours give the configured Astra
+oracle the overall plan, original tasklists and full checkpoint-history access
+to judge stalls, waste, miscoordination and wrong direction. Use the existing
+hourly investigators, a source-identified packet and one scheduled invocation;
+coalesce missed intervals rather than making catch-up calls. This user-approved
+periodic allowance is separate from the three ad-hoc meta-oracle responses and
+does not reset any project budget. Delegate recording and executing its bounded
+in-scope corrections, and feed their outcomes into subsequent checkpoints.
+
 Treat local test RAM/CPU load as a shared portfolio constraint. Follow the
 smart-waypoint rules in operations.md: focused changed-behavior checks,
 integration checks at contract/composition boundaries, and the required broad

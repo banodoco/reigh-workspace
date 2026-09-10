@@ -168,9 +168,10 @@
       "approved pure-orchestration and source-readiness amendment",
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
       "per-project checkpoint investigators and explicit startup/portfolio ledger",
-      "per-project chronological checkpoint observations and coordinator decision feedback"
+      "per-project chronological checkpoint observations and coordinator decision feedback",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "cd545abb27b4669ce40761ae3cbc48741a75afb8538f29d604d23298606572c1"
+    "export_sha256": "4c4d2181a70aa950d927132c4283761138034ffad2ef9d2460a2d768f67a09ee"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -179,9 +180,18 @@
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
       "explicit hourly checklist and bounded manager-efficiency drill-down",
       "per-project checkpoint investigators and explicit startup/portfolio ledger",
-      "per-project chronological checkpoint observations and coordinator decision feedback"
+      "per-project chronological checkpoint observations and coordinator decision feedback",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "0ddf94ecedd59008c944b860ed810c22e90d94b56bf210ce4ea58dafeb93058a"
+    "export_sha256": "252653f01923534498649fcafa7c144ca4bf1da4176dc6929b05f96a14d2c246"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "assets/periodic-oracle-message.md",
+    "transforms": [
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
+    ],
+    "export_sha256": "49d2ed231d991b9962a08b494d2b6ca864c1b007e255d57a17f3796be03d550a"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -197,17 +207,19 @@
     "transforms": [
       "approved fixture/concurrency/integration/multi-repository amendment",
       "approved pure-orchestration and source-readiness amendment",
-      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment"
+      "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "ce321464f8b0eeabb3205f29d657a051ec33c2bced93e29986daefc553b653cb"
+    "export_sha256": "3810d792098bd30d519300264416e0ba73de5f5378d725a8ec5ac0cd357f3dbb"
   },
   {
     "source": "authored or selected preparation artifact",
     "export": "checkpoint-history.md",
     "transforms": [
-      "per-project chronological checkpoint observations and coordinator decision feedback"
+      "per-project chronological checkpoint observations and coordinator decision feedback",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "8f49e051defea877f62810398407262cfc5e5132b8f0dd186b7ea423843cf1f5"
+    "export_sha256": "7b2433aa5371062026bf818cb7efd76da2a6da6c7938d426b99f8793e0516f4d"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -866,9 +878,10 @@
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
       "explicit hourly checklist and bounded manager-efficiency drill-down",
       "per-project checkpoint investigators and explicit startup/portfolio ledger",
-      "per-project chronological checkpoint observations and coordinator decision feedback"
+      "per-project chronological checkpoint observations and coordinator decision feedback",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "1060cbf36f16369168b4c585c62b4a94168ba726077094a2630767c5f61df40e"
+    "export_sha256": "3204ad0921fe0227bcef9199b575699688defd21af694d1d8cf9897e36e6f009"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -876,9 +889,18 @@
     "transforms": [
       "approved pure-orchestration and source-readiness amendment",
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
-      "per-project checkpoint investigators and explicit startup/portfolio ledger"
+      "per-project checkpoint investigators and explicit startup/portfolio ledger",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "822cd1908b7fe2c68fbd78bc3eb05a4302993cd83b4d2866d1f4b951a55a48c5"
+    "export_sha256": "7b7153eae00931186ebd115001533ec5b9b521d17b90e5074c7f70a765d1b3c8"
+  },
+  {
+    "source": "authored or selected preparation artifact",
+    "export": "periodic-course-correction.md",
+    "transforms": [
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
+    ],
+    "export_sha256": "989d08dcff01dd57a7ccd6b9d9ef3b84614bc28774730d394d1327948ed7c73f"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -915,9 +937,10 @@
     "source": "authored or selected preparation artifact",
     "export": "run.yaml",
     "transforms": [
-      "approved pure-orchestration and source-readiness amendment"
+      "approved pure-orchestration and source-readiness amendment",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "14672241d19d31b0bc84358382689ebaeee303feb41a5e285713100a823c7c7d"
+    "export_sha256": "fdcb2f988cc2448882bca9e886925c2944053d8114e244eb16a49034d88cbdcd"
   },
   {
     "source": "authored or selected preparation artifact",
@@ -959,9 +982,10 @@
       "approved pure-orchestration and source-readiness amendment",
       "approved main-publication, destination GPU takeover and constrained-Mac resource amendment",
       "per-project checkpoint investigators and explicit startup/portfolio ledger",
-      "per-project chronological checkpoint observations and coordinator decision feedback"
+      "per-project chronological checkpoint observations and coordinator decision feedback",
+      "user-authorized twelve-hour Astra course correction and elapsed-hour accounting"
     ],
-    "export_sha256": "2d277247a43adcb9ebd4bdd5bb472189e9ad20c93a384ed02098cfcfbf908ccb"
+    "export_sha256": "0e3b5f50bb96726c1a00ca1401019f3bd2a1e8dcddf19ded84c9a6aa272fec14"
   },
   {
     "source": "authored or selected preparation artifact",

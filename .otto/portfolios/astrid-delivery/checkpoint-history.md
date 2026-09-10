@@ -34,6 +34,8 @@ The next checkpoint starts by checking whether that action produced the intended
 
 ## Portfolio view
 
+Every 12 hours, [the scheduled Astra course-correction checkpoint](periodic-course-correction.md) consumes the overall plan and complete history access. Its relevant rulings are appended to affected project histories with action owners; subsequent hourly entries assess the outcomes. Keep observed elapsed hours distinct from the number of actual observations, and preserve gaps honestly.
+
 A delegated recorder maintains a short row per active project in status.md: original task/gate, latest observed change, Astra disposition, owner/next action and link to the latest history entry. Use portable relative links within the receiving workspace when possible; actual local history links are created at bootstrap, not shipped as broken public links. Older rows are not a competing history—the per-project file owns chronology. The hourly user update highlights material changes, discrepancies and actions; it need not reproduce every entry.
 
 Keep histories small by linking evidence and avoiding raw logs. If a history becomes unwieldy, split closed periods into chronological files in the same local directory and retain an index/link from the current project file; preserve the records. Storage pressure does not authorize deleting required evidence or rewriting past judgments.

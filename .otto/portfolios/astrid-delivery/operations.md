@@ -96,6 +96,8 @@ The check prompt is [assets/hourly-message.md](assets/hourly-message.md). Event-
 
 ## Decisions and budgets
 
+Latest user override: [twelve-hour course correction](periodic-course-correction.md) adds one scheduled Astra oracle invocation per due interval, separate from the existing three ad-hoc calls. run.yaml declares the cadence/accounting; status.md records the preserved start time, elapsed hours, actual hourly checks, next due boundary and invocation outcomes. Delegate packet assembly from the overall plan and project histories, then apply/record bounded corrections and check their results. Missed intervals coalesce; no new scheduler or extra test campaign. Older references to three total meta calls mean the ad-hoc allowance, not this newly authorized periodic cadence.
+
 Routine in-scope scheduling, focused corrections and evidence-based handoffs belong to the managers/orchestrator. Send consequential or contested architecture judgments to the owning run's designated oracle. Ask the user only for a real missing authority or budget change, after preparing a concrete choice. Keep independent work moving.
 
 The active meta [run.yaml](run.yaml) defines its roles; original project YAML defines theirs. Existing review counters are preserved. V1/E2 share a single remaining oracle balance; their YAML ceilings are not two grants. The handover's Astra high critique is a one-off preparation review, not an extra project certification stage. No per-hour model-review panel is needed.

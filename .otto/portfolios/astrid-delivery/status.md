@@ -2,6 +2,8 @@
 
 ## Portfolio ledger identity
 
+The [12-hour course-correction contract](periodic-course-correction.md) is configured but not started during preparation. At receiving bootstrap preserve started_at_utc; record observed_at_utc, elapsed whole hours, actual hourly checks, next periodic due boundary, scheduled invocation IDs/status/count and remaining ad-hoc balance. No elapsed hours or completed oracle checkpoints are fabricated here. Scheduled calls use the separate explicit run.yaml allowance; original ad-hoc consumption and project-local budgets remain unchanged.
+
 [Per-project checkpoint histories](checkpoint-history.md) now define the chronological observation → judgment → follow-up record. The receiving investigators create real entries under local/checkpoints/ only when inspected; none has been fabricated during preparation. This status retains the latest summary and links, while original tasklists remain authoritative.
 
 Canonical control/ledger root: `.otto/portfolios/astrid-delivery/`. Original outcomes are in tasklist.md (META-1–META-6); this file records lifecycle and current state. Current lifecycle is **handover prepared/published, destination orchestration not started or verified by this preparation thread**. No destination orchestrator UUID, actual GPU-manager UUID, live checkpoint timestamp or next wakeup is invented here. At bootstrap a delegated worker records actual orchestrator/manager identities in local/managers.json and maintains this status under operations.md. The source projects' own ledgers remain authoritative for their task/review counters.

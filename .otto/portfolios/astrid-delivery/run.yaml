@@ -10,6 +10,16 @@ roles:
   oracle: {model: gpt-6-astra, reasoning: high}
   final_reviewer: {model: gpt-6-astra, reasoning: high}
 oracle:
+  # Ad-hoc decision requests only; preserve consumed counts.
   max_calls: 3
+# Explicit user-authorized recurring course-correction allowance. This is a
+# coordinator-read contract, not an installed scheduler or harness feature.
+periodic_oracle:
+  enabled: true
+  role: oracle
+  interval_hours: 12
+  max_calls_per_checkpoint: 1
+  missed_intervals: coalesce
+  stop_when: portfolio_complete_or_user_stops
 # Project reviews remain in each project's run.yaml. No duplicate portfolio panel.
 review_stages: []
